@@ -5,13 +5,13 @@
  * Domain internals (Session, PhaseStateMachine, TimerSnapshot) exercised indirectly.
  *
  * Test Budget: 7 distinct behaviors x 2 = 14 max unit tests
- *   B1: first tick transitions phase from IDLE to WORK (render called)
+ *   B1: first tick renders WORK phase and writes WORK state to statePort
  *   B2: progressFraction is 0.5 after half the work duration ticks
  *   B3: PHASE_CHANGED event triggers notificationPort.notifyPhaseChange
  *   B4: interrupt causes clean shutdown (renderPort.stop, statePort.writeIdle)
  *   B5: progressFraction is 1.0 when in OVERDUE state (D2 fix)
  *   B6: SESSION_COMPLETED event triggers historyPort.recordSession (D3 coverage)
- *   B7: exactly one PHASE_CHANGED event per WORK->BREAK transition (WS-04)
+ *   B7: exactly one PHASE_CHANGED event and BREAK render per WORK->BREAK transition (WS-04)
  *
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
@@ -119,8 +119,8 @@ function makePorts(): {
 // --- Tests ---
 
 describe('SessionService (driving port)', () => {
-  // B1: first tick transitions phase from IDLE to WORK
-  it('renders WORK phase snapshot after first tick on an IDLE session', () => {
+  // B1: first tick renders WORK phase and writes WORK state to statePort
+  it('renders WORK phase and writes WORK state after first tick on an IDLE session', () => {
     const { renderPort, statePort, notificationPort, historyPort } = makePorts();
     const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
     const config = makeConfig();
@@ -129,15 +129,6 @@ describe('SessionService (driving port)', () => {
 
     expect(renderPort.snapshots.length).toBeGreaterThan(0);
     expect(renderPort.lastSnapshot().phase).toBe('WORK');
-  });
-
-  it('writes WORK phase state to statePort after first tick', () => {
-    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
-    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
-    const config = makeConfig();
-
-    service.tickOnce(config, 0);
-
     expect(statePort.written.length).toBeGreaterThan(0);
     expect(statePort.written[statePort.written.length - 1]!.phase).toBe('WORK');
   });
@@ -211,11 +202,11 @@ describe('SessionService (driving port)', () => {
     expect(historyPort.recorded[0]).toBe(1);
   });
 
-  // B7: exactly one PHASE_CHANGED event per WORK->BREAK transition (WS-04)
-  it('emits exactly one PHASE_CHANGED event when WORK period completes and transitions to BREAK', () => {
+  // B7: exactly one PHASE_CHANGED event and BREAK render per WORK->BREAK transition (WS-04)
+  it('emits exactly one PHASE_CHANGED event and renders BREAK phase when WORK period completes', () => {
     const { renderPort, statePort, notificationPort, historyPort } = makePorts();
     const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
-    const config = makeConfig({ workDurationSeconds: 2 });
+    const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 5 });
 
     service.tickOnce(config, 0); // IDLE -> WORK (no PHASE_CHANGED for IDLE->WORK)
     service.tickOnce(config, 2); // work completes -> BREAK
@@ -223,17 +214,6 @@ describe('SessionService (driving port)', () => {
     expect(notificationPort.phaseChanges.length).toBe(1);
     expect(notificationPort.phaseChanges[0]!.from).toBe('WORK');
     expect(notificationPort.phaseChanges[0]!.to).toBe('BREAK');
-  });
-
-  // B7: render snapshot phase is BREAK immediately after work period completes
-  it('renders BREAK phase snapshot immediately after work period completes (single render cycle)', () => {
-    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
-    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
-    const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 5 });
-
-    service.tickOnce(config, 0); // IDLE -> WORK
-    service.tickOnce(config, 2); // work completes -> BREAK render
-
     expect(renderPort.lastSnapshot().phase).toBe('BREAK');
   });
 });
