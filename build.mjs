@@ -2,11 +2,10 @@
  * esbuild build script for chromato.
  *
  * Bundles src/index.ts into dist/index.js.
- * Target: Node.js 20, CJS output with shebang header for executable CLI.
+ * Target: Node.js 20, ESM output with shebang header for executable CLI.
  *
- * Note: We use CJS format for the bundle because esbuild does not support
- * adding a shebang banner to ESM output cleanly. The package.json keeps
- * "type": "module" for source files; the dist bundle is self-contained.
+ * Uses ESM format (not CJS) because Ink 4.x uses top-level await and ESM.
+ * dist/package.json marks the dist directory as ESM ("type": "module").
  */
 
 import { build } from 'esbuild';
@@ -16,6 +15,9 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Read version from package.json to inject at build time
+const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
+
 mkdirSync(join(__dirname, 'dist'), { recursive: true });
 
 const result = await build({
@@ -23,27 +25,42 @@ const result = await build({
   bundle: true,
   platform: 'node',
   target: 'node20',
-  // Use CJS so require() for package.json works and shebang is clean
-  format: 'cjs',
+  format: 'esm',
   outfile: 'dist/index.js',
-  // Externalize native addons that cannot be bundled into JS
-  external: ['better-sqlite3'],
+  // Inject version at build time so no runtime package.json read is needed
+  define: {
+    '__CHROMATO_VERSION__': JSON.stringify(pkg.version),
+  },
+  // Externalize all runtime deps — they live in node_modules for npm installs.
+  // This avoids CJS/ESM interop issues when bundling mixed-format packages.
+  external: [
+    'better-sqlite3',
+    'commander',
+    'chalk',
+    'ink',
+    'react',
+    'node-notifier',
+    'react-devtools-core',
+  ],
   // No banner here -- we prepend shebang manually below
   sourcemap: true,
   logLevel: 'info',
   metafile: false,
+  // JSX support for Ink/React TUI components
+  jsx: 'automatic',
+  jsxImportSource: 'react',
+  // Externalize react-devtools-core (optional Ink dev dependency)
+  plugins: [],
 });
+
+// Write a dist/package.json that marks the dist directory as ESM.
+writeFileSync(
+  join(__dirname, 'dist', 'package.json'),
+  JSON.stringify({ type: 'module' }, null, 2) + '\n'
+);
 
 // Prepend the shebang line to make the output directly executable
 const outputPath = join(__dirname, 'dist', 'index.js');
-
-// Write a dist/package.json that marks the dist directory as CommonJS.
-// This allows Node.js to load dist/index.js as CJS even though the root
-// package.json has "type": "module".
-writeFileSync(
-  join(__dirname, 'dist', 'package.json'),
-  JSON.stringify({ type: 'commonjs' }, null, 2) + '\n'
-);
 const content = readFileSync(outputPath, 'utf8');
 if (!content.startsWith('#!/usr/bin/env node')) {
   writeFileSync(outputPath, `#!/usr/bin/env node\n${content}`);
