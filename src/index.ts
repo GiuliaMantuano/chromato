@@ -47,9 +47,9 @@ program
     color?: boolean;
   }) => {
     const config = loadConfig({
-      work: parseInt(opts.work, 10),
-      breakDuration: parseInt(opts.break, 10),
-      longBreak: parseInt(opts.longBreak, 10),
+      work: parseFloat(opts.work),
+      breakDuration: parseFloat(opts.break),
+      longBreak: parseFloat(opts.longBreak),
       cycles: parseInt(opts.cycles, 10),
       minimal: opts.minimal,
       noColor: opts.color === false,

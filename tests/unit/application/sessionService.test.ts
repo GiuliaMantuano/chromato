@@ -4,13 +4,14 @@
  * Tests enter through SessionService with in-memory stub ports.
  * Domain internals (Session, PhaseStateMachine, TimerSnapshot) exercised indirectly.
  *
- * Test Budget: 6 distinct behaviors x 2 = 12 max unit tests
+ * Test Budget: 7 distinct behaviors x 2 = 14 max unit tests
  *   B1: first tick transitions phase from IDLE to WORK (render called)
  *   B2: progressFraction is 0.5 after half the work duration ticks
  *   B3: PHASE_CHANGED event triggers notificationPort.notifyPhaseChange
  *   B4: interrupt causes clean shutdown (renderPort.stop, statePort.writeIdle)
  *   B5: progressFraction is 1.0 when in OVERDUE state (D2 fix)
  *   B6: SESSION_COMPLETED event triggers historyPort.recordSession (D3 coverage)
+ *   B7: exactly one PHASE_CHANGED event per WORK->BREAK transition (WS-04)
  *
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
@@ -208,5 +209,31 @@ describe('SessionService (driving port)', () => {
 
     expect(historyPort.recorded.length).toBe(1);
     expect(historyPort.recorded[0]).toBe(1);
+  });
+
+  // B7: exactly one PHASE_CHANGED event per WORK->BREAK transition (WS-04)
+  it('emits exactly one PHASE_CHANGED event when WORK period completes and transitions to BREAK', () => {
+    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
+    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
+    const config = makeConfig({ workDurationSeconds: 2 });
+
+    service.tickOnce(config, 0); // IDLE -> WORK (no PHASE_CHANGED for IDLE->WORK)
+    service.tickOnce(config, 2); // work completes -> BREAK
+
+    expect(notificationPort.phaseChanges.length).toBe(1);
+    expect(notificationPort.phaseChanges[0]!.from).toBe('WORK');
+    expect(notificationPort.phaseChanges[0]!.to).toBe('BREAK');
+  });
+
+  // B7: render snapshot phase is BREAK immediately after work period completes
+  it('renders BREAK phase snapshot immediately after work period completes (single render cycle)', () => {
+    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
+    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
+    const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 5 });
+
+    service.tickOnce(config, 0); // IDLE -> WORK
+    service.tickOnce(config, 2); // work completes -> BREAK render
+
+    expect(renderPort.lastSnapshot().phase).toBe('BREAK');
   });
 });

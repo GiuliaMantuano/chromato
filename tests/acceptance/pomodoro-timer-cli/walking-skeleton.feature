@@ -68,7 +68,7 @@ Feature: Walking skeleton -- chromato delivers a complete Pomodoro loop
   # (ink-testing-library). This acceptance test verifies the observable outcome:
   # the break phase is shown after the work timer completes.
   # -----------------------------------------------------------------------
-  @walking_skeleton @US-02 @skip
+  @walking_skeleton @US-02
   Scenario: Work timer completes and the display switches to break phase
     Given a work session with 2 seconds remaining
     When the work timer reaches zero

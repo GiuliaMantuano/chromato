@@ -42,28 +42,31 @@ Given('a work session is active in work phase', async function (this: ChromatoWo
 });
 
 Given('a work session with 2 seconds remaining', async function (this: ChromatoWorld) {
-  // Use a 1-minute work session and inject a state with 2 seconds left.
-  const stateDir = path.join(this.tempDir, 'chromato');
-  fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(stateDir, 'state.json'),
-    JSON.stringify({
-      schemaVersion: 1,
-      phase: 'WORK',
-      remainingSeconds: 2,
-      elapsedSeconds: 58,
-      progressFraction: 0.967,
-      currentPomodoro: 1,
-      cycleCount: 4,
-      completedToday: 0,
-      streak: 0,
-      isOverdue: false,
-      overdueElapsedSeconds: 0,
-      lastUpdatedUtc: new Date().toISOString(),
-    })
-  );
-  this.process = spawnChromato(this, ['start', '--work', '1']);
-  await waitForOutput(this.process, /WORK|00:0[12]/, 3000);
+  // Use a very short work duration (0.033 min ≈ 2s) so the timer completes
+  // within the test timeout. Break duration 5 minutes (default) gives 05:00.
+  // parseFloat in index.ts accepts fractional minutes.
+  // Override NODE_ENV to avoid TUI test-mode early exit (which would stop
+  // the process before the work phase completes).
+  const env = { ...this.chromatoEnv, NODE_ENV: 'acceptance' };
+  const { spawn } = await import('child_process');
+  const proc = spawn('node', [this.chromatoBin, 'start', '--work', '0.033', '--break', '5'], {
+    env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    detached: false,
+  });
+  let stdout = '';
+  proc.stdout?.on('data', (chunk: Buffer) => {
+    stdout += chunk.toString();
+    this.capturedOutput = stdout;
+  });
+  proc.stderr?.on('data', (chunk: Buffer) => {
+    this.capturedStderr += chunk.toString();
+  });
+  proc.on('exit', (code) => {
+    this.exitCode = code;
+  });
+  this.process = proc;
+  await waitForOutput(proc, /WORK/, 5000);
 });
 
 Given('the developer completed {int} work session and its break', async function (
@@ -233,6 +236,15 @@ Then('the phase color scheme changes from work colors to break colors', function
     const isBreakOrTransitioned = state.phase === 'BREAK' || state.phase === 'WORK';
     assert.ok(isBreakOrTransitioned, `Expected phase to be BREAK or WORK, got: ${state.phase}`);
   }
+});
+
+Then('the break timer reads {string}', function (this: ChromatoWorld, timeStr: string) {
+  // After WORK->BREAK transition, the countdown should show the break duration.
+  // capturedOutput accumulates all rendered frames from the running process.
+  assert.ok(
+    this.capturedOutput.includes(timeStr),
+    `Expected break timer "${timeStr}" in TUI output after phase transition but got:\n${this.capturedOutput}`
+  );
 });
 
 Then('the display shows {string}', function (this: ChromatoWorld, text: string) {

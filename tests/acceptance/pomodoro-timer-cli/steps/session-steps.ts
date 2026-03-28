@@ -122,13 +122,9 @@ Given('a work session is active as {string}', async function (
   await waitForOutput(this.process, /WORK|POMODORO/, 3000);
 });
 
-Given('a work session with {int} seconds remaining', async function (
-  this: ChromatoWorld,
-  seconds: number
-) {
-  this.process = spawnChromato(this, ['start', '--work', String(Math.ceil(seconds / 60))]);
-  await waitForOutput(this.process, /WORK/, 3000);
-});
+// NOTE: 'a work session with 2 seconds remaining' (exact text) is defined in
+// phase-transition-steps.ts with injection behavior. The parametrized variant
+// below was removed to avoid Cucumber ambiguity (WS-04 fix).
 
 Given('a work session timer has reached zero', async function (this: ChromatoWorld) {
   // Inject an overdue state file.
