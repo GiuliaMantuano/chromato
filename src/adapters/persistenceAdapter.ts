@@ -14,8 +14,12 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { createRequire } from 'node:module';
 import type { StatePort, HistoryPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
+
+// createRequire allows loading CJS native modules (better-sqlite3) from ESM context.
+const _require = createRequire(import.meta.url);
 
 function resolveStateDir(xdgDataHome?: string): string {
   const base = xdgDataHome ?? process.env['XDG_DATA_HOME'] ?? path.join(os.homedir(), '.local', 'share');
@@ -166,10 +170,9 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
       return this.db;
     }
     fs.mkdirSync(this.stateDir, { recursive: true });
-    // Lazy require: only load better-sqlite3 when DB operations are actually needed.
-    // This keeps `chromato status` startup under 50ms (AC-03.1).
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Database = require('better-sqlite3');
+    // Use _require (createRequire) to load CJS native module from ESM context.
+    // Lazy load to keep `chromato status` startup fast (AC-03.1).
+    const Database = _require('better-sqlite3');
     const db = new Database(resolveDbPath(this.stateDir));
     db.pragma('journal_mode = WAL');
     db.exec(`
