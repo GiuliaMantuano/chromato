@@ -30,7 +30,7 @@ export class StatusAdapter {
       return '';
     }
 
-    const noColor = process.env['NO_COLOR'] !== undefined && process.env['NO_COLOR'] !== '';
+    const noColor = process.env['NO_COLOR'] !== undefined;
     const time = formatMinSec(timer.remainingSeconds);
 
     // Format: "🍅 MM:SS WORK" -- max visible chars = 2+1+5+1+9 = 18 (LONG_BREAK worst case)

@@ -51,7 +51,7 @@ program
       breakDuration: parseFloat(opts.break),
       longBreak: parseFloat(opts.longBreak),
       cycles: parseInt(opts.cycles, 10),
-      minimal: opts.minimal,
+      minimal: opts.minimal ?? false,
       noColor: opts.color === false,
     });
 
@@ -64,10 +64,11 @@ program
     const service = new SessionService(tuiAdapter, persistenceAdapter, null, persistenceAdapter);
 
     process.on('SIGTERM', () => {
-      process.exit(0);
+      service.interrupt();
     });
 
     await service.run(config);
+    process.exit(0);
   });
 
 program
