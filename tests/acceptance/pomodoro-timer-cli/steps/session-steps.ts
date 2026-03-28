@@ -437,6 +437,18 @@ Then('the timer countdown reads {string}', function (this: ChromatoWorld, time: 
   );
 });
 
+Then('the progress bar shows {int}% fill at session start', function (
+  this: ChromatoWorld,
+  percent: number
+) {
+  // At 0% the progress bar is empty; check for a '0%' label or empty-bar indicator.
+  // The TUI renders a percentage label next to the bar.
+  assert.ok(
+    this.capturedOutput.includes(`${percent}%`),
+    `Expected progress bar at ${percent}% in output but got:\n${this.capturedOutput}`
+  );
+});
+
 Then('the session badge reads {string}', function (this: ChromatoWorld, badge: string) {
   assert.ok(
     this.capturedOutput.includes(badge) || this.capturedOutput.match(new RegExp(badge, 'i')),

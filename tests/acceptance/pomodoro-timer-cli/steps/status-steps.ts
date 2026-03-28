@@ -117,6 +117,16 @@ Then('the command completes in under {int} milliseconds', function (
   );
 });
 
+Then('the output completes in under {int} milliseconds', function (
+  this: ChromatoWorld,
+  maxMs: number
+) {
+  assert.ok(
+    this.elapsedMs <= maxMs,
+    `Expected output in under ${maxMs}ms but took ${this.elapsedMs}ms`
+  );
+});
+
 Then('the output is an empty string or a configured idle indicator', function (
   this: ChromatoWorld
 ) {

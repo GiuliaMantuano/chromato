@@ -6,12 +6,18 @@
  * This is the only file that imports from all layers.
  *
  * Driving port: commander.js program (CLI)
+ *
+ * PERFORMANCE NOTE:
+ * TuiAdapter (Ink/React) is dynamically imported only for the `start` command.
+ * The `status` command path must complete in <50ms -- Ink/React cold start
+ * adds 15-20ms. Dynamic import ensures status never pays that cost.
  */
 
 import { Command } from 'commander';
 import { loadConfig } from './configLoader.js';
-import { SessionService } from './application/sessionService.js';
-import { TuiAdapter } from './adapters/tuiAdapter.js'; // .tsx resolved by esbuild
+import { StatusService } from './application/statusService.js';
+import { PersistenceAdapter } from './adapters/persistenceAdapter.js';
+import { StatusAdapter } from './adapters/statusAdapter.js';
 
 // Version injected at build time by esbuild define — no runtime file I/O needed.
 declare const __CHROMATO_VERSION__: string;
@@ -49,14 +55,35 @@ program
       noColor: opts.color === false,
     });
 
+    // Lazy import: TuiAdapter loads Ink/React only when `start` is invoked.
+    const { TuiAdapter } = await import('./adapters/tuiAdapter.js');
+    const { SessionService } = await import('./application/sessionService.js');
+
     const tuiAdapter = new TuiAdapter();
-    const service = new SessionService(tuiAdapter, null, null, null);
+    const persistenceAdapter = new PersistenceAdapter();
+    const service = new SessionService(tuiAdapter, persistenceAdapter, null, persistenceAdapter);
 
     process.on('SIGTERM', () => {
       process.exit(0);
     });
 
     await service.run(config);
+  });
+
+program
+  .command('status')
+  .description('Show current session status')
+  .option('--format <format>', 'Output format: tmux or plain', 'plain')
+  .action((opts: { format: string }) => {
+    const format = opts.format === 'tmux' ? 'tmux' : 'plain';
+    const persistenceAdapter = new PersistenceAdapter();
+    const statusAdapter = new StatusAdapter();
+    const statusService = new StatusService(persistenceAdapter, statusAdapter);
+    const output = statusService.getStatus(format);
+    if (output.length > 0) {
+      process.stdout.write(output + '\n');
+    }
+    process.exit(0);
   });
 
 program.parse(process.argv);
