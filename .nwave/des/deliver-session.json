@@ -1,0 +1,8 @@
+{
+  "feature_id": "pomodoro-timer-cli",
+  "started_at": "2026-03-28T00:00:00Z",
+  "crafter": "nw-software-crafter",
+  "paradigm": "OOP",
+  "mutation_strategy": "per-feature",
+  "phase": "roadmap"
+}

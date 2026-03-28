@@ -1,0 +1,318 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  commit:
+    name: Commit Stage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm tsc --noEmit
+
+      - name: Lint
+        run: pnpm eslint src tests --ext .ts
+
+      - name: Format check
+        run: pnpm prettier --check "src/**/*.ts" "tests/**/*.ts"
+
+      - name: Secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Architecture check
+        run: pnpm depcruise --validate .dependency-cruiser.cjs src
+
+      - name: Unit tests with coverage
+        run: pnpm vitest run --coverage --reporter=verbose tests/unit/
+
+      - name: Coverage quality gate
+        run: |
+          COVERAGE=$(node -e "
+            const c = require('./coverage/coverage-summary.json');
+            const lines = c.total.lines.pct;
+            const branches = c.total.branches.pct;
+            console.log(Math.min(lines, branches).toFixed(2));
+          ")
+          echo "Coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 80" | bc -l)" -eq 1 ]; then
+            echo "ERROR: Coverage ${COVERAGE}% is below the 80% threshold"
+            exit 1
+          fi
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+
+      - name: Build
+        run: pnpm build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  security:
+    name: CodeQL SAST
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  integration-tests:
+    name: Integration Tests (${{ matrix.os }})
+    needs: commit
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    env:
+      TERM: xterm-256color
+      LANG: en_US.UTF-8
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-12, macos-14]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Integration tests
+        run: pnpm vitest run --reporter=verbose tests/integration/
+
+      - name: Acceptance tests
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-12'
+        run: pnpm cucumber-js --config tests/acceptance/pomodoro-timer-cli/cucumber.config.ts --publish-quiet
+
+  tmux-matrix:
+    name: tmux Integration (tmux ${{ matrix.tmux-version }})
+    needs: commit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tmux-version: ['2.6', '2.9', '3.2']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install tmux ${{ matrix.tmux-version }}
+        run: |
+          sudo apt-get update -qq
+          # Install tmux from source for specific versions
+          sudo apt-get install -y libevent-dev libncurses-dev bison pkg-config
+          TMUX_VERSION="${{ matrix.tmux-version }}"
+          curl -sL "https://github.com/tmux/tmux/releases/download/${TMUX_VERSION}/tmux-${TMUX_VERSION}.tar.gz" | tar xz
+          cd "tmux-${TMUX_VERSION}"
+          ./configure --prefix=/usr/local
+          make -j$(nproc)
+          sudo make install
+          tmux -V
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: tmux integration tests
+        run: pnpm vitest run --reporter=verbose tests/integration/tmux/
+
+  benchmarks:
+    name: Performance Benchmarks
+    needs: commit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install sysstat (pidstat)
+        run: sudo apt-get install -y sysstat
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Benchmark -- cold start (--version)
+        id: bench_version
+        run: |
+          TIMES=()
+          for i in {1..5}; do
+            T=$({ time node dist/index.js --version; } 2>&1 | grep real | awk '{print $2}' | sed 's/m/min /;s/s//')
+            MS=$(echo "$T" | awk '{print ($1 * 60 + $2) * 1000}')
+            TIMES+=($MS)
+          done
+          MEDIAN=$(printf '%s\n' "${TIMES[@]}" | sort -n | awk 'NR==3')
+          echo "cold_start_ms=${MEDIAN}" >> $GITHUB_OUTPUT
+          echo "Cold start median: ${MEDIAN}ms"
+          if [ "$(echo "$MEDIAN > 200" | bc -l)" -eq 1 ]; then
+            echo "ERROR: Cold start ${MEDIAN}ms exceeds 200ms gate"
+            exit 1
+          fi
+
+      - name: Benchmark -- status command latency
+        id: bench_status
+        run: |
+          # Write a minimal idle state.json for the status command to read
+          mkdir -p ~/.local/share/chromato
+          cat > ~/.local/share/chromato/state.json << 'EOF'
+          {"schemaVersion":1,"phase":"WORK","remainingSeconds":1200,"elapsedSeconds":300,"progressFraction":0.2,"currentPomodoro":1,"cycleCount":4,"completedToday":0,"streak":0,"isOverdue":false,"overdueElapsedSeconds":0,"lastUpdatedUtc":"2026-03-28T09:00:00Z"}
+          EOF
+          TIMES=()
+          for i in {1..10}; do
+            T=$({ time node dist/index.js status --format tmux; } 2>&1 | grep real | awk '{print $2}' | sed 's/m/min /;s/s//')
+            MS=$(echo "$T" | awk '{print ($1 * 60 + $2) * 1000}')
+            TIMES+=($MS)
+          done
+          MEDIAN=$(printf '%s\n' "${TIMES[@]}" | sort -n | awk 'NR==5')
+          echo "status_ms=${MEDIAN}" >> $GITHUB_OUTPUT
+          echo "Status command median: ${MEDIAN}ms"
+          if [ "$(echo "$MEDIAN > 50" | bc -l)" -eq 1 ]; then
+            echo "ERROR: Status command ${MEDIAN}ms exceeds 50ms gate"
+            exit 1
+          fi
+
+      - name: Benchmark -- RSS and CPU steady-state
+        id: bench_rss
+        run: |
+          node scripts/benchmark-rss.js
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: benchmark-results.json
+          retention-days: 30
+
+  all-checks:
+    name: All CI Checks
+    needs: [commit, security, integration-tests, tmux-matrix, benchmarks]
+    runs-on: ubuntu-22.04
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.commit.result }}" != "success" ] || \
+             [ "${{ needs.security.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.tmux-matrix.result }}" != "success" ] || \
+             [ "${{ needs.benchmarks.result }}" != "success" ]; then
+            echo "One or more CI jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed"

@@ -64,13 +64,20 @@ export class Session {
   getSnapshot(): SessionSnapshot {
     const phase = this.interrupted ? 'IDLE' : this.stateMachine.currentPhase();
 
+    // During BREAK/LONG_BREAK/OVERDUE, completedCount() was already incremented
+    // when WORK ended — so currentPomodoro equals completedCount() (the one just finished).
+    // During WORK/IDLE, completedCount() reflects completed sessions, so +1 is the active one.
+    const currentPomodoro = (phase === 'BREAK' || phase === 'LONG_BREAK' || phase === 'OVERDUE')
+      ? this.stateMachine.completedCount()
+      : this.stateMachine.completedCount() + 1;
+
     if (phase === 'OVERDUE') {
       // In OVERDUE state, the timer is fully elapsed (progressFraction = 1.0).
       // Use a sentinel totalSeconds of 1 with elapsedSeconds = 1 to represent full.
       return {
         phase,
         timer: deriveTimerSnapshot(1, 1, this.overdueElapsedSeconds),
-        currentPomodoro: this.stateMachine.completedCount() + 1,
+        currentPomodoro,
         completedToday: this.completedToday,
         streak: this.streak,
         config: this.config,
@@ -82,7 +89,7 @@ export class Session {
     return {
       phase,
       timer: deriveTimerSnapshot(durationSeconds, this.elapsedSeconds, this.overdueElapsedSeconds),
-      currentPomodoro: this.stateMachine.completedCount() + 1,
+      currentPomodoro,
       completedToday: this.completedToday,
       streak: this.streak,
       config: this.config,

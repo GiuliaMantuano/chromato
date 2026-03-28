@@ -1,0 +1,47 @@
+# .github/workflows/track-metrics.yml
+name: Track Ecosystem Metrics
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  collect-metrics:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Fetch npm download stats
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          WEEKLY=$(curl -sf "https://api.npmjs.org/downloads/point/last-week/chromato" || echo '{"downloads":0}')
+          MONTHLY=$(curl -sf "https://api.npmjs.org/downloads/point/last-month/chromato" || echo '{"downloads":0}')
+          echo "{\"date\":\"${DATE}\",\"weekly\":$(echo $WEEKLY | jq .downloads),\"monthly\":$(echo $MONTHLY | jq .downloads)}" \
+            >> docs/metrics/npm-downloads.jsonl
+
+      - name: Fetch GitHub star count
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          STARS=$(curl -sf -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}" | jq .stargazers_count)
+          CLONES=$(curl -sf -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/traffic/clones" | jq .count)
+          VIEWS=$(curl -sf -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/traffic/views" | jq .count)
+          echo "{\"date\":\"${DATE}\",\"stars\":${STARS},\"clones\":${CLONES},\"views\":${VIEWS}}" \
+            >> docs/metrics/github-metrics.jsonl
+
+      - name: Commit metrics update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/metrics/
+          git diff --staged --quiet || git commit -m "chore: update daily ecosystem metrics [skip ci]"
+          git push
