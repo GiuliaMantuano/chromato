@@ -80,7 +80,7 @@ Feature: Walking skeleton -- chromato delivers a complete Pomodoro loop
   # WS-05: Session count is confirmed after a complete cycle
   # Validates: US-01 + US-02 (session complete, Today count)
   # -----------------------------------------------------------------------
-  @walking_skeleton @US-01 @US-02 @skip
+  @walking_skeleton @US-01 @US-02
   Scenario: Developer completes a Pomodoro cycle and sees the session count
     Given the developer completed 1 work session and its break
     When the completed session summary is displayed
