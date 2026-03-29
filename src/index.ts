@@ -19,15 +19,19 @@ import { StatusService } from './application/statusService.js';
 import { PersistenceAdapter } from './adapters/persistenceAdapter.js';
 import { StatusAdapter } from './adapters/statusAdapter.js';
 
-// Version injected at build time by esbuild define — no runtime file I/O needed.
-declare const __CHROMATO_VERSION__: string;
+// Version injected at build time by esbuild define.
+// Falls back to package.json version when running via tsx in dev mode.
+declare const __CHROMATO_VERSION__: string | undefined;
+const VERSION: string = (() => {
+  try { return __CHROMATO_VERSION__ ?? 'dev'; } catch { return 'dev'; }
+})();
 
 const program = new Command();
 
 program
   .name('chromato')
   .description('The Pomodoro timer your terminal deserves')
-  .version(__CHROMATO_VERSION__);
+  .version(VERSION);
 
 program
   .command('start')
@@ -54,6 +58,10 @@ program
       minimal: opts.minimal ?? false,
       noColor: opts.color === false,
     });
+
+    // Print ASCII art banner before TUI renders (stdout, stays above Ink output).
+    const { printBanner } = await import('./adapters/bannerAdapter.js');
+    printBanner(opts.color === false);
 
     // Lazy import: TuiAdapter loads Ink/React only when `start` is invoked.
     const { TuiAdapter } = await import('./adapters/tuiAdapter.js');

@@ -103,7 +103,7 @@ export class TuiAdapter implements RenderPort {
         snapshot,
         onUnmount: this.testMode ? () => undefined : undefined,
       });
-      this.inkInstance = render(element, { debug: this.testMode });
+      this.inkInstance = render(element, { debug: this.testMode, exitOnCtrlC: false });
 
       if (this.testMode) {
         // In test mode, render first frame then exit immediately

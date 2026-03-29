@@ -65,7 +65,7 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 | react | ^18.0 | Ink peer dependency |
 | chalk | ^5.0 | ANSI color (status + minimal paths) |
 | commander | ^12.0 | CLI framework |
-| better-sqlite3 | ^9.0 | Session history SQLite (synchronous) |
+| better-sqlite3 | ^12.8.0 | Session history SQLite (synchronous) |
 | node-notifier | ^10.0 | OS desktop notifications |
 
 **Dev dependencies**: vitest, @vitest/coverage-v8, ink-testing-library, tsx, esbuild, dependency-cruiser, TypeScript type packages
