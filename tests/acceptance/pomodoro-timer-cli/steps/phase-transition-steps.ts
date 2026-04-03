@@ -152,17 +152,41 @@ Given('Marcus has completed {int} work sessions and their short breaks', async f
 Given(
   'a work session just completed and the break timer ran to zero',
   async function (this: ChromatoWorld) {
-    // Simulate a session completion event by having the process run a 1-second work session
-    // followed by a 1-second break.
-    this.process = spawnChromato(this, [
-      'start',
-      '--work', '0',
-      '--break', '0',
-    ]);
-    await waitForOutput(this.process, /complete|IDLE|today/i, 5000);
+    // Use CHROMATO_WORK_SECONDS=1 and CHROMATO_BREAK_SECONDS=1 to run a
+    // 1-second work + 1-second break cycle without hitting the --work 0 validation.
+    // NODE_ENV=acceptance prevents TUI early-exit so the process runs to completion.
+    const env = { ...this.chromatoEnv, CHROMATO_WORK_SECONDS: '1', CHROMATO_BREAK_SECONDS: '1', NODE_ENV: 'acceptance' };
+    const { spawn } = await import('child_process');
+    const proc = spawn('node', [this.chromatoBin, 'start'], {
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: false,
+    });
+    let stdout = '';
+    proc.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString();
+      this.capturedOutput = stdout;
+    });
+    proc.stderr?.on('data', (chunk: Buffer) => {
+      this.capturedStderr += chunk.toString();
+    });
+    proc.on('exit', (code) => {
+      this.exitCode = code;
+    });
+    this.process = proc;
+
+    // Wait for the process to finish the break phase (exits automatically after OVERDUE).
+    // Allow up to 10s for the full 1s work + 1s break + OVERDUE transition + state write.
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => resolve(), 10_000);
+      proc.on('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
 
     // Allow the process to write the final state file.
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 300));
   }
 );
 

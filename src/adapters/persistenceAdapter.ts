@@ -174,8 +174,42 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
   }
 
   readStreak(): number {
-    // Minimal stub: streak logic is post-MVP scope.
-    return 0;
+    const db = this.openDb();
+    // Compute streak: count the number of consecutive calendar days ending today
+    // that have at least one recorded session.
+    // Strategy: fetch distinct local dates (descending), walk backward from today
+    // until a gap is found.
+    const rows = db.prepare(
+      `SELECT DISTINCT date(recorded_at, 'localtime') AS local_date
+       FROM sessions
+       ORDER BY local_date DESC`
+    ).all() as { local_date: string }[];
+
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+
+    // Streak only counts if there is a session today (or yesterday for same-day start edge case).
+    // We walk from today backward; each consecutive day increments the streak.
+    let streak = 0;
+    let cursor = todayStr;
+
+    for (const row of rows) {
+      if (row.local_date === cursor) {
+        streak += 1;
+        // Move cursor to the previous day.
+        const prev = new Date(cursor + 'T00:00:00Z');
+        prev.setUTCDate(prev.getUTCDate() - 1);
+        cursor = prev.toISOString().slice(0, 10);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   private openDb(): BetterSqliteDatabase {

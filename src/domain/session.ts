@@ -28,10 +28,11 @@ export class Session {
   private completedToday: number = 0;
   private streak: number = 0;
 
-  constructor(config: SessionConfig, initialCompletedToday: number = 0) {
+  constructor(config: SessionConfig, initialCompletedToday: number = 0, initialStreak: number = 0) {
     this.config = config;
     this.stateMachine = new PhaseStateMachine(initialCompletedToday);
     this.completedToday = initialCompletedToday;
+    this.streak = initialStreak;
   }
 
   tick(deltaSeconds: number): void {

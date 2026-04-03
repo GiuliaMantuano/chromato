@@ -84,7 +84,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the phase label reads "LONG BREAK" not "BREAK"
 
   # AC-05.7: Session count and streak update correctly after a complete cycle
-  @US-05 @AC-05.7 @skip
+  @US-05 @AC-05.7
   Scenario: Completed session count and streak increment correctly after a full work and break cycle
     Given a work session just completed and the break timer ran to zero
     When the developer reads the state file

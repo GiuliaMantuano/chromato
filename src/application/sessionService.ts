@@ -43,7 +43,8 @@ export class SessionService {
   tickOnce(config: SessionConfig, deltaSeconds: number): void {
     if (this.session === null) {
       const completedToday = this.statePort?.readCompletedToday() ?? 0;
-      this.session = new Session(config, completedToday);
+      const streak = this.historyPort?.readStreak() ?? 0;
+      this.session = new Session(config, completedToday, streak);
     }
 
     if (this.session.isInterrupted()) {
@@ -71,7 +72,8 @@ export class SessionService {
 
   async run(config: SessionConfig): Promise<void> {
     const completedToday = this.statePort?.readCompletedToday() ?? 0;
-    this.session = new Session(config, completedToday);
+    const streak = this.historyPort?.readStreak() ?? 0;
+    this.session = new Session(config, completedToday, streak);
     const session = this.session;
 
     process.on('SIGINT', () => {

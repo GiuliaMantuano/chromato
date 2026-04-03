@@ -4,9 +4,11 @@
  * Tests use real temp dirs (os.tmpdir()), not mocks.
  * Adapter integration tests verify real file I/O behavior.
  *
- * Test Budget: 2 distinct behaviors x 2 = 4 max unit tests
+ * Test Budget: 4 distinct behaviors x 2 = 8 max unit tests
  *   B1: writeState + readState round-trip: written state is readable and valid JSON
  *   B2: readState returns null when no state file exists
+ *   B3: readStreak() returns 0 when no sessions recorded
+ *   B4: readStreak() returns 1 when sessions recorded today (consecutive-day streak)
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -68,5 +70,18 @@ describe('PersistenceAdapter', () => {
   it('readState returns null when no state file exists', () => {
     const result = adapter.readState();
     expect(result).toBeNull();
+  });
+
+  // B3: readStreak() returns 0 when no sessions recorded
+  it('readStreak returns 0 when no sessions have been recorded', () => {
+    const streak = adapter.readStreak();
+    expect(streak).toBe(0);
+  });
+
+  // B4: readStreak() returns >= 1 when a session was recorded today
+  it('readStreak returns 1 after recording a session today', () => {
+    adapter.recordSession(1);
+    const streak = adapter.readStreak();
+    expect(streak).toBeGreaterThanOrEqual(1);
   });
 });

@@ -348,6 +348,12 @@ When('he runs {string}', async function (this: ChromatoWorld, command: string) {
   this.exitCode = result.exitCode;
 });
 
+When('the developer reads the state file', function (this: ChromatoWorld) {
+  // State file was already written by the Given step. This step is a no-op
+  // that documents the action of reading -- assertions happen in Then steps.
+  // readStateFile(this) is called in each Then assertion step.
+});
+
 When('she presses Ctrl+C', async function (this: ChromatoWorld) {
   if (!this.process) {
     throw new Error('No chromato process is running to send Ctrl+C to.');
