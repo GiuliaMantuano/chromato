@@ -289,6 +289,15 @@ When('the developer runs {string} with a {int}-minute work duration', async func
   this.exitCode = result.exitCode;
 });
 
+When('Natasha runs {string}', async function (this: ChromatoWorld, command: string) {
+  const args = parseCommand(command);
+  // Run chromato for 200ms to capture the initial TUI frame, then terminate.
+  const result = await runChromato(this, args, 200);
+  this.capturedOutput = result.stdout;
+  this.capturedStderr = result.stderr;
+  this.exitCode = result.exitCode;
+});
+
 When('Natasha runs {string} with default configuration', async function (
   this: ChromatoWorld,
   command: string

@@ -33,7 +33,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the frame shows the work phase timer at "25:00"
 
   # AC-05.2: Default session uses 25/5 with no config file required
-  @US-05 @AC-05.2 @skip
+  @US-05 @AC-05.2
   Scenario: Default session starts with standard Pomodoro durations and no configuration file
     Given no configuration file exists
     When Natasha runs "chromato start"
@@ -67,7 +67,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the total output is 40 lines or fewer
 
   # AC-02.7: Session count badge is always visible during an active session
-  @US-02 @AC-02.7 @skip
+  @US-02 @AC-02.7
   Scenario: Session count badge remains visible throughout the entire active session
     Given a work session is active as "POMODORO 2 of 4"
     When the developer views the TUI at any point during the session
