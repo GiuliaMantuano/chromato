@@ -15,7 +15,7 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world';
-import { spawnChromato, runChromato, readStateFile, waitForOutput } from './helpers';
+import { spawnChromato, runChromato, runChromatoUntilFirstFrame, readStateFile, waitForOutput } from './helpers';
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -294,12 +294,10 @@ When('Natasha runs {string} with default configuration', async function (
   command: string
 ) {
   const args = parseCommand(command);
-  const start = Date.now();
-  // Run for 200ms to capture first frame, then terminate.
-  const result = await runChromato(this, args, 200);
-  this.elapsedMs = Date.now() - start;
+  // Measure time-to-first-frame: spawn and kill as soon as first stdout arrives.
+  const result = await runChromatoUntilFirstFrame(this, args, 3000);
+  this.elapsedMs = result.firstFrameMs;
   this.capturedOutput = result.stdout;
-  this.capturedStderr = result.stderr;
   this.exitCode = result.exitCode;
 });
 
@@ -430,6 +428,13 @@ Then('the timer countdown reads {string}', function (this: ChromatoWorld, time: 
   assert.ok(
     this.capturedOutput.includes(time),
     `Expected timer "${time}" in output but got:\n${this.capturedOutput}`
+  );
+});
+
+Then('the frame shows the work phase timer at {string}', function (this: ChromatoWorld, time: string) {
+  assert.ok(
+    this.capturedOutput.includes(time),
+    `Expected work phase timer "${time}" in TUI frame but got:\n${this.capturedOutput}`
   );
 });
 

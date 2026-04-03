@@ -70,6 +70,63 @@ export interface RunResult {
   exitCode: number | null;
 }
 
+export interface FirstFrameResult {
+  firstFrameMs: number;
+  stdout: string;
+  exitCode: number | null;
+}
+
+/**
+ * Runs chromato and measures the time until the first stdout output arrives.
+ * Kills the process immediately after the first output chunk (or after safetyTimeoutMs).
+ * Returns elapsed ms from process spawn to first stdout byte, plus captured output.
+ *
+ * Used to test AC-05.1: first TUI frame within 100ms.
+ */
+export function runChromatoUntilFirstFrame(
+  world: ChromatoWorld,
+  args: string[],
+  safetyTimeoutMs: number = 3000
+): Promise<FirstFrameResult> {
+  return new Promise((resolve) => {
+    const nodeArgs = [world.chromatoBin, ...args];
+    const start = Date.now();
+    const proc = spawn('node', nodeArgs, {
+      env: world.chromatoEnv,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: false,
+    });
+
+    let stdout = '';
+    let firstFrameMs = -1;
+    let resolved = false;
+
+    const finish = (code: number | null) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(safetyTimer);
+      world.process = null;
+      resolve({ firstFrameMs: firstFrameMs >= 0 ? firstFrameMs : Date.now() - start, stdout, exitCode: code });
+    };
+
+    proc.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString();
+      if (firstFrameMs < 0) {
+        firstFrameMs = Date.now() - start;
+        // Kill after capturing first frame — we have the measurement we need.
+        if (!proc.killed) proc.kill('SIGTERM');
+      }
+    });
+
+    const safetyTimer = setTimeout(() => {
+      if (!proc.killed) proc.kill('SIGTERM');
+    }, safetyTimeoutMs);
+
+    proc.on('exit', (code) => finish(code));
+    world.process = proc;
+  });
+}
+
 /**
  * Runs chromato and captures all output within a timeout.
  * Sends SIGTERM after the timeout to terminate long-running processes (TUI).

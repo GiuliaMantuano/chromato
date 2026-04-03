@@ -25,7 +25,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
   # -----------------------------------------------------------------------
 
   # AC-05.1: First TUI frame within 100ms
-  @US-05 @AC-05.1 @skip
+  @US-05 @AC-05.1
   Scenario: First TUI frame appears within 100 milliseconds of starting a session
     Given no previous session state exists
     When Natasha runs "chromato start" with default configuration

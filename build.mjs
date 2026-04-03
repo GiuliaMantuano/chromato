@@ -6,6 +6,10 @@
  *
  * Uses ESM format (not CJS) because Ink 4.x uses top-level await and ESM.
  * dist/package.json marks the dist directory as ESM ("type": "module").
+ *
+ * Code splitting is enabled so that dynamic import('./adapters/tuiAdapter.js')
+ * in src/index.ts produces a separate chunk. This keeps ink/react off the
+ * module graph for `chromato status` (AC-03.1 / AC-NF1: status <50ms cold start).
  */
 
 import { build } from 'esbuild';
@@ -20,13 +24,16 @@ const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
 
 mkdirSync(join(__dirname, 'dist'), { recursive: true });
 
-const result = await build({
+await build({
   entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
   target: 'node20',
   format: 'esm',
-  outfile: 'dist/index.js',
+  // Use outdir + splitting so dynamic import() produces a real separate chunk.
+  // This keeps ink/react off the import graph for `chromato status`.
+  outdir: 'dist',
+  splitting: true,
   // Inject version at build time so no runtime package.json read is needed
   define: {
     '__CHROMATO_VERSION__': JSON.stringify(pkg.version),
@@ -42,14 +49,12 @@ const result = await build({
     'node-notifier',
     'react-devtools-core',
   ],
-  // No banner here -- we prepend shebang manually below
   sourcemap: true,
   logLevel: 'info',
   metafile: false,
   // JSX support for Ink/React TUI components
   jsx: 'automatic',
   jsxImportSource: 'react',
-  // Externalize react-devtools-core (optional Ink dev dependency)
   plugins: [],
 });
 

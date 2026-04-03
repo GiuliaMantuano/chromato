@@ -11,20 +11,66 @@
  * TuiAdapter (Ink/React) is dynamically imported only for the `start` command.
  * The `status` command path must complete in <50ms -- Ink/React cold start
  * adds 15-20ms. Dynamic import ensures status never pays that cost.
+ *
+ * FAST-PATH NOTE:
+ * `chromato status` uses a pre-commander fast-path: argv is checked before
+ * loading commander (which adds 5-7ms). This guarantees the status path
+ * stays well under AC-03.1's 50ms budget even under Vitest worker overhead.
+ * commander is loaded lazily (dynamic import) so the status path does not
+ * pay its cold-start cost.
  */
 
-import { Command } from 'commander';
-import { loadConfig } from './configLoader.js';
-import { StatusService } from './application/statusService.js';
-import { PersistenceAdapter } from './adapters/persistenceAdapter.js';
-import { StatusAdapter } from './adapters/statusAdapter.js';
-
 // Version injected at build time by esbuild define.
-// Falls back to package.json version when running via tsx in dev mode.
+// Falls back to 'dev' when running via tsx in dev mode.
 declare const __CHROMATO_VERSION__: string | undefined;
 const VERSION: string = (() => {
   try { return __CHROMATO_VERSION__ ?? 'dev'; } catch { return 'dev'; }
 })();
+
+const argv = process.argv;
+
+// Fast-path for `chromato status`.
+// Handles the status subcommand without loading commander, which adds 5-7ms
+// of cold-start cost incompatible with the <50ms AC-03.1 budget.
+if (argv[2] === 'status') {
+  const { PersistenceAdapter } = await import('./adapters/persistenceAdapter.js');
+  const { StatusAdapter } = await import('./adapters/statusAdapter.js');
+  const { StatusService } = await import('./application/statusService.js');
+
+  const formatIdx = argv.indexOf('--format');
+  const formatValue = formatIdx !== -1 ? argv[formatIdx + 1] : 'plain';
+  const format: 'tmux' | 'plain' = formatValue === 'tmux' ? 'tmux' : 'plain';
+
+  const persistenceAdapter = new PersistenceAdapter();
+  const statusAdapter = new StatusAdapter();
+  const statusService = new StatusService(persistenceAdapter, statusAdapter);
+  const output = statusService.getStatus(format);
+  if (output.length > 0) {
+    process.stdout.write(output + '\n');
+  }
+  process.exit(0);
+}
+
+// Pre-load start-command modules eagerly in parallel when we know the command
+// is `start`. This fires off all dynamic imports before commander finishes
+// parsing, shaving the sequential import chain off the first-frame latency
+// (AC-05.1: first TUI frame within 100ms).
+const isStartCommand = argv[2] === 'start';
+const startModulesP = isStartCommand
+  ? Promise.all([
+      import('./adapters/bannerAdapter.js'),
+      import('./adapters/tuiAdapter.js'),
+      import('./application/sessionService.js'),
+      import('./adapters/persistenceAdapter.js'),
+    ] as const)
+  : null;
+
+// Full commander-based CLI for start, help, version, and future commands.
+// Loaded lazily: status path above exits before reaching this point.
+const [{ Command }, { loadConfig }] = await Promise.all([
+  import('commander'),
+  import('./configLoader.js'),
+]);
 
 const program = new Command();
 
@@ -59,13 +105,21 @@ program
       noColor: opts.color === false,
     });
 
-    // Print ASCII art banner before TUI renders (stdout, stays above Ink output).
-    const { printBanner } = await import('./adapters/bannerAdapter.js');
-    printBanner(opts.color === false);
+    // Await the pre-loaded modules (already resolving in parallel since argv check).
+    const [
+      { printBanner },
+      { TuiAdapter },
+      { SessionService },
+      { PersistenceAdapter },
+    ] = await (startModulesP ?? Promise.all([
+      import('./adapters/bannerAdapter.js'),
+      import('./adapters/tuiAdapter.js'),
+      import('./application/sessionService.js'),
+      import('./adapters/persistenceAdapter.js'),
+    ] as const));
 
-    // Lazy import: TuiAdapter loads Ink/React only when `start` is invoked.
-    const { TuiAdapter } = await import('./adapters/tuiAdapter.js');
-    const { SessionService } = await import('./application/sessionService.js');
+    // Print ASCII art banner before TUI renders (stdout, stays above Ink output).
+    printBanner(opts.color === false);
 
     const tuiAdapter = new TuiAdapter();
     const persistenceAdapter = new PersistenceAdapter();
@@ -76,22 +130,6 @@ program
     });
 
     await service.run(config);
-    process.exit(0);
-  });
-
-program
-  .command('status')
-  .description('Show current session status')
-  .option('--format <format>', 'Output format: tmux or plain', 'plain')
-  .action((opts: { format: string }) => {
-    const format = opts.format === 'tmux' ? 'tmux' : 'plain';
-    const persistenceAdapter = new PersistenceAdapter();
-    const statusAdapter = new StatusAdapter();
-    const statusService = new StatusService(persistenceAdapter, statusAdapter);
-    const output = statusService.getStatus(format);
-    if (output.length > 0) {
-      process.stdout.write(output + '\n');
-    }
     process.exit(0);
   });
 
