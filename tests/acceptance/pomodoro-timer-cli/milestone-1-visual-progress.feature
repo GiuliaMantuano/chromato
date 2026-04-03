@@ -35,7 +35,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And the fill percentage is within 2 percent of the actual elapsed fraction
 
   # AC-01.2: Progress bar updates at least once per second
-  @US-01 @AC-01.2 @skip
+  @US-01 @AC-01.2
   Scenario: Progress bar updates every second during an active session
     Given a 60-second work session has just started
     When 3 seconds elapse
