@@ -559,6 +559,22 @@ Then('the total output is {int} lines or fewer', function (
   );
 });
 
+Then('the first {int} lines include at least {int} concrete example commands', function (
+  this: ChromatoWorld,
+  lineCount: number,
+  minExamples: number
+) {
+  const lines = this.capturedOutput.split('\n').slice(0, lineCount);
+  const firstSection = lines.join('\n');
+  // Count lines that look like chromato command examples (start with "chromato" or "$")
+  const examplePattern = /chromato\s+\w+|^\s+chromato\s+/m;
+  const exampleLines = lines.filter(l => /chromato\s+\w+/.test(l));
+  assert.ok(
+    exampleLines.length >= minExamples,
+    `Expected at least ${minExamples} example commands in first ${lineCount} lines, found ${exampleLines.length}.\nFirst ${lineCount} lines:\n${firstSection}`
+  );
+});
+
 Then('chromato outputs {string}', function (this: ChromatoWorld, expectedText: string) {
   assert.ok(
     this.capturedOutput.includes(expectedText) ||

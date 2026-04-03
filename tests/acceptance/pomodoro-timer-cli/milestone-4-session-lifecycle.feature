@@ -58,7 +58,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the streak counter reflects the correct value from the previous sessions
 
   # AC-05.10: --help is example-led and fits in 40 lines
-  @US-05 @AC-05.10 @skip
+  @US-05 @AC-05.10
   Scenario: Help output is concise and example-driven
     When Natasha runs "chromato --help"
     Then the first 10 lines include at least 3 concrete example commands

@@ -76,7 +76,16 @@ const program = new Command();
 
 program
   .name('chromato')
-  .description('The Pomodoro timer your terminal deserves')
+  .description(`The Pomodoro timer your terminal deserves
+
+Examples:
+  chromato start                        Start a 25/5 Pomodoro session
+  chromato start --work 50 --break 10   50-minute session with 10-minute break
+  chromato start --minimal              Plain-text output (no TUI, tmux-safe)
+  chromato status --format tmux         Tmux status-right one-liner
+
+Tmux integration:
+  set -g status-right "#(chromato status --format tmux)"`)
   .version(VERSION);
 
 /**
