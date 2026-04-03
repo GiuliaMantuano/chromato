@@ -691,6 +691,26 @@ Then('the output includes a usage error message describing the problem', functio
   assert.ok(hasError, `Expected usage error message but got:\n${combined}`);
 });
 
+When(
+  'the developer starts a {int}-second work session with a {int}-second break and waits for overdue',
+  async function (this: ChromatoWorld, workSeconds: number, breakSeconds: number) {
+    // Run a short session that reaches OVERDUE phase.
+    // Exit code 0 confirms no crash when overdue notifications are triggered.
+    const env = {
+      ...this.chromatoEnv,
+      CHROMATO_WORK_SECONDS: String(workSeconds),
+      CHROMATO_BREAK_SECONDS: String(breakSeconds),
+    };
+    const worldWithEnv = { ...this, chromatoEnv: env } as ChromatoWorld;
+    // Allow enough time for work + break + brief overdue period (5s safety margin)
+    const timeoutMs = (workSeconds + breakSeconds + 5) * 1000;
+    const result = await runChromato(worldWithEnv, ['start'], timeoutMs);
+    this.capturedOutput = result.stdout;
+    this.capturedStderr = result.stderr;
+    this.exitCode = result.exitCode;
+  }
+);
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
