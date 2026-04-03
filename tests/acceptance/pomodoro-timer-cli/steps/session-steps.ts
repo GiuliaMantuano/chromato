@@ -24,6 +24,15 @@ import * as path from 'path';
 // Given: session preconditions
 // ---------------------------------------------------------------------------
 
+Given('Pedro wants a {int}-minute work session with a {int}-minute break', function (
+  this: ChromatoWorld,
+  _workMinutes: number,
+  _breakMinutes: number
+) {
+  // Context-setting step: the intention is expressed in the When step via CLI flags.
+  // No action needed here; the When step will pass --work and --break flags.
+});
+
 Given('a {int}-minute work session has just started', async function (
   this: ChromatoWorld,
   minutes: number
@@ -473,6 +482,27 @@ Then('the TUI shows {string} as the initial work duration', function (
   assert.ok(
     this.capturedOutput.includes(time),
     `Expected initial work duration "${time}" in output but got:\n${this.capturedOutput}`
+  );
+});
+
+Then('the TUI shows {string} as the initial work countdown', function (
+  this: ChromatoWorld,
+  time: string
+) {
+  assert.ok(
+    this.capturedOutput.includes(time),
+    `Expected work countdown "${time}" in TUI output but got:\n${this.capturedOutput}`
+  );
+});
+
+Then('the output includes a message explaining that the work duration must be a positive integer', function (
+  this: ChromatoWorld
+) {
+  const combined = this.capturedOutput + this.capturedStderr;
+  const hasError = /positive integer|must be a positive/i.test(combined);
+  assert.ok(
+    hasError,
+    `Expected a message about positive integer work duration but got:\n${combined}`
   );
 });
 

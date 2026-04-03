@@ -79,28 +79,45 @@ program
   .description('The Pomodoro timer your terminal deserves')
   .version(VERSION);
 
+/**
+ * Parses a CLI option value as a positive integer.
+ * Calls program.error() (exits with code 2) on invalid input.
+ */
+function parsePositiveInt(flagName: string) {
+  return (value: string): number => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || String(parsed) !== value.trim() || parsed <= 0) {
+      program.error(
+        `error: option '--${flagName}' must be a positive integer, got: ${value}`,
+        { exitCode: 2 }
+      );
+    }
+    return parsed;
+  };
+}
+
 program
   .command('start')
   .description('Start a Pomodoro session')
-  .option('-w, --work <minutes>', 'Work duration in minutes', '25')
-  .option('-b, --break <minutes>', 'Break duration in minutes', '5')
-  .option('-l, --long-break <minutes>', 'Long break duration in minutes', '15')
-  .option('-c, --cycles <count>', 'Number of Pomodoros per cycle', '4')
+  .option('-w, --work <minutes>', 'Work duration in minutes', parsePositiveInt('work'), 25)
+  .option('-b, --break <minutes>', 'Break duration in minutes', parsePositiveInt('break'), 5)
+  .option('-l, --long-break <minutes>', 'Long break duration in minutes', parsePositiveInt('long-break'), 15)
+  .option('-c, --count <count>', 'Number of Pomodoros per cycle', parsePositiveInt('count'), 4)
   .option('--minimal', 'Use plain text output (no TUI)')
   .option('--no-color', 'Suppress all ANSI color output')
   .action(async (opts: {
-    work: string;
-    break: string;
-    longBreak: string;
-    cycles: string;
+    work: number;
+    break: number;
+    longBreak: number;
+    count: number;
     minimal?: boolean;
     color?: boolean;
   }) => {
     const config = loadConfig({
-      work: parseFloat(opts.work),
-      breakDuration: parseFloat(opts.break),
-      longBreak: parseFloat(opts.longBreak),
-      cycles: parseInt(opts.cycles, 10),
+      work: opts.work,
+      breakDuration: opts.break,
+      longBreak: opts.longBreak,
+      cycles: opts.count,
       minimal: opts.minimal ?? false,
       noColor: opts.color === false,
     });

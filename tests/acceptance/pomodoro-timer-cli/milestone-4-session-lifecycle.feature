@@ -42,7 +42,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And no configuration wizard or setup prompt appears
 
   # AC-05.3: Custom duration flags override defaults
-  @US-05 @AC-05.3 @skip
+  @US-05 @AC-05.3
   Scenario: Custom work and break durations override the default values
     Given Pedro wants a 45-minute work session with a 10-minute break
     When he runs "chromato start --work 45 --break 10"
@@ -124,14 +124,14 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the partial session is not counted in today's total
 
   # AC-05.11: Invalid flag values produce an error message and exit code 2
-  @US-05 @AC-05.11 @skip
+  @US-05 @AC-05.11
   Scenario: An invalid --work value produces a clear usage error
     When the developer runs "chromato start --work abc"
     Then the output includes a message explaining that the work duration must be a positive integer
     And the process exits with code 2
 
   # AC-05.11 outline: multiple invalid flag combinations
-  @US-05 @AC-05.11 @skip
+  @US-05 @AC-05.11
   Scenario Outline: Invalid flag values produce exit code 2 and a descriptive error message
     When the developer runs "chromato start <flags>"
     Then the output includes a usage error message describing the problem
