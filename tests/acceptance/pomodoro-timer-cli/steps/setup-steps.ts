@@ -7,8 +7,12 @@
  * All interaction with chromato is through the CLI driving port.
  */
 
-import { Given, Before, After } from '@cucumber/cucumber';
+import { Given, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world';
+
+// Override the default 5000ms step timeout so TUI phase-transition scenarios
+// (which spawn real processes and wait for phase changes) don't time out.
+setDefaultTimeout(30_000);
 import * as fs from 'fs';
 import * as path from 'path';
 

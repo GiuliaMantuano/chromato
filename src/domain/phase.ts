@@ -9,7 +9,11 @@ export type PomodoroPhase = 'IDLE' | 'WORK' | 'BREAK' | 'LONG_BREAK' | 'OVERDUE'
 
 export class PhaseStateMachine {
   private current: PomodoroPhase = 'IDLE';
-  private completedPomodoros: number = 0;
+  private completedPomodoros: number;
+
+  constructor(initialCompleted: number = 0) {
+    this.completedPomodoros = initialCompleted;
+  }
 
   currentPhase(): PomodoroPhase {
     return this.current;

@@ -94,20 +94,24 @@ Given('the developer completed {int} work session and its break', async function
   );
 });
 
-Given('Marcus has completed {int} work sessions and their short breaks', function (
+Given('Marcus has completed {int} work sessions and their short breaks', async function (
   this: ChromatoWorld,
   count: number
 ) {
   const stateDir = path.join(this.tempDir, 'chromato');
   fs.mkdirSync(stateDir, { recursive: true });
+  // Persist completedToday so the session service loads it on startup.
+  // The Session aggregate root reads this value from the state port and passes
+  // it to PhaseStateMachine — so completeWork() will use the correct base count
+  // to determine BREAK vs LONG_BREAK.
   fs.writeFileSync(
     path.join(stateDir, 'state.json'),
     JSON.stringify({
       schemaVersion: 1,
-      phase: 'WORK',
-      remainingSeconds: 2,
-      elapsedSeconds: 1498,
-      progressFraction: 0.999,
+      phase: 'IDLE',
+      remainingSeconds: 0,
+      elapsedSeconds: 0,
+      progressFraction: 0,
       currentPomodoro: count + 1,
       cycleCount: 4,
       completedToday: count,
@@ -117,7 +121,32 @@ Given('Marcus has completed {int} work sessions and their short breaks', functio
       lastUpdatedUtc: new Date().toISOString(),
     })
   );
-  this.process = spawnChromato(this, ['start', '--work', '25']);
+  // Use CHROMATO_WORK_SECONDS=2 to override work duration to 2 seconds so the
+  // 4th work session completes within the test timeout.
+  // NODE_ENV=acceptance disables the 1-frame early exit in TuiAdapter so the
+  // process stays alive long enough to render the LONG_BREAK transition.
+  // The session service reads completedToday=3, so completing 1 more work
+  // session (total=4, 4 % 4 === 0) triggers the LONG_BREAK transition.
+  const env = { ...this.chromatoEnv, NODE_ENV: 'acceptance', CHROMATO_WORK_SECONDS: '2' };
+  const { spawn } = await import('child_process');
+  const proc = spawn('node', [this.chromatoBin, 'start', '--count', '4'], {
+    env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    detached: false,
+  });
+  let stdout = '';
+  proc.stdout?.on('data', (chunk: Buffer) => {
+    stdout += chunk.toString();
+    this.capturedOutput = stdout;
+  });
+  proc.stderr?.on('data', (chunk: Buffer) => {
+    this.capturedStderr += chunk.toString();
+  });
+  proc.on('exit', (code) => {
+    this.exitCode = code;
+  });
+  this.process = proc;
+  await waitForOutput(proc, /WORK|POMODORO/, 5000);
 });
 
 Given(
@@ -203,9 +232,18 @@ When('the developer views the TUI at any point during the session', async functi
 });
 
 When('his 4th work session timer reaches zero', async function (this: ChromatoWorld) {
-  if (this.process) {
-    await waitForOutput(this.process, /LONG.?BREAK|long.?break/i, 10_000);
+  // The process was spawned with a ~2s work duration. Wait for LONG BREAK to appear
+  // in output. Check already-captured output first (may have arrived during Given step).
+  const longBreakPattern = /LONG.?BREAK/i;
+  if (!longBreakPattern.test(this.capturedOutput)) {
+    if (this.process) {
+      await waitForOutput(this.process, longBreakPattern, 10_000);
+    }
   }
+  // Allow one extra tick cycle (1.5s) to ensure the state file is updated after
+  // the render. The state file write is synchronous but Ink's React scheduler
+  // may emit stdout on the same event-loop cycle or the next.
+  await new Promise((r) => setTimeout(r, 1500));
 });
 
 // ---------------------------------------------------------------------------

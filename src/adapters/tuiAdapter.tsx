@@ -50,6 +50,14 @@ interface FrameProps {
   onUnmount?: (() => void) | undefined;
 }
 
+const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
+  WORK:       'WORK',
+  BREAK:      'BREAK',
+  LONG_BREAK: 'LONG BREAK',
+  OVERDUE:    'OVERDUE',
+  IDLE:       'IDLE',
+};
+
 const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount }) => {
   const { exit } = useApp();
   const { phase, timer, currentPomodoro, completedToday, config } = snapshot;
@@ -62,6 +70,7 @@ const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount }) => {
   const countdown = formatCountdown(Math.ceil(timer.remainingSeconds));
   const badge = `POMODORO ${currentPomodoro} of ${config.cycleCount}`;
   const todayLabel = `Today: ${completedToday} sessions`;
+  const displayLabel = PHASE_DISPLAY_LABELS[phase];
 
   React.useEffect(() => {
     if (onUnmount) {
@@ -73,7 +82,7 @@ const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount }) => {
     <Box flexDirection="column" padding={1}>
       <Box>
         <Text bold {...(useColor ? { color: colors.fg } : {})}>
-          {phase}
+          {displayLabel}
         </Text>
         <Text>{'  '}</Text>
         <Text dimColor>{badge}</Text>

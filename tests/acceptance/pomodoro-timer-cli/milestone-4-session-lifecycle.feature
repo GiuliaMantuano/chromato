@@ -75,7 +75,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the badge does not disappear when the progress bar updates
 
   # AC-02.8: Long break after 4th completed Pomodoro
-  @US-02 @AC-02.8 @skip
+  @US-02 @AC-02.8
   Scenario: Long break activates after the fourth completed work session
     Given Marcus has completed 3 work sessions and their short breaks
     When his 4th work session timer reaches zero

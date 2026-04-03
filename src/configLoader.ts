@@ -16,14 +16,29 @@ export interface StartFlags {
   noColor?: boolean;
 }
 
+/**
+ * Parses a positive numeric environment variable override.
+ * Returns undefined if the variable is not set or invalid.
+ * Used by acceptance tests to inject short durations without fractional CLI flags.
+ */
+function parseEnvSeconds(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw == null) return undefined;
+  const value = parseFloat(raw);
+  if (isNaN(value) || value <= 0) return undefined;
+  return value;
+}
+
 export function loadConfig(flags: StartFlags): SessionConfig {
   const noColor = flags.noColor === true || process.env['NO_COLOR'] !== undefined;
 
   const config: SessionConfig = {
-    workDurationSeconds: flags.work != null ? flags.work * 60 : DEFAULT_CONFIG.workDurationSeconds,
-    breakDurationSeconds: flags.breakDuration != null
-      ? flags.breakDuration * 60
-      : DEFAULT_CONFIG.breakDurationSeconds,
+    workDurationSeconds:
+      parseEnvSeconds('CHROMATO_WORK_SECONDS') ??
+      (flags.work != null ? flags.work * 60 : DEFAULT_CONFIG.workDurationSeconds),
+    breakDurationSeconds:
+      parseEnvSeconds('CHROMATO_BREAK_SECONDS') ??
+      (flags.breakDuration != null ? flags.breakDuration * 60 : DEFAULT_CONFIG.breakDurationSeconds),
     longBreakDurationSeconds: flags.longBreak != null
       ? flags.longBreak * 60
       : DEFAULT_CONFIG.longBreakDurationSeconds,

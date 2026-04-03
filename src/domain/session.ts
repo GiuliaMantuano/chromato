@@ -30,7 +30,7 @@ export class Session {
 
   constructor(config: SessionConfig, initialCompletedToday: number = 0) {
     this.config = config;
-    this.stateMachine = new PhaseStateMachine();
+    this.stateMachine = new PhaseStateMachine(initialCompletedToday);
     this.completedToday = initialCompletedToday;
   }
 
