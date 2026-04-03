@@ -43,7 +43,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And each frame shows a higher fill percentage than the previous frame
 
   # AC-01.3: Progress bar adapts to narrow terminal width
-  @US-01 @AC-01.3 @skip
+  @US-01 @AC-01.3
   Scenario: Progress bar renders correctly in a narrow 30-column terminal
     Given Aiko has a terminal window set to 30 columns
     When she runs "chromato start" with a 5-minute work session
