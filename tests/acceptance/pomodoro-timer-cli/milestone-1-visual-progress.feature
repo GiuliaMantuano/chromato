@@ -26,7 +26,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
   # -----------------------------------------------------------------------
 
   # AC-01.1: Progress bar fill percentage accuracy
-  @US-01 @AC-01.1 @skip
+  @US-01 @AC-01.1
   Scenario: Progress bar fill matches elapsed time within two percent accuracy
     Given Kai started a 60-second work session 30 seconds ago
     When he views the chromato TUI output

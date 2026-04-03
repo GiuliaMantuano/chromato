@@ -218,6 +218,37 @@ Given('Kai started a {int}-minute work session {int} minutes ago', function (
   );
 });
 
+Given('Kai started a {int}-second work session {int} seconds ago', function (
+  this: ChromatoWorld,
+  totalSeconds: number,
+  elapsedSeconds: number
+) {
+  const remainingSeconds = totalSeconds - elapsedSeconds;
+  const progressFraction = elapsedSeconds / totalSeconds;
+  const stateDir = path.join(this.tempDir, 'chromato');
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(stateDir, 'state.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      phase: 'WORK',
+      remainingSeconds,
+      elapsedSeconds,
+      progressFraction,
+      currentPomodoro: 1,
+      cycleCount: 4,
+      completedToday: 0,
+      streak: 0,
+      isOverdue: false,
+      overdueElapsedSeconds: 0,
+      lastUpdatedUtc: new Date().toISOString(),
+    })
+  );
+  // Store elapsed/total for use in fill percentage assertion step.
+  this['_elapsedSeconds'] = elapsedSeconds;
+  this['_totalSeconds'] = totalSeconds;
+});
+
 // ---------------------------------------------------------------------------
 // When: phase-related actions
 // ---------------------------------------------------------------------------
@@ -520,4 +551,33 @@ Then('the {string} value reflects the current consecutive day count', function (
 Then('the state file is valid JSON', function (this: ChromatoWorld) {
   const state = readStateFile(this);
   assert.ok(state !== null, 'State file not found or not parseable as JSON');
+});
+
+Then('the fill percentage is within {int} percent of the actual elapsed fraction', function (
+  this: ChromatoWorld,
+  tolerancePercent: number
+) {
+  const state = readStateFile(this);
+  assert.ok(state !== null, 'State file not found');
+  const storedFraction = state.progressFraction as number;
+  // Compute expected fraction from elapsed/total stored in state.
+  const elapsedSeconds = state.elapsedSeconds as number;
+  const totalSeconds = (state.elapsedSeconds as number) + (state.remainingSeconds as number);
+  assert.ok(totalSeconds > 0, 'Total session duration must be greater than zero');
+  const expectedFraction = elapsedSeconds / totalSeconds;
+  const actualPercent = storedFraction * 100;
+  const expectedPercent = expectedFraction * 100;
+  assert.ok(
+    Math.abs(actualPercent - expectedPercent) <= tolerancePercent,
+    `Expected fill fraction within ±${tolerancePercent}% of elapsed/total (${expectedPercent.toFixed(2)}%) ` +
+      `but stored progressFraction gives ${actualPercent.toFixed(2)}%`
+  );
+  // Also verify fill never exceeds 100% for non-overdue phases.
+  const isOverdue = state.isOverdue as boolean;
+  if (!isOverdue) {
+    assert.ok(
+      storedFraction <= 1.0,
+      `Expected progressFraction <= 1.0 in non-overdue phase but got ${storedFraction}`
+    );
+  }
 });

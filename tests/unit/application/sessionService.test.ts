@@ -4,7 +4,7 @@
  * Tests enter through SessionService with in-memory stub ports.
  * Domain internals (Session, PhaseStateMachine, TimerSnapshot) exercised indirectly.
  *
- * Test Budget: 8 distinct behaviors x 2 = 16 max unit tests
+ * Test Budget: 10 distinct behaviors x 2 = 20 max unit tests
  *   B1: first tick renders WORK phase and writes WORK state to statePort
  *   B2: progressFraction is 0.5 after half the work duration ticks
  *   B3: PHASE_CHANGED event triggers notificationPort.notifyPhaseChange
@@ -13,6 +13,8 @@
  *   B6: SESSION_COMPLETED event triggers historyPort.recordSession (D3 coverage)
  *   B7: exactly one PHASE_CHANGED event and BREAK render per WORK->BREAK transition (WS-04)
  *   B8: tickOnce reads completedToday from statePort at session creation and propagates it to snapshot
+ *   B9: second notifyOverdue fires at exactly overdueElapsedSeconds >= 60
+ *   B10: no additional notifyOverdue fires after overdueElapsedSeconds > 60 (no-duplicate guard)
  *
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
@@ -68,6 +70,7 @@ class InMemoryStatePort implements StatePort {
 class InMemoryNotificationPort implements NotificationPort {
   readonly phaseChanges: Array<{ from: PomodoroPhase; to: PomodoroPhase }> = [];
   overdueNotified = false;
+  overdueCallCount = 0;
 
   notifyPhaseChange(from: PomodoroPhase, to: PomodoroPhase): void {
     this.phaseChanges.push({ from, to });
@@ -75,6 +78,7 @@ class InMemoryNotificationPort implements NotificationPort {
 
   notifyOverdue(): void {
     this.overdueNotified = true;
+    this.overdueCallCount += 1;
   }
 }
 
@@ -233,5 +237,41 @@ describe('SessionService (driving port)', () => {
     service.tickOnce(config, 0); // IDLE -> WORK (session created here)
 
     expect(renderPort.lastSnapshot().completedToday).toBe(2);
+  });
+
+  // B9: second notifyOverdue fires at exactly overdueElapsedSeconds >= 60
+  it('calls notifyOverdue a second time when overdueElapsedSeconds reaches 60 seconds', () => {
+    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
+    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
+    const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 2 });
+
+    service.tickOnce(config, 0); // IDLE -> WORK
+    service.tickOnce(config, 2); // WORK -> BREAK (PHASE_CHANGED + SESSION_COMPLETED)
+    service.tickOnce(config, 3); // BREAK -> OVERDUE (OVERDUE_ACTIVATED, first notifyOverdue)
+
+    const overdueCallsAfterFirst = notificationPort.overdueCallCount;
+
+    service.tickOnce(config, 60); // overdueElapsedSeconds reaches 60 -> second notifyOverdue
+
+    expect(notificationPort.overdueCallCount).toBe(overdueCallsAfterFirst + 1);
+  });
+
+  // B10: no additional notifyOverdue fires after overdueElapsedSeconds > 60 (no-duplicate guard)
+  it('does not call notifyOverdue a third time after overdueElapsedSeconds exceeds 60 seconds', () => {
+    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
+    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
+    const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 2 });
+
+    service.tickOnce(config, 0); // IDLE -> WORK
+    service.tickOnce(config, 2); // WORK -> BREAK
+    service.tickOnce(config, 3); // BREAK -> OVERDUE (first notifyOverdue)
+    service.tickOnce(config, 60); // second notifyOverdue at 60s
+
+    const callsAfterSecond = notificationPort.overdueCallCount;
+
+    service.tickOnce(config, 30); // overdueElapsedSeconds = 90 -> no additional call
+    service.tickOnce(config, 30); // overdueElapsedSeconds = 120 -> no additional call
+
+    expect(notificationPort.overdueCallCount).toBe(callsAfterSecond);
   });
 });
