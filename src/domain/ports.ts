@@ -17,6 +17,7 @@ export interface StatePort {
   writeState(snapshot: SessionSnapshot): void;
   writeIdle(): void;
   readState(): SessionSnapshot | null;
+  readCompletedToday(): number;
 }
 
 export interface NotificationPort {

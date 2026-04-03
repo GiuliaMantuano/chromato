@@ -50,7 +50,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the session badge reads "POMODORO 1 of 4"
 
   # AC-05.8: Completed count persists across session restart
-  @US-05 @AC-05.8 @skip
+  @US-05 @AC-05.8
   Scenario: Today's session count survives a process restart
     Given Natasha completed 2 Pomodoros earlier today and quit chromato
     When she starts chromato again later the same day

@@ -42,7 +42,8 @@ export class SessionService {
    */
   tickOnce(config: SessionConfig, deltaSeconds: number): void {
     if (this.session === null) {
-      this.session = new Session(config);
+      const completedToday = this.statePort?.readCompletedToday() ?? 0;
+      this.session = new Session(config, completedToday);
     }
 
     if (this.session.isInterrupted()) {
@@ -69,7 +70,8 @@ export class SessionService {
   }
 
   async run(config: SessionConfig): Promise<void> {
-    this.session = new Session(config);
+    const completedToday = this.statePort?.readCompletedToday() ?? 0;
+    this.session = new Session(config, completedToday);
     const session = this.session;
 
     process.on('SIGINT', () => {

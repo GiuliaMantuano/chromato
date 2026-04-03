@@ -106,6 +106,19 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
     fs.renameSync(tmp, this.stateFile);
   }
 
+  readCompletedToday(): number {
+    if (!fs.existsSync(this.stateFile)) {
+      return 0;
+    }
+    try {
+      const raw = fs.readFileSync(this.stateFile, 'utf8');
+      const data = JSON.parse(raw) as StateFileContents;
+      return data.completedToday ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
   readState(): SessionSnapshot | null {
     if (!fs.existsSync(this.stateFile)) {
       return null;

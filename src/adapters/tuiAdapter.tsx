@@ -52,7 +52,7 @@ interface FrameProps {
 
 const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount }) => {
   const { exit } = useApp();
-  const { phase, timer, currentPomodoro, config } = snapshot;
+  const { phase, timer, currentPomodoro, completedToday, config } = snapshot;
   const colors = PHASE_COLORS[phase];
   const useColor = config.useColor;
   const useAscii = config.useAscii;
@@ -61,6 +61,7 @@ const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount }) => {
   const pct = Math.round(timer.progressFraction * 100);
   const countdown = formatCountdown(Math.ceil(timer.remainingSeconds));
   const badge = `POMODORO ${currentPomodoro} of ${config.cycleCount}`;
+  const todayLabel = `Today: ${completedToday} sessions`;
 
   React.useEffect(() => {
     if (onUnmount) {
@@ -76,6 +77,8 @@ const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount }) => {
         </Text>
         <Text>{'  '}</Text>
         <Text dimColor>{badge}</Text>
+        <Text>{'  '}</Text>
+        <Text dimColor>{todayLabel}</Text>
       </Box>
       <Box>
         <Text {...(useColor ? { color: colors.fg } : {})}>

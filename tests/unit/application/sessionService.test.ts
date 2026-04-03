@@ -4,7 +4,7 @@
  * Tests enter through SessionService with in-memory stub ports.
  * Domain internals (Session, PhaseStateMachine, TimerSnapshot) exercised indirectly.
  *
- * Test Budget: 7 distinct behaviors x 2 = 14 max unit tests
+ * Test Budget: 8 distinct behaviors x 2 = 16 max unit tests
  *   B1: first tick renders WORK phase and writes WORK state to statePort
  *   B2: progressFraction is 0.5 after half the work duration ticks
  *   B3: PHASE_CHANGED event triggers notificationPort.notifyPhaseChange
@@ -12,6 +12,7 @@
  *   B5: progressFraction is 1.0 when in OVERDUE state (D2 fix)
  *   B6: SESSION_COMPLETED event triggers historyPort.recordSession (D3 coverage)
  *   B7: exactly one PHASE_CHANGED event and BREAK render per WORK->BREAK transition (WS-04)
+ *   B8: tickOnce reads completedToday from statePort at session creation and propagates it to snapshot
  *
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
@@ -45,6 +46,7 @@ class InMemoryRenderPort implements RenderPort {
 class InMemoryStatePort implements StatePort {
   readonly written: SessionSnapshot[] = [];
   idleWritten = false;
+  initialCompletedToday: number = 0;
 
   writeState(snapshot: SessionSnapshot): void {
     this.written.push(snapshot);
@@ -56,6 +58,10 @@ class InMemoryStatePort implements StatePort {
 
   readState(): SessionSnapshot | null {
     return this.written.at(-1) ?? null;
+  }
+
+  readCompletedToday(): number {
+    return this.initialCompletedToday;
   }
 }
 
@@ -215,5 +221,17 @@ describe('SessionService (driving port)', () => {
     expect(notificationPort.phaseChanges[0]!.from).toBe('WORK');
     expect(notificationPort.phaseChanges[0]!.to).toBe('BREAK');
     expect(renderPort.lastSnapshot().phase).toBe('BREAK');
+  });
+
+  // B8: tickOnce reads completedToday from statePort at session creation and propagates it to snapshot
+  it('initializes completedToday from statePort.readCompletedToday() when creating the first session', () => {
+    const { renderPort, statePort, notificationPort, historyPort } = makePorts();
+    statePort.initialCompletedToday = 2;
+    const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
+    const config = makeConfig();
+
+    service.tickOnce(config, 0); // IDLE -> WORK (session created here)
+
+    expect(renderPort.lastSnapshot().completedToday).toBe(2);
   });
 });
