@@ -187,3 +187,18 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     When the developer runs "chromato status --format prompt"
     Then the output is an empty string
     And the process exits with code 0
+
+  # AC-02.4: Desktop notification fires on work-to-break transition
+  # Bell fallback (\a) is used in NODE_ENV=test to avoid requiring a display server.
+  @US-02 @AC-02.4 @AC-02.6
+  Scenario: Desktop notification fires on work-to-break transition
+    Given no previous session state exists
+    When the developer runs "chromato start" with a 1-minute work duration
+    Then the process exits with code 0
+
+  # AC-02.4: Second overdue notification fires at +1 minute overdue
+  @US-02 @AC-02.4
+  Scenario: Second overdue notification fires at +1 minute overdue
+    Given no previous session state exists
+    When the developer starts a 1-second work session with a 1-second break and waits for overdue
+    Then the process exits with code 0

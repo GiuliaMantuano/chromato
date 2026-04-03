@@ -62,6 +62,7 @@ const startModulesP = isStartCommand
       import('./adapters/tuiAdapter.js'),
       import('./application/sessionService.js'),
       import('./adapters/persistenceAdapter.js'),
+      import('./adapters/notificationAdapter.js'),
     ] as const)
   : null;
 
@@ -137,11 +138,13 @@ program
       { TuiAdapter },
       { SessionService },
       { PersistenceAdapter },
+      { NotificationAdapter },
     ] = await (startModulesP ?? Promise.all([
       import('./adapters/bannerAdapter.js'),
       import('./adapters/tuiAdapter.js'),
       import('./application/sessionService.js'),
       import('./adapters/persistenceAdapter.js'),
+      import('./adapters/notificationAdapter.js'),
     ] as const));
 
     // Print ASCII art banner before TUI renders (stdout, stays above Ink output).
@@ -149,7 +152,8 @@ program
 
     const tuiAdapter = new TuiAdapter();
     const persistenceAdapter = new PersistenceAdapter();
-    const service = new SessionService(tuiAdapter, persistenceAdapter, null, persistenceAdapter);
+    const notificationAdapter = new NotificationAdapter();
+    const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
     process.on('SIGTERM', () => {
       service.interrupt();
