@@ -194,7 +194,11 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
     }
 
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    // Use local date components to match SQLite's `date(recorded_at, 'localtime')`.
+    // toISOString() returns UTC which diverges from local date after midnight local time.
+    const todayStr = today.getFullYear() + '-' +
+      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+      String(today.getDate()).padStart(2, '0');
 
     // Streak only counts if there is a session today (or yesterday for same-day start edge case).
     // We walk from today backward; each consecutive day increments the streak.
