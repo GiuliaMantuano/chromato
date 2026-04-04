@@ -64,6 +64,15 @@ Given('a fresh Node.js process with no module cache', function (this: ChromatoWo
   // so each invocation starts with a fresh module load.
 });
 
+Given('the source code has been compiled to dist\\/', function (this: ChromatoWorld) {
+  // Verify the dist/ directory contains the built entry point.
+  const distEntry = path.join(path.resolve(this.chromatoBin, '../..'), 'dist', 'index.js');
+  assert.ok(
+    fs.existsSync(distEntry),
+    `dist/index.js not found at ${distEntry}. Run "pnpm build" first.`
+  );
+});
+
 Given('a chromato session is running with a {int}-minute work duration', async function (
   this: ChromatoWorld,
   minutes: number
@@ -114,13 +123,16 @@ When(
   '"chromato --version" is executed {int} times and the median is taken',
   async function (this: ChromatoWorld, runs: number) {
     const times: number[] = [];
+    let lastExitCode: number | null = null;
     for (let i = 0; i < runs; i++) {
       const start = Date.now();
-      await runChromato(this, ['--version']);
+      const result = await runChromato(this, ['--version']);
       times.push(Date.now() - start);
+      lastExitCode = result.exitCode;
     }
     times.sort((a, b) => a - b);
     this.elapsedMs = times[Math.floor(times.length / 2)];
+    this.exitCode = lastExitCode;
   }
 );
 
@@ -168,7 +180,8 @@ When(
   'the architecture check {string} is executed',
   async function (this: ChromatoWorld, _checkCmd: string) {
     // Run dependency-cruiser from the project root.
-    const projectRoot = path.resolve(this.chromatoBin, '../../..');
+    // chromatoBin = <project>/dist/index.js → resolve('../..') = <project>
+    const projectRoot = path.resolve(this.chromatoBin, '../..');
     const result = child_process.spawnSync(
       'pnpm',
       ['depcruise', '--validate', '.dependency-cruiser.cjs', 'src'],

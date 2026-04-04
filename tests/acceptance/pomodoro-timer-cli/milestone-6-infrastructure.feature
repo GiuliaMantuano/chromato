@@ -38,7 +38,7 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
     Then the first output byte arrives within 100 milliseconds of process start
 
   # CI cold start benchmark: --version
-  @US-05 @infrastructure @skip
+  @US-05 @infrastructure
   Scenario: Version command cold start completes within 200 milliseconds
     Given a clean CI environment with no warm Node.js caches
     When "chromato --version" is executed 5 times and the median is taken
@@ -86,7 +86,7 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
     And no "Cannot find module" or missing dependency errors appear
 
   # Architecture boundary: status path does not import Ink
-  @US-03 @infrastructure @skip
+  @US-03 @infrastructure
   Scenario: The status command cold start budget is not violated by heavy library imports
     Given a fresh Node.js process with no module cache
     When "chromato status --format tmux" is executed with an active state file
@@ -98,7 +98,7 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
   # -----------------------------------------------------------------------
 
   # CI: architecture check passes (check:arch gate)
-  @infrastructure @skip
+  @infrastructure
   Scenario: dependency-cruiser reports zero architecture rule violations in the built source
     Given the source code has been compiled to dist/
     When the architecture check "depcruise --validate .dependency-cruiser.cjs src" is executed
