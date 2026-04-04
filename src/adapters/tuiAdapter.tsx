@@ -48,7 +48,7 @@ function renderProgressBar(fraction: number, useAscii: boolean, columns: number)
   const width = barWidth(columns);
   const filled = Math.round(fraction * width);
   const empty = width - filled;
-  const full = useAscii ? '#' : BLOCK_FULL;
+  const full = useAscii ? '=' : BLOCK_FULL;
   const emptyChar = useAscii ? '-' : BLOCK_EMPTY;
   return full.repeat(filled) + emptyChar.repeat(empty);
 }

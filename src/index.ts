@@ -115,6 +115,7 @@ program
   .option('-c, --count <count>', 'Number of Pomodoros per cycle', parsePositiveInt('count'), 4)
   .option('--minimal', 'Use plain text output (no TUI)')
   .option('--no-color', 'Suppress all ANSI color output')
+  .option('--ascii', 'Use ASCII progress bar characters (suppresses auto-detection message)')
   .action(async (opts: {
     work: number;
     break: number;
@@ -122,14 +123,16 @@ program
     count: number;
     minimal?: boolean;
     color?: boolean;
+    ascii?: boolean;
   }) => {
-    const config = loadConfig({
+    const { config, autoDetectedAscii } = loadConfig({
       work: opts.work,
       breakDuration: opts.break,
       longBreak: opts.longBreak,
       cycles: opts.count,
       minimal: opts.minimal ?? false,
       noColor: opts.color === false,
+      ascii: opts.ascii ?? false,
     });
 
     // Await the pre-loaded modules (already resolving in parallel since argv check).
@@ -149,6 +152,13 @@ program
 
     // Print ASCII art banner before TUI renders (stdout, stays above Ink output).
     printBanner(opts.color === false);
+
+    // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
+    if (autoDetectedAscii) {
+      process.stdout.write(
+        'Note: Unicode not detected — using ASCII progress bar. Pass --ascii to suppress this message.\n'
+      );
+    }
 
     const tuiAdapter = new TuiAdapter();
     const persistenceAdapter = new PersistenceAdapter();

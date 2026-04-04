@@ -52,7 +52,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And no display element is truncated or overflows the 30-column boundary
 
   # AC-01.5: Work phase uses work color, break phase uses break color
-  @US-01 @AC-01.5 @skip
+  @US-01 @AC-01.5
   Scenario: Progress bar fill color matches the current phase
     Given a work session is active
     When the developer views the TUI output
@@ -64,7 +64,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
   # -----------------------------------------------------------------------
 
   # AC-01.4: ASCII fallback on non-Unicode terminal
-  @US-01 @AC-01.4 @skip
+  @US-01 @AC-01.4
   Scenario: ASCII fallback activates on a terminal that does not support Unicode block characters
     Given Priya's terminal is set to TERM=xterm without Unicode support
     When she runs "chromato start"
@@ -74,7 +74,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And the process exit code is 0 (not an error condition)
 
   # AC-01.4 complement: informational message is suppressible
-  @US-01 @AC-01.4 @skip
+  @US-01 @AC-01.4
   Scenario: ASCII fallback message is suppressed when the developer passes the --ascii flag
     Given Priya's terminal is set to TERM=xterm without Unicode support
     When she runs "chromato start --ascii"

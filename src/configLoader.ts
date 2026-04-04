@@ -14,6 +14,17 @@ export interface StartFlags {
   cycles?: number;
   minimal?: boolean;
   noColor?: boolean;
+  /** Explicit ASCII mode. When true, suppresses the auto-detection informational message. */
+  ascii?: boolean;
+}
+
+export interface ConfigResult {
+  config: SessionConfig;
+  /**
+   * True when ASCII mode was activated by auto-detection (LANG/TERM check),
+   * not by an explicit --ascii flag. Used to print the informational message.
+   */
+  autoDetectedAscii: boolean;
 }
 
 /**
@@ -29,8 +40,32 @@ function parseEnvSeconds(name: string): number | undefined {
   return value;
 }
 
-export function loadConfig(flags: StartFlags): SessionConfig {
+/**
+ * Detects whether the current environment supports Unicode block characters.
+ * Returns true when ASCII fallback should be activated automatically.
+ *
+ * Detection rules (in order):
+ * 1. TERM=dumb → no Unicode support
+ * 2. LANG or LC_ALL does not contain 'UTF-8' → no Unicode support
+ * 3. Otherwise → Unicode supported
+ */
+function detectNonUnicode(): boolean {
+  if (process.env['TERM'] === 'dumb') {
+    return true;
+  }
+  const lang = process.env['LC_ALL'] ?? process.env['LANG'] ?? '';
+  if (lang === '' || !lang.includes('UTF-8')) {
+    return true;
+  }
+  return false;
+}
+
+export function loadConfig(flags: StartFlags): ConfigResult {
   const noColor = flags.noColor === true || process.env['NO_COLOR'] !== undefined;
+
+  const explicitAscii = flags.ascii === true;
+  const autoDetected = !explicitAscii && detectNonUnicode();
+  const useAscii = explicitAscii || autoDetected;
 
   const config: SessionConfig = {
     workDurationSeconds:
@@ -43,9 +78,9 @@ export function loadConfig(flags: StartFlags): SessionConfig {
       ? flags.longBreak * 60
       : DEFAULT_CONFIG.longBreakDurationSeconds,
     cycleCount: flags.cycles ?? DEFAULT_CONFIG.cycleCount,
-    useAscii: flags.minimal === true,
+    useAscii,
     useColor: !noColor,
   };
   validateConfig(config);
-  return config;
+  return { config, autoDetectedAscii: autoDetected };
 }

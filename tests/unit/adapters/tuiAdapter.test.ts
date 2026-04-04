@@ -1,9 +1,10 @@
 /**
- * Integration tests: TuiAdapter compact layout and phase-matched colors.
+ * Integration tests: TuiAdapter compact layout, phase-matched colors, and ASCII fallback.
  *
  * Tests verify that the TuiAdapter renders required fields correctly in
- * narrow terminal mode (columns < 40) and that progress bar fill colors
- * match the current phase (AC-01.5).
+ * narrow terminal mode (columns < 40), that progress bar fill colors
+ * match the current phase (AC-01.5), and that ASCII fallback renders
+ * the correct characters (AC-01.4).
  *
  * Test Budget:
  *   Compact layout: 2 behaviors x 2 = 4 max unit tests
@@ -14,6 +15,8 @@
  *     B4: BREAK phase renders with BREAK fg color (#005fff) ANSI codes
  *     B5: OVERDUE phase renders with OVERDUE fg color (#ff0000) ANSI codes
  *     B6: useColor=false suppresses all ANSI escape sequences
+ *   ASCII fallback: 1 behavior x 2 = 2 max unit tests
+ *     B7: useAscii=true renders '=' for filled and '-' for empty (not Unicode block chars)
  *
  * Note: ink-testing-library Stdout hardcodes columns=100.
  * The TimerFrame component accepts an explicit `columns` prop for testability.
@@ -204,5 +207,48 @@ describe('TuiAdapter compact layout at columns=30', () => {
     expect(plain).toMatch(/WORK|BREAK|LONG BREAK|OVERDUE|IDLE/i);
     expect(plain).toMatch(/\d{2}:\d{2}/);
     expect(plain).toMatch(/POMODORO/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-01.4: ASCII fallback character rendering
+// ---------------------------------------------------------------------------
+
+describe('TuiAdapter ASCII fallback characters (AC-01.4)', () => {
+  it('B7: useAscii=true renders "=" for filled and "-" for empty — no Unicode block chars', () => {
+    const asciiSnapshot: SessionSnapshot = {
+      phase: 'WORK',
+      timer: {
+        totalSeconds: 300,
+        elapsedSeconds: 150,
+        remainingSeconds: 150,
+        progressFraction: 0.5,
+        isOverdue: false,
+        overdueElapsedSeconds: 0,
+      },
+      currentPomodoro: 1,
+      completedToday: 0,
+      streak: 0,
+      config: {
+        workDurationSeconds: 300,
+        breakDurationSeconds: 300,
+        longBreakDurationSeconds: 900,
+        cycleCount: 4,
+        useAscii: true,
+        useColor: false,
+      },
+    };
+
+    const { lastFrame } = render(
+      React.createElement(TimerFrame, { snapshot: asciiSnapshot, columns: 40 })
+    );
+
+    const frame = lastFrame() ?? '';
+    const plain = stripAnsi(frame);
+
+    expect(plain).toMatch(/=/);
+    expect(plain).toMatch(/-/);
+    expect(plain).not.toMatch(/█/);
+    expect(plain).not.toMatch(/░/);
   });
 });

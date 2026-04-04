@@ -1,9 +1,9 @@
 /**
- * Step definitions for AC-01.2: Progress bar updates every second.
+ * Step definitions for AC-01.2 (progress bar update cadence) and
+ * AC-01.4 (ASCII fallback mode).
  *
- * Driving port: SessionService (application service).
- * These steps verify the tick cadence contract through tickOnce() without
- * spawning a real long-running process (per task design note).
+ * Driving port: SessionService (application service) for tick cadence steps.
+ * CLI process (chromato binary) for ASCII fallback steps.
  *
  * Hexagonal boundary: test enters through SessionService (driving port).
  * RenderPort spy captures snapshots at the driven port boundary.
@@ -129,4 +129,59 @@ Then('each frame shows a higher fill percentage than the previous frame', functi
       `Frame ${index} progressFraction (${current}) is not higher than frame ${index - 1} (${previous})`
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// AC-01.4: ASCII fallback mode assertions
+// ---------------------------------------------------------------------------
+
+Then('chromato outputs an informational message about ASCII fallback mode', function (
+  this: ChromatoWorld
+) {
+  const combined = this.capturedOutput + (this.capturedStderr ?? '');
+  assert.ok(
+    /Unicode not detected|ASCII progress bar|ascii/i.test(combined),
+    `Expected informational ASCII fallback message in output but got:\n${combined}`
+  );
+});
+
+Then('the progress bar uses ASCII characters ("=" for filled, "-" for empty)', function (
+  this: ChromatoWorld
+) {
+  // The progress bar content is rendered by Ink (TUI) and captured in stdout.
+  // Verify that ASCII chars ('=' and '-') appear and Unicode block chars do not.
+  const output = this.capturedOutput;
+  assert.ok(
+    output.includes('=') || output.includes('-'),
+    `Expected ASCII progress bar characters in output but got:\n${output}`
+  );
+  assert.ok(
+    !output.includes('█') && !output.includes('░'),
+    `Expected no Unicode block characters in ASCII mode but found them in:\n${output}`
+  );
+});
+
+Then('the informational ASCII fallback message does not appear', function (
+  this: ChromatoWorld
+) {
+  const combined = this.capturedOutput + (this.capturedStderr ?? '');
+  assert.ok(
+    !/Unicode not detected — using ASCII progress bar/.test(combined),
+    `Expected no ASCII fallback informational message but found one in:\n${combined}`
+  );
+});
+
+Then('the session runs normally with ASCII progress bar characters', function (
+  this: ChromatoWorld
+) {
+  // Verify the session started (WORK phase visible) and ASCII characters are present.
+  const output = this.capturedOutput;
+  assert.ok(
+    /WORK|POMODORO/i.test(output),
+    `Expected session to have started (WORK/POMODORO visible) but got:\n${output}`
+  );
+  assert.ok(
+    output.includes('=') || output.includes('-'),
+    `Expected ASCII progress bar characters in output but got:\n${output}`
+  );
 });
