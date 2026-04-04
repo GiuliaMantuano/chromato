@@ -250,19 +250,7 @@ Then(/^the state file contains the fields: (.+)$/, function (
   }
 });
 
-Then('the state file shows phase {string}', function (
-  this: ChromatoWorld,
-  phase: string
-) {
-  const state = readStateFile(this);
-  assert.ok(state !== null, 'State file not found or not valid JSON');
-  assert.strictEqual(
-    state['phase'],
-    phase,
-    `Expected state file phase "${phase}" but got "${state['phase']}"`
-  );
-});
-
+// Note: 'the state file shows phase {string}' is defined in session-steps.ts.
 // Note: 'the state file is valid JSON' is defined in phase-transition-steps.ts.
 
 Then('the state file exists within {int} second of session start', async function (

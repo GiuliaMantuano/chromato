@@ -290,11 +290,9 @@ When('the developer runs {string} with a {int}-minute work duration', async func
   minutes: number
 ) {
   const args = [...parseCommand(command), '--work', String(minutes)];
-  const start = Date.now();
-  const result = await runChromato(this, args, 3000);
-  this.elapsedMs = Date.now() - start;
+  const result = await runChromatoUntilFirstFrame(this, args, 3000);
+  this.elapsedMs = result.firstFrameMs;
   this.capturedOutput = result.stdout;
-  this.capturedStderr = result.stderr;
   this.exitCode = result.exitCode;
 });
 
