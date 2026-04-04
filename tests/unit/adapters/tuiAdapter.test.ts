@@ -252,3 +252,86 @@ describe('TuiAdapter ASCII fallback characters (AC-01.4)', () => {
     expect(plain).not.toMatch(/░/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// AC-01.6: Overdue pulse animation
+//
+// Test Budget:
+//   3 behaviors x 2 = 6 max unit tests
+//   B8: isOverdue=true, overdueElapsedSeconds=0 → solid red (no dimColor on bar)
+//   B9: isOverdue=true, overdueElapsedSeconds=2 → dim red (dimColor=true on bar)
+//   B10: isOverdue=true → bar fill is 100%
+// ---------------------------------------------------------------------------
+
+function makeOverdueSnapshot(overdueElapsedSeconds: number): SessionSnapshot {
+  return {
+    phase: 'OVERDUE',
+    timer: {
+      totalSeconds: 1500,
+      elapsedSeconds: 1500,
+      remainingSeconds: 0,
+      progressFraction: 1.0,
+      isOverdue: true,
+      overdueElapsedSeconds,
+    },
+    currentPomodoro: 1,
+    completedToday: 0,
+    streak: 0,
+    config: {
+      workDurationSeconds: 1500,
+      breakDurationSeconds: 300,
+      longBreakDurationSeconds: 900,
+      cycleCount: 4,
+      useAscii: false,
+      useColor: true,
+    },
+  };
+}
+
+describe('TuiAdapter overdue pulse animation (AC-01.6)', () => {
+  let originalChalkLevel: chalk.Level;
+  beforeAll(() => { originalChalkLevel = chalk.level; chalk.level = 3; });
+  afterAll(() => { chalk.level = originalChalkLevel; });
+
+  // Count occurrences of ANSI dim code \x1b[2m in a frame string.
+  function countDimCodes(frame: string): number {
+    // eslint-disable-next-line no-control-regex
+    return (frame.match(/\x1b\[2m/g) ?? []).length;
+  }
+
+  it('B8 vs B9: dim pulse (overdueElapsedSeconds=2) has MORE dim codes than solid pulse (overdueElapsedSeconds=0)', async () => {
+    // At overdueElapsedSeconds=0: Math.floor(0/2) % 2 === 0 → solid red (no bar dimColor)
+    // At overdueElapsedSeconds=2: Math.floor(2/2) % 2 === 1 → dim red (bar gets dimColor)
+    // After implementation: the dim frame must have at least one extra \x1b[2m vs solid frame.
+    const solidSnapshot = makeOverdueSnapshot(0);
+    const dimSnapshot = makeOverdueSnapshot(2);
+
+    const solidFrame = await renderWithColor(
+      React.createElement(TimerFrame, { snapshot: solidSnapshot, columns: 80 })
+    );
+    const dimFrame = await renderWithColor(
+      React.createElement(TimerFrame, { snapshot: dimSnapshot, columns: 80 })
+    );
+
+    // OVERDUE label must be visible in both states (accessibility NFR-05.1)
+    expect(stripAnsi(solidFrame)).toMatch(/OVERDUE/i);
+    expect(stripAnsi(dimFrame)).toMatch(/OVERDUE/i);
+
+    // Dim pulse frame must have more \x1b[2m codes than solid pulse frame
+    // (the extra code wraps the progress bar text in dim mode)
+    expect(countDimCodes(dimFrame)).toBeGreaterThan(countDimCodes(solidFrame));
+  });
+
+  it('B10: progress bar fill is 100% when isOverdue=true', () => {
+    // Regardless of pulse state, the bar fill must be full (progressFraction=1.0)
+    const snapshot = makeOverdueSnapshot(0);
+    const { lastFrame } = render(
+      React.createElement(TimerFrame, { snapshot, columns: 80 })
+    );
+    const plain = stripAnsi(lastFrame() ?? '');
+    // 100% fill label
+    expect(plain).toMatch(/100%/);
+    // No empty-block characters in a fully-filled bar
+    expect(plain).not.toMatch(/░/);
+  });
+});

@@ -40,6 +40,17 @@ function formatCountdown(remainingSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+function formatOverdueCountdown(overdueElapsedSeconds: number): string {
+  const minutes = Math.floor(overdueElapsedSeconds / 60);
+  const seconds = overdueElapsedSeconds % 60;
+  return `+${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+/** Returns true when the overdue pulse should be dim (odd 2-second interval). */
+function isOverdueDimPulse(overdueElapsedSeconds: number): boolean {
+  return Math.floor(overdueElapsedSeconds / 2) % 2 === 1;
+}
+
 function barWidth(columns: number): number {
   return Math.max(8, columns - 20);
 }
@@ -82,9 +93,13 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
 
   const isCompact = resolvedColumns < COMPACT_THRESHOLD;
 
+  const isOverdue = timer.isOverdue;
+  const dimPulse = isOverdue && isOverdueDimPulse(timer.overdueElapsedSeconds);
   const progressBar = renderProgressBar(timer.progressFraction, useAscii, resolvedColumns);
   const pct = Math.round(timer.progressFraction * 100);
-  const countdown = formatCountdown(Math.ceil(timer.remainingSeconds));
+  const countdown = isOverdue
+    ? formatOverdueCountdown(timer.overdueElapsedSeconds)
+    : formatCountdown(Math.ceil(timer.remainingSeconds));
   const badge = `POMODORO ${currentPomodoro}/${config.cycleCount}`;
   const todayLabel = `Today: ${completedToday}`;
   const displayLabel = PHASE_DISPLAY_LABELS[phase];
@@ -107,7 +122,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
           <Text dimColor>{badge}</Text>
         </Box>
         <Box>
-          <Text {...(useColor ? { color: colors.fg } : {})}>
+          <Text {...(useColor ? { color: colors.fg } : {})} {...(dimPulse ? { dimColor: true } : {})}>
             {progressBar}
           </Text>
           <Text>{` ${pct}%`}</Text>
@@ -137,7 +152,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
         <Text dimColor>{fullTodayLabel}</Text>
       </Box>
       <Box>
-        <Text {...(useColor ? { color: colors.fg } : {})}>
+        <Text {...(useColor ? { color: colors.fg } : {})} {...(dimPulse ? { dimColor: true } : {})}>
           {progressBar}
         </Text>
         <Text>{` ${pct}%`}</Text>

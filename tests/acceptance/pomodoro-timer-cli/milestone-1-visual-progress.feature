@@ -82,7 +82,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And the session runs normally with ASCII progress bar characters
 
   # AC-01.6: Overdue state pulses red every 2 seconds
-  @US-01 @AC-01.6 @skip
+  @US-01 @AC-01.6
   Scenario: Overdue progress bar pulses between solid red and dim red
     Given a work session timer has reached zero
     And 30 seconds have elapsed in overdue state with no user action
