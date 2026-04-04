@@ -260,9 +260,20 @@ When('he views the chromato TUI output', async function (this: ChromatoWorld) {
 });
 
 When('the work timer reaches zero', async function (this: ChromatoWorld) {
-  // The process is already running with 2 seconds left. Wait for the transition.
   if (this.process) {
+    // The process is already running with 2 seconds left. Wait for the transition.
     await waitForOutput(this.process, /BREAK|break/i, 10_000);
+  } else {
+    // No running process — simulate the timer completing by writing BREAK state.
+    // Used by status command tests (AC-03.5) that verify tmux reflects phase transitions.
+    const stateDir = path.join(this.tempDir, 'chromato');
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(path.join(stateDir, 'state.json'), JSON.stringify({
+      schemaVersion: 1, phase: 'BREAK', remainingSeconds: 300, elapsedSeconds: 0,
+      progressFraction: 0, currentPomodoro: 1, cycleCount: 4, completedToday: 0,
+      streak: 0, isOverdue: false, overdueElapsedSeconds: 0,
+      lastUpdatedUtc: new Date().toISOString(),
+    }));
   }
 });
 

@@ -203,10 +203,21 @@ Then('the session runs normally with ASCII progress bar characters', function (
 
 Given(
   'a {int}-minute work session has been running for {int} minutes',
-  function (this: ChromatoWorld, _workMinutes: number, _elapsedMinutes: number) {
-    // Documents precondition: session is in steady state.
-    // Structural verification is done in the Then step via setTimeout inspection.
-    // Authoritative runtime measurement lives in the CI benchmark job.
+  function (this: ChromatoWorld, workMinutes: number, elapsedMinutes: number) {
+    // Write a representative active session state file.
+    // The CPU/structural tests use this as a documentation step (they inspect source code).
+    // The status command tests use this to set up state.json for runChromato().
+    const totalSeconds = workMinutes * 60;
+    const elapsedSeconds = elapsedMinutes * 60;
+    const remainingSeconds = totalSeconds - elapsedSeconds;
+    const stateDir = path.join(this.tempDir, 'chromato');
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(path.join(stateDir, 'state.json'), JSON.stringify({
+      schemaVersion: 1, phase: 'WORK', remainingSeconds, elapsedSeconds,
+      progressFraction: totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0,
+      currentPomodoro: 1, cycleCount: 4, completedToday: 0, streak: 0,
+      isOverdue: false, overdueElapsedSeconds: 0, lastUpdatedUtc: new Date().toISOString(),
+    }));
   }
 );
 
