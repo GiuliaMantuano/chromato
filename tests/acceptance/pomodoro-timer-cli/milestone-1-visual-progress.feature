@@ -92,7 +92,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And the timer shows the overdue elapsed time formatted as "+00:30"
 
   # AC-01.7: CPU usage below 1% during steady-state session
-  @US-01 @AC-01.7 @skip
+  @US-01 @AC-01.7
   Scenario: chromato process uses less than 1 percent CPU during a steady-state session
     Given a 5-minute work session has been running for 2 minutes
     And the developer is not interacting with the chromato TUI
@@ -109,7 +109,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     And the process exits with code 0
 
   # AC-P1: Progress bar smoothness invariant
-  @US-01 @AC-P1 @property @skip
+  @US-01 @AC-P1 @property
   Scenario: Progress bar advances exactly one character width per render tick without flicker
     Given a work session is active on a 80-column terminal
     When 10 consecutive render frames are captured

@@ -335,3 +335,90 @@ describe('TuiAdapter overdue pulse animation (AC-01.6)', () => {
     expect(plain).not.toMatch(/░/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// AC-P1: Flicker-free progress bar updates
+//
+// Test Budget:
+//   2 behaviors x 2 = 4 max unit tests
+//   B11: No ESC[2J (clear-screen) sequence in rendered output between consecutive frames
+//   B12: Bar character count changes by at most 1 between consecutive ticks on a 60-second session
+// ---------------------------------------------------------------------------
+
+function makeTickSnapshot(progressFraction: number): SessionSnapshot {
+  const totalSeconds = 60;
+  const elapsedSeconds = Math.round(progressFraction * totalSeconds);
+  return {
+    phase: 'WORK',
+    timer: {
+      totalSeconds,
+      elapsedSeconds,
+      remainingSeconds: totalSeconds - elapsedSeconds,
+      progressFraction,
+      isOverdue: false,
+      overdueElapsedSeconds: 0,
+    },
+    currentPomodoro: 1,
+    completedToday: 0,
+    streak: 0,
+    config: {
+      workDurationSeconds: totalSeconds,
+      breakDurationSeconds: 300,
+      longBreakDurationSeconds: 900,
+      cycleCount: 4,
+      useAscii: false,
+      useColor: false,
+    },
+  };
+}
+
+/** Count filled-block characters in a rendered frame (plain text). */
+function countFilledBlocks(plain: string): number {
+  return (plain.match(/█/g) ?? []).length;
+}
+
+describe('TuiAdapter flicker-free updates (AC-P1)', () => {
+  it('B11: no ESC[2J clear-screen sequence appears in any rendered frame', () => {
+    // Render 10 frames at evenly-spaced progress fractions (0/10 to 9/10)
+    // Each frame is independent (ink-testing-library renders stateless components)
+    const frames: string[] = [];
+    for (let tick = 0; tick < 10; tick++) {
+      const fraction = tick / 60;
+      const snapshot = makeTickSnapshot(fraction);
+      const { lastFrame } = render(
+        React.createElement(TimerFrame, { snapshot, columns: 80 })
+      );
+      frames.push(lastFrame() ?? '');
+    }
+
+    // ESC[2J is the ANSI clear-screen sequence — must not appear in any frame
+    for (const frame of frames) {
+      // eslint-disable-next-line no-control-regex
+      expect(frame).not.toMatch(/\x1b\[2J/);
+    }
+  });
+
+  it('B12: filled-block character count increases by at most 1 between consecutive ticks on a 60-second session', () => {
+    // On an 80-column terminal, barWidth = max(8, 80-20) = 60 chars wide
+    // Each second of a 60-second session advances 1/60 fraction
+    // At 60-char bar width, each tick moves exactly 1/60 * 60 = 1 block
+    const frames: string[] = [];
+    for (let tick = 0; tick <= 10; tick++) {
+      const fraction = tick / 60;
+      const snapshot = makeTickSnapshot(fraction);
+      const { lastFrame } = render(
+        React.createElement(TimerFrame, { snapshot, columns: 80 })
+      );
+      frames.push(lastFrame() ?? '');
+    }
+
+    const plainFrames = frames.map(stripAnsi);
+    for (let index = 1; index < plainFrames.length; index++) {
+      const prevBlocks = countFilledBlocks(plainFrames[index - 1]);
+      const currBlocks = countFilledBlocks(plainFrames[index]);
+      const delta = currBlocks - prevBlocks;
+      expect(delta).toBeGreaterThanOrEqual(0);
+      expect(delta).toBeLessThanOrEqual(1);
+    }
+  });
+});

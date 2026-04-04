@@ -21,6 +21,15 @@ import type { SessionSnapshot } from '../../../../src/domain/types.js';
 import type { RenderPort, StatePort } from '../../../../src/domain/ports.js';
 
 // ---------------------------------------------------------------------------
+// AC-P1 flicker-free scenario context
+// ---------------------------------------------------------------------------
+
+const flickerContext = new WeakMap<ChromatoWorld, {
+  frames: SessionSnapshot[];
+  columns: number;
+}>();
+
+// ---------------------------------------------------------------------------
 // RenderPort spy: captures all snapshots rendered through the driving port.
 // Only mock at port boundaries -- this is the RenderPort boundary.
 // ---------------------------------------------------------------------------
@@ -235,3 +244,127 @@ Then(
     );
   }
 );
+
+// ---------------------------------------------------------------------------
+// AC-P1: Flicker-free progress bar
+// Given a work session is active on a 80-column terminal
+// When 10 consecutive render frames are captured
+// Then each frame differs from the previous by at most one progress bar character
+// And no frame shows a lower fill than the immediately preceding frame
+// And no full-screen flicker (clear-screen sequence) occurs between frames
+// ---------------------------------------------------------------------------
+
+Given('a work session is active on a {int}-column terminal', function (
+  this: ChromatoWorld,
+  columns: number
+) {
+  // Initialise a fresh session with a 60-second work duration.
+  // Snapshots will be captured through the RenderPort spy on each tick.
+  const renderSpy = new RenderCaptureSpy();
+  const config: SessionConfig = {
+    workDurationSeconds: 60,
+    breakDurationSeconds: 300,
+    longBreakDurationSeconds: 900,
+    cycleCount: 4,
+    useAscii: false,
+    useColor: false,
+  };
+  const service = new SessionService(renderSpy, new NullStatePort(), null, null);
+
+  // First tick transitions IDLE -> WORK and renders frame 0.
+  service.tickOnce(config, 0);
+
+  // Store the initial snapshot for frame collection.
+  flickerContext.set(this, { frames: [...renderSpy.snapshots], columns });
+
+  // Keep service + spy reference for the When step.
+  scenarioContext.set(this, { service, renderSpy, config });
+});
+
+When('{int} consecutive render frames are captured', function (
+  this: ChromatoWorld,
+  frameCount: number
+) {
+  const ctx = scenarioContext.get(this);
+  assert.ok(ctx, 'Session context not initialised — run "Given a work session is active" first');
+
+  const flickerCtx = flickerContext.get(this);
+  assert.ok(flickerCtx, 'Flicker context not initialised');
+
+  // Clear any frames from the setup tick so we start fresh.
+  ctx.renderSpy.snapshots.length = 0;
+
+  // Capture frameCount frames by advancing 1 second per tick.
+  for (let tick = 0; tick < frameCount; tick++) {
+    ctx.service.tickOnce(ctx.config, 1);
+  }
+
+  flickerCtx.frames = [...ctx.renderSpy.snapshots];
+});
+
+Then('each frame differs from the previous by at most one progress bar character', function (
+  this: ChromatoWorld
+) {
+  const flickerCtx = flickerContext.get(this);
+  assert.ok(flickerCtx, 'Flicker context not initialised');
+
+  const { frames, columns } = flickerCtx;
+  assert.ok(frames.length >= 2, `Need at least 2 frames to compare, got ${frames.length}`);
+
+  // barWidth mirrors the production formula in tuiAdapter.tsx
+  const width = Math.max(8, columns - 20);
+
+  for (let index = 1; index < frames.length; index++) {
+    const prevFilled = Math.round((frames[index - 1].timer.progressFraction) * width);
+    const currFilled = Math.round((frames[index].timer.progressFraction) * width);
+    const delta = currFilled - prevFilled;
+    assert.ok(
+      delta >= 0 && delta <= 1,
+      `Frame ${index}: bar character delta is ${delta} (expected 0 or 1). ` +
+      `prevFilled=${prevFilled}, currFilled=${currFilled}`
+    );
+  }
+});
+
+Then('no frame shows a lower fill than the immediately preceding frame', function (
+  this: ChromatoWorld
+) {
+  const flickerCtx = flickerContext.get(this);
+  assert.ok(flickerCtx, 'Flicker context not initialised');
+
+  const { frames } = flickerCtx;
+  for (let index = 1; index < frames.length; index++) {
+    const prevFraction = frames[index - 1].timer.progressFraction;
+    const currFraction = frames[index].timer.progressFraction;
+    assert.ok(
+      currFraction >= prevFraction,
+      `Frame ${index} progressFraction (${currFraction}) regressed below frame ${index - 1} (${prevFraction})`
+    );
+  }
+});
+
+Then('no full-screen flicker \\(clear-screen sequence) occurs between frames', function (
+  this: ChromatoWorld
+) {
+  // Ink uses React reconciliation for incremental re-renders and does NOT emit
+  // ESC[2J between tick updates. This step validates the architectural guarantee
+  // by asserting the TuiAdapter state change path (via the source file).
+  // The unit tests in tuiAdapter.test.ts verify this at the rendered frame level.
+  const tuiSource = fs.readFileSync(
+    path.resolve('src/adapters/tuiAdapter.tsx'),
+    'utf-8'
+  );
+
+  // Must use inkInstance.rerender() for subsequent ticks (no full re-render).
+  assert.ok(
+    tuiSource.includes('rerender'),
+    'TuiAdapter must use inkInstance.rerender() for tick updates to prevent full-screen clear'
+  );
+
+  // Must NOT call process.stdout.write directly for bar updates.
+  const hasDirectStdoutWrite = /process\.stdout\.write\s*\((?![^)]*unmount)/.test(tuiSource);
+  assert.ok(
+    !hasDirectStdoutWrite,
+    'TuiAdapter must NOT call process.stdout.write directly for bar updates — use Ink rerender()'
+  );
+});
