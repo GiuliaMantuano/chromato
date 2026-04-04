@@ -18,11 +18,14 @@ export class StatusService {
     this.formatPort = formatPort;
   }
 
-  getStatus(format: 'tmux' | 'plain'): string {
+  getStatus(format: 'tmux' | 'plain' | 'prompt', maxWidth?: number): string {
     const snapshot = this.statePort.readState();
 
     if (format === 'tmux') {
-      return this.formatPort.formatTmux(snapshot);
+      return this.formatPort.formatTmux(snapshot, maxWidth);
+    }
+    if (format === 'prompt') {
+      return this.formatPort.formatPrompt(snapshot);
     }
     return this.formatPort.formatPlain(snapshot);
   }

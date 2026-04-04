@@ -5,12 +5,24 @@
  * This file is on the hot path for `chromato status --format tmux` (<50ms).
  * Ink/React cold start adds 15-20ms. Use chalk only.
  *
- * formatTmux(snapshot): returns a compact string <= 20 visible chars.
- * Returns empty string when snapshot is null (no active session).
+ * formatTmux(snapshot, maxWidth?): returns a compact string <= maxWidth visible chars (default 20).
+ * Returns empty string when snapshot is null or phase is IDLE.
+ *
+ * formatPrompt(snapshot): returns a short session string (e.g. "(P1 15:00)") under 15 chars.
+ * Returns empty string when snapshot is null or phase is IDLE.
  */
 
 import chalk from 'chalk';
 import type { SessionSnapshot } from '../domain/types.js';
+
+// Phase colors matching TuiAdapter PHASE_COLORS for consistency (AC-03.3).
+// Duplicated here to avoid cross-adapter import violation.
+const PHASE_COLORS: Record<string, string> = {
+  WORK:       '#00d7ff',
+  BREAK:      '#005fff',
+  LONG_BREAK: '#af00ff',
+  OVERDUE:    '#ff0000',
+};
 
 function formatMinSec(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -18,8 +30,23 @@ function formatMinSec(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+// eslint-disable-next-line no-control-regex
+const ANSI_PATTERN = /\x1b\[[0-9;]*[A-Za-z]/g;
+
+function stripAnsi(str: string): string {
+  return str.replace(ANSI_PATTERN, '');
+}
+
+function enforceWidth(colored: string, plain: string, maxWidth: number): string {
+  if (plain.length <= maxWidth) {
+    return colored;
+  }
+  // Truncate the plain string to fit and rebuild without color.
+  return plain.slice(0, maxWidth);
+}
+
 export class StatusAdapter {
-  formatTmux(snapshot: SessionSnapshot | null): string {
+  formatTmux(snapshot: SessionSnapshot | null, maxWidth: number = 20): string {
     if (snapshot === null) {
       return '';
     }
@@ -33,26 +60,17 @@ export class StatusAdapter {
     const noColor = process.env['NO_COLOR'] !== undefined;
     const time = formatMinSec(timer.remainingSeconds);
 
-    // Format: "🍅 MM:SS WORK" -- max visible chars = 2+1+5+1+9 = 18 (LONG_BREAK worst case)
-    // Use plain label to keep within 20 chars for all phases.
+    // Abbreviated label keeps visible length well within budget for all phases.
     const label = phase === 'LONG_BREAK' ? 'LNG' : phase.substring(0, 4);
+    const plain = `${time} ${label}`;
 
     if (noColor) {
-      return `${time} ${label}`;
+      return enforceWidth(plain, plain, maxWidth);
     }
 
-    switch (phase) {
-      case 'WORK':
-        return chalk.cyan(`${time} ${label}`);
-      case 'BREAK':
-        return chalk.blue(`${time} ${label}`);
-      case 'LONG_BREAK':
-        return chalk.magenta(`${time} ${label}`);
-      case 'OVERDUE':
-        return chalk.red(`${time} ${label}`);
-      default:
-        return `${time} ${label}`;
-    }
+    const color = PHASE_COLORS[phase];
+    const colored = color ? chalk.hex(color)(plain) : plain;
+    return enforceWidth(colored, stripAnsi(colored), maxWidth);
   }
 
   formatPlain(snapshot: SessionSnapshot | null): string {
@@ -61,5 +79,20 @@ export class StatusAdapter {
     }
     const { phase, timer } = snapshot;
     return `${phase} ${formatMinSec(timer.remainingSeconds)}`;
+  }
+
+  formatPrompt(snapshot: SessionSnapshot | null): string {
+    if (snapshot === null || snapshot.phase === 'IDLE') {
+      return '';
+    }
+    const { phase, timer, currentPomodoro } = snapshot;
+    const time = formatMinSec(timer.remainingSeconds);
+    const noColor = process.env['NO_COLOR'] !== undefined;
+    // Format: "(P1 15:00)" — 10 chars max, always under 15
+    const label = phase === 'OVERDUE' ? '!' : `P${currentPomodoro}`;
+    const plain = `(${label} ${time})`;
+    if (noColor) return plain;
+    const color = PHASE_COLORS[phase];
+    return color ? chalk.hex(color)(plain) : plain;
   }
 }

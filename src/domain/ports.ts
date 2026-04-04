@@ -32,6 +32,7 @@ export interface HistoryPort {
 }
 
 export interface StatusFormatPort {
-  formatTmux(snapshot: SessionSnapshot | null): string;
+  formatTmux(snapshot: SessionSnapshot | null, maxWidth?: number): string;
   formatPlain(snapshot: SessionSnapshot | null): string;
+  formatPrompt(snapshot: SessionSnapshot | null): string;
 }

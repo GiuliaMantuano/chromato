@@ -39,12 +39,16 @@ if (argv[2] === 'status') {
 
   const formatIdx = argv.indexOf('--format');
   const formatValue = formatIdx !== -1 ? argv[formatIdx + 1] : 'plain';
-  const format: 'tmux' | 'plain' = formatValue === 'tmux' ? 'tmux' : 'plain';
+  const format: 'tmux' | 'plain' | 'prompt' =
+    formatValue === 'tmux' ? 'tmux' : formatValue === 'prompt' ? 'prompt' : 'plain';
+
+  const widthIdx = argv.indexOf('--width');
+  const maxWidth = widthIdx !== -1 ? parseInt(argv[widthIdx + 1] ?? '20', 10) : undefined;
 
   const persistenceAdapter = new PersistenceAdapter();
   const statusAdapter = new StatusAdapter();
   const statusService = new StatusService(persistenceAdapter, statusAdapter);
-  const output = statusService.getStatus(format);
+  const output = statusService.getStatus(format, maxWidth);
   if (output.length > 0) {
     process.stdout.write(output + '\n');
   }

@@ -203,10 +203,6 @@ Given('a {int}-minute work session has been running for {int} minutes', function
   writeWorkSessionState(this, remainingSeconds, elapsedSeconds);
 });
 
-Given('a work session is active', function (this: ChromatoWorld) {
-  writeWorkSessionState(this, 1200, 300);
-});
-
 Given('a work session is active in work phase', function (this: ChromatoWorld) {
   writeWorkSessionState(this, 1200, 300);
 });
@@ -216,36 +212,6 @@ Given('no prior chromato process has run in the current shell session', function
 ) {
   // Documentation step: the world is already isolated per-scenario.
   // No action needed — no warm Node.js cache exists for freshly spawned processes.
-});
-
-Given('no chromato session is currently running', function (this: ChromatoWorld) {
-  const stateFile = path.join(this.tempDir, 'chromato', 'state.json');
-  if (fs.existsSync(stateFile)) {
-    fs.rmSync(stateFile);
-  }
-});
-
-Given('the state file shows phase {string}', function (
-  this: ChromatoWorld,
-  phase: string
-) {
-  const stateDir = path.join(this.tempDir, 'chromato');
-  fs.mkdirSync(stateDir, { recursive: true });
-  const state = {
-    schemaVersion: 1,
-    phase,
-    remainingSeconds: 0,
-    elapsedSeconds: 0,
-    progressFraction: 0,
-    currentPomodoro: 0,
-    cycleCount: 4,
-    completedToday: 0,
-    streak: 0,
-    isOverdue: false,
-    overdueElapsedSeconds: 0,
-    lastUpdatedUtc: new Date().toISOString(),
-  };
-  fs.writeFileSync(path.join(stateDir, 'state.json'), JSON.stringify(state));
 });
 
 // ---------------------------------------------------------------------------

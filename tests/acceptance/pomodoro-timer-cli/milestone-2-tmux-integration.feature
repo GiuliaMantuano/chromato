@@ -32,9 +32,9 @@ Feature: tmux status bar integration outputs a compact, colored session string
     And the process exits with code 0
 
   # AC-03.2: Output fits within 20 characters by default
-  @US-03 @AC-03.2 @skip
+  @US-03 @AC-03.2
   Scenario: tmux status output is 20 characters or fewer in the default configuration
-    Given a work session is active
+    Given a work session is active in work phase
     When the developer runs "chromato status --format tmux"
     Then the visible text length of the output is 20 characters or fewer
     And when "--width 15" is passed the output fits within 15 characters
