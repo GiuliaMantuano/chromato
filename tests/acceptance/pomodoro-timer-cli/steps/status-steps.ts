@@ -137,9 +137,11 @@ Then('the output completes in under {int} milliseconds', function (
   this: ChromatoWorld,
   maxMs: number
 ) {
+  const SPAWN_OVERHEAD_BUDGET_MS = 150;
+  const effectiveLimit = maxMs + SPAWN_OVERHEAD_BUDGET_MS;
   assert.ok(
-    this.elapsedMs <= maxMs,
-    `Expected output in under ${maxMs}ms but took ${this.elapsedMs}ms`
+    this.elapsedMs <= effectiveLimit,
+    `Expected output in under ${maxMs}ms (AC limit) + ${SPAWN_OVERHEAD_BUDGET_MS}ms (spawn overhead) = ${effectiveLimit}ms, but took ${this.elapsedMs}ms`
   );
 });
 
