@@ -76,7 +76,7 @@ TypeScript's discriminated unions and interfaces are a first-class advantage for
 - The borrow checker adds structural complexity to the state machine that provides no benefit for a single-threaded timer
 - Rust is not the target language of the demo audience
 
-**Rejection rationale**: The primary quality attribute is testability-as-demo, not raw performance. TypeScript's 20-30MB RSS (Node.js baseline) meets the <20MB NFR with startup optimisation. Accessibility of the codebase to the demo audience outweighs binary size advantages.
+**Rejection rationale**: The primary quality attribute is testability-as-demo, not raw performance. TypeScript's 30-35MB RSS (Node.js 20 baseline) meets the <35MB NFR (revised from original <20MB — see Consequences). Accessibility of the codebase to the demo audience outweighs binary size advantages.
 
 ---
 
