@@ -189,6 +189,32 @@ This is useful for accessibility and screenshots. Press `Ctrl+C` to stop.
 
 ---
 
+## Test Minimal Mode (Plain Text Output)
+
+**Goal**: Verify the `--minimal` flag produces plain-text output with no TUI or ANSI codes.
+
+```
+CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start --minimal
+```
+
+✅ You should see:
+- Plain text lines printed to stdout (no full-screen TUI)
+- Each line includes phase, remaining time, and session number — e.g. `WORK 00:05 P1/4`
+- No colored text — everything is plain terminal default
+- No Unicode block characters
+
+This mode is useful for piping into scripts or logging. Press `Ctrl+C` to stop.
+
+Run with both flags together for the most constrained output:
+
+```
+CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start --minimal --no-color
+```
+
+✅ Output should be identical — there are no ANSI codes in `--minimal` mode regardless.
+
+---
+
 ## Test Compact Mode (Narrow Terminal)
 
 **Goal**: Verify the TUI reflows when the terminal is very narrow.
@@ -271,12 +297,13 @@ Return to the first window and press `Ctrl+C` to stop.
 node_modules/.bin/vitest run
 ```
 
-✅ You should see test output with:
-- A summary like `X passed, Y failed`
-- Most tests should pass (green checkmarks)
-- **Known issue**: 2 tests fail with `ERR_DLOPEN_FAILED` from `better-sqlite3`. This is expected (native module version mismatch between Node 20 and 24). It does **not** affect `start` or `status` commands.
+✅ You should see test output with all tests passing. The acceptance test suite (BDD) runs separately:
 
-Exit code will be non-zero if there are failures, but the known `better-sqlite3` failures are pre-existing and not a regression.
+```
+pnpm test:acceptance
+```
+
+✅ All 46 scenarios across milestones 1–5 should pass (273 steps, ~2m30s).
 
 ---
 
@@ -287,9 +314,7 @@ Exit code will be non-zero if there are failures, but the known `better-sqlite3`
 | `error: option '--work' must be a positive integer` | `--work` only accepts whole minutes (1, 2, 3…) | Use `CHROMATO_WORK_SECONDS=6` instead for short tests |
 | `zsh: no such file or directory: node_modules/.bin/tsx` | Not in project folder | Run `cd <repo>` first |
 | `command not found: nvm` | nvm not in current shell session | Run `export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"` |
-| `ERR_DLOPEN_FAILED` in test output | Native module compiled for wrong Node version | Expected in `vitest run`. Does not affect `start` or `status`. Ignore. |
 | Progress bar shows `=---` instead of `█░` | ASCII fallback (TERM or locale setting) | Run with `--ascii` to confirm fallback is working, or ignore |
-| `--minimal` flag does nothing | Not yet implemented (Phase 05) | Expected behavior — flag is accepted but MinimalAdapter not built yet |
 | Screen blank after `Ctrl+C` | Ink clears terminal on exit | Normal — your prompt will return |
 | Timer not counting down | You may be seeing a cached render | Press `Ctrl+C` and start again |
 
