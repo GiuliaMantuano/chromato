@@ -23,7 +23,7 @@ Feature: tmux status bar integration outputs a compact, colored session string
   # -----------------------------------------------------------------------
 
   # AC-03.1: Status command outputs valid tmux string in < 50ms
-  @US-03 @AC-03.1 @skip
+  @US-03 @AC-03.1
   Scenario: Status command produces a valid tmux color string in under 50 milliseconds
     Given a 25-minute work session has been running for 10 minutes
     When the developer runs "chromato status --format tmux"
@@ -112,7 +112,7 @@ Feature: tmux status bar integration outputs a compact, colored session string
     And the visible text still shows phase and remaining time information
 
   # AC-03.1 error path: status command must not import Ink (startup budget)
-  @US-03 @AC-03.1 @skip
+  @US-03 @AC-03.1
   Scenario: Status command cold start meets the 50-millisecond threshold even without a warm Node.js cache
     Given no prior chromato process has run in the current shell session
     When the developer runs "chromato status --format tmux" for the first time

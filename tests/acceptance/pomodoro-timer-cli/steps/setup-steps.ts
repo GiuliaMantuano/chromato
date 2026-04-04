@@ -7,8 +7,9 @@
  * All interaction with chromato is through the CLI driving port.
  */
 
-import { Given, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
+import { Given, When, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world';
+import { runChromato } from './helpers.js';
 
 // Override the default 5000ms step timeout so TUI phase-transition scenarios
 // (which spawn real processes and wait for phase changes) don't time out.
@@ -159,4 +160,107 @@ Given('a terminal window with {int} columns', function (
   columns: number
 ) {
   this.chromatoEnv = { ...this.chromatoEnv, COLUMNS: String(columns) };
+});
+
+// ---------------------------------------------------------------------------
+// Given: session state setup (writes state.json for status command tests)
+// ---------------------------------------------------------------------------
+
+/**
+ * Writes a WORK session state.json for status command tests.
+ * The state is written to {tempDir}/chromato/state.json (world.tempDir is
+ * set as XDG_DATA_HOME so PersistenceAdapter reads from here).
+ */
+function writeWorkSessionState(world: ChromatoWorld, remainingSeconds: number, elapsedSeconds: number): void {
+  const stateDir = path.join(world.tempDir, 'chromato');
+  fs.mkdirSync(stateDir, { recursive: true });
+  const total = remainingSeconds + elapsedSeconds;
+  const state = {
+    schemaVersion: 1,
+    phase: 'WORK',
+    remainingSeconds,
+    elapsedSeconds,
+    progressFraction: total > 0 ? elapsedSeconds / total : 0,
+    currentPomodoro: 1,
+    cycleCount: 4,
+    completedToday: 0,
+    streak: 0,
+    isOverdue: false,
+    overdueElapsedSeconds: 0,
+    lastUpdatedUtc: new Date().toISOString(),
+  };
+  fs.writeFileSync(path.join(stateDir, 'state.json'), JSON.stringify(state));
+}
+
+Given('a {int}-minute work session has been running for {int} minutes', function (
+  this: ChromatoWorld,
+  totalMinutes: number,
+  elapsedMinutes: number
+) {
+  const totalSeconds = totalMinutes * 60;
+  const elapsedSeconds = elapsedMinutes * 60;
+  const remainingSeconds = totalSeconds - elapsedSeconds;
+  writeWorkSessionState(this, remainingSeconds, elapsedSeconds);
+});
+
+Given('a work session is active', function (this: ChromatoWorld) {
+  writeWorkSessionState(this, 1200, 300);
+});
+
+Given('a work session is active in work phase', function (this: ChromatoWorld) {
+  writeWorkSessionState(this, 1200, 300);
+});
+
+Given('no prior chromato process has run in the current shell session', function (
+  this: ChromatoWorld
+) {
+  // Documentation step: the world is already isolated per-scenario.
+  // No action needed — no warm Node.js cache exists for freshly spawned processes.
+});
+
+Given('no chromato session is currently running', function (this: ChromatoWorld) {
+  const stateFile = path.join(this.tempDir, 'chromato', 'state.json');
+  if (fs.existsSync(stateFile)) {
+    fs.rmSync(stateFile);
+  }
+});
+
+Given('the state file shows phase {string}', function (
+  this: ChromatoWorld,
+  phase: string
+) {
+  const stateDir = path.join(this.tempDir, 'chromato');
+  fs.mkdirSync(stateDir, { recursive: true });
+  const state = {
+    schemaVersion: 1,
+    phase,
+    remainingSeconds: 0,
+    elapsedSeconds: 0,
+    progressFraction: 0,
+    currentPomodoro: 0,
+    cycleCount: 4,
+    completedToday: 0,
+    streak: 0,
+    isOverdue: false,
+    overdueElapsedSeconds: 0,
+    lastUpdatedUtc: new Date().toISOString(),
+  };
+  fs.writeFileSync(path.join(stateDir, 'state.json'), JSON.stringify(state));
+});
+
+// ---------------------------------------------------------------------------
+// When: additional command invocation variants
+// ---------------------------------------------------------------------------
+
+When('the developer runs {string} for the first time', async function (
+  this: ChromatoWorld,
+  command: string
+) {
+  const args = command.replace(/^chromato\s+/, '').split(/\s+/).filter(Boolean);
+  const start = Date.now();
+  const result = await runChromato(this, args);
+  this.elapsedMs = Date.now() - start;
+  this.capturedOutput = result.stdout;
+  this.capturedStderr = result.stderr;
+  this.exitCode = result.exitCode;
 });
