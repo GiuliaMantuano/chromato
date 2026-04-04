@@ -62,8 +62,10 @@ node_modules/.bin/tsx src/index.ts --help
 
 This runs a 6-second WORK phase, then transitions to BREAK. You'll see the progress bar fill in real time, then Ctrl+C to stop.
 
+> **Note:** `CHROMATO_WORK_SECONDS=6` is a shortcut to set a very short session for testing. The `--work` flag only accepts whole minutes (1, 2, 3…), so use this env-variable trick whenever you need a session shorter than 1 minute.
+
 ```
-node_modules/.bin/tsx src/index.ts start --work 0.1
+CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start
 ```
 
 ✅ You should see:
@@ -157,7 +159,7 @@ Press `Ctrl+C` to stop.
 **Goal**: Verify the ASCII fallback (`=` and `-` instead of Unicode blocks).
 
 ```
-node_modules/.bin/tsx src/index.ts start --ascii --work 0.1
+CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start --ascii
 ```
 
 ✅ You should see:
@@ -174,7 +176,7 @@ All other behavior is identical. Press `Ctrl+C` to stop.
 **Goal**: Verify that all ANSI color is suppressed.
 
 ```
-NO_COLOR=1 node_modules/.bin/tsx src/index.ts start --work 0.1
+NO_COLOR=1 CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start
 ```
 
 ✅ You should see:
@@ -282,6 +284,7 @@ Exit code will be non-zero if there are failures, but the known `better-sqlite3`
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
+| `error: option '--work' must be a positive integer` | `--work` only accepts whole minutes (1, 2, 3…) | Use `CHROMATO_WORK_SECONDS=6` instead for short tests |
 | `zsh: no such file or directory: node_modules/.bin/tsx` | Not in project folder | Run `cd <repo>` first |
 | `command not found: nvm` | nvm not in current shell session | Run `export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"` |
 | `ERR_DLOPEN_FAILED` in test output | Native module compiled for wrong Node version | Expected in `vitest run`. Does not affect `start` or `status`. Ignore. |
