@@ -25,6 +25,7 @@ export class SessionService {
   private readonly historyPort: HistoryPort | null;
   private session: Session | null = null;
   private overdueSecondNotified = false;
+  private lastSnapshot: SessionSnapshot | null = null;
 
   constructor(
     renderPort: RenderPort,
@@ -45,8 +46,10 @@ export class SessionService {
    */
   tickOnce(config: SessionConfig, deltaSeconds: number): void {
     if (this.session === null) {
-      const completedToday = this.statePort?.readCompletedToday() ?? 0;
-      const streak = this.historyPort?.readStreak() ?? 0;
+      let completedToday = 0;
+      let streak = 0;
+      try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }
+      try { streak = this.historyPort?.readStreak() ?? 0; } catch { streak = 0; }
       this.session = new Session(config, completedToday, streak);
     }
 
@@ -75,8 +78,10 @@ export class SessionService {
   }
 
   async run(config: SessionConfig): Promise<void> {
-    const completedToday = this.statePort?.readCompletedToday() ?? 0;
-    const streak = this.historyPort?.readStreak() ?? 0;
+    let completedToday = 0;
+    let streak = 0;
+    try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }
+    try { streak = this.historyPort?.readStreak() ?? 0; } catch { streak = 0; }
     this.session = new Session(config, completedToday, streak);
     const session = this.session;
 
@@ -96,6 +101,7 @@ export class SessionService {
 
       const tick = () => {
         if (session.isInterrupted()) {
+          this.printInterruptSummary();
           this.renderPort.stop();
           this.statePort?.writeIdle();
           resolve();
@@ -110,6 +116,7 @@ export class SessionService {
         session.tick(deltaSeconds);
 
         const snapshot = session.getSnapshot();
+        this.lastSnapshot = snapshot;
         this.renderPort.render(snapshot);
         this.statePort?.writeState(snapshot);
 
@@ -121,6 +128,19 @@ export class SessionService {
 
       setTimeout(tick, TICK_INTERVAL_MS);
     });
+  }
+
+  private printInterruptSummary(): void {
+    const snap = this.lastSnapshot;
+    if (snap === null) return;
+    const elapsed = snap.timer.elapsedSeconds;
+    const pct = Math.round(snap.timer.progressFraction * 100);
+    const min = Math.floor(elapsed / 60);
+    const sec = Math.floor(elapsed % 60);
+    const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    process.stdout.write(
+      `Session interrupted at ${timeStr} (${pct}% complete). Partial session not counted.\n`
+    );
   }
 
   private processOverdueMilestones(snapshot: SessionSnapshot): void {
@@ -151,7 +171,7 @@ export class SessionService {
         this.notificationPort.notifyOverdue();
       }
       if (event.type === 'SESSION_COMPLETED' && this.historyPort) {
-        this.historyPort.recordSession(event.completedPomodoros);
+        try { this.historyPort.recordSession(event.completedPomodoros); } catch { /* sqlite unavailable */ }
       }
     }
   }

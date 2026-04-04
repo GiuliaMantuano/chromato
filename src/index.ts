@@ -59,8 +59,16 @@ if (argv[2] === 'status') {
 // is `start`. This fires off all dynamic imports before commander finishes
 // parsing, shaving the sequential import chain off the first-frame latency
 // (AC-05.1: first TUI frame within 100ms).
+// For --minimal mode, skip ink/react (they are not needed and add overhead).
 const isStartCommand = argv[2] === 'start';
-const startModulesP = isStartCommand
+// Minimal/no-color: skip ink/react pre-load when --minimal or --no-color is specified.
+const isMinimalStart = isStartCommand && (
+  argv.includes('--minimal') ||
+  argv.includes('--no-color') ||
+  process.env['NO_COLOR'] !== undefined
+);
+
+const startModulesP = isStartCommand && !isMinimalStart
   ? Promise.all([
       import('./adapters/bannerAdapter.js'),
       import('./adapters/tuiAdapter.js'),
@@ -139,7 +147,35 @@ program
       ascii: opts.ascii ?? false,
     });
 
-    // Await the pre-loaded modules (already resolving in parallel since argv check).
+    // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
+    // Color suppression implies the caller wants plain text output with no ANSI sequences.
+    const useMinimalAdapter = opts.minimal || !config.useColor;
+
+    if (useMinimalAdapter) {
+      // Minimal / no-color mode: plain-text output, no TUI, no ink/react.
+      const [
+        { MinimalAdapter },
+        { SessionService },
+        { PersistenceAdapter },
+        { NotificationAdapter },
+      ] = await Promise.all([
+        import('./adapters/minimalAdapter.js'),
+        import('./application/sessionService.js'),
+        import('./adapters/persistenceAdapter.js'),
+        import('./adapters/notificationAdapter.js'),
+      ] as const);
+
+      const renderAdapter = new MinimalAdapter();
+      const persistenceAdapter = new PersistenceAdapter();
+      const notificationAdapter = new NotificationAdapter();
+      const service = new SessionService(renderAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
+
+      process.on('SIGTERM', () => { service.interrupt(); });
+      await service.run(config);
+      process.exit(0);
+    }
+
+    // Full TUI mode: await the pre-loaded modules (already resolving in parallel since argv check).
     const [
       { printBanner },
       { TuiAdapter },

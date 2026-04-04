@@ -31,7 +31,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
   # -----------------------------------------------------------------------
 
   # AC-NF6: VS Code integrated terminal visual mode
-  @US-01 @AC-NF6 @skip
+  @US-01 @AC-NF6
   Scenario: chromato renders the full TUI in a VS Code integrated terminal session
     Given the terminal environment reports COLORTERM="truecolor" and TERM="xterm-256color"
     When the developer runs "chromato start" with a 5-minute work session
@@ -40,7 +40,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
     And no fallback to ASCII characters occurs
 
   # AC-NF6: 256-color terminal renders correct phase colors
-  @US-01 @US-02 @AC-NF6 @skip
+  @US-01 @US-02 @AC-NF6
   Scenario: Phase colors render correctly on a 256-color terminal
     Given the terminal supports 256 colors (TERM=xterm-256color)
     And a work session is active
@@ -50,7 +50,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
     And when overdue activates the colors switch to the overdue scheme (red or amber range)
 
   # AC-NF6: Unicode block characters render in VS Code terminal
-  @US-01 @AC-NF6 @skip
+  @US-01 @AC-NF6
   Scenario: Progress bar uses Unicode block characters in a Unicode-capable terminal
     Given the terminal supports Unicode block characters (LANG includes UTF-8)
     When the developer runs "chromato start"
@@ -62,7 +62,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
   # -----------------------------------------------------------------------
 
   # AC-01.4: ASCII fallback when terminal lacks Unicode support
-  @US-01 @AC-01.4 @skip
+  @US-01 @AC-01.4
   Scenario: ASCII fallback activates gracefully when the terminal reports no Unicode support
     Given the terminal environment reports TERM=dumb and LC_ALL=C
     When the developer runs "chromato start"
@@ -71,7 +71,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
     And all session information (phase, time, count) remains available
 
   # AC-NF6: Non-supported terminal environments (dumb terminal fallback)
-  @US-01 @AC-NF6 @skip
+  @US-01 @AC-NF6
   Scenario: chromato degrades to ASCII mode on a dumb terminal without crashing
     Given the TERM environment variable is set to "dumb"
     When the developer runs "chromato start"
@@ -80,7 +80,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
     And no unhandled exception or error trace appears in the output
 
   # AC-NF6: chromato --minimal works in any terminal environment
-  @US-05 @AC-NF6 @skip
+  @US-05 @AC-NF6
   Scenario: Minimal mode works in any terminal regardless of color or Unicode support
     Given the terminal environment reports TERM=dumb with no color support
     When the developer runs "chromato start --minimal"
@@ -89,7 +89,7 @@ Feature: chromato renders correctly in VS Code integrated terminal and 256-color
     And the process exits with code 0 when Ctrl+C is pressed
 
   # Status command works in VS Code integrated terminal context
-  @US-03 @AC-NF6 @skip
+  @US-03 @AC-NF6
   Scenario: Status command produces correct output when invoked from a VS Code terminal session
     Given a work session is active
     And the terminal reports TERM=xterm-256color

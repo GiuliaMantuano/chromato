@@ -100,7 +100,7 @@ Feature: Visual progress bar fills and adapts to terminal conditions
     Then the average CPU usage of the chromato process is below 1 percent
 
   # AC-01.8 / AC-P3: NO_COLOR suppresses all ANSI escapes
-  @US-01 @AC-01.8 @AC-P3 @property @skip
+  @US-01 @AC-01.8 @AC-P3 @property
   Scenario: NO_COLOR environment variable removes all color from every output mode
     Given the NO_COLOR environment variable is set to "1"
     When the developer runs "chromato start --minimal"

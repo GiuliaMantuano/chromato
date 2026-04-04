@@ -65,6 +65,14 @@ Given('no previous session state exists', function (this: ChromatoWorld) {
   }
 });
 
+Given('no previous state file exists', function (this: ChromatoWorld) {
+  // Alias for 'no previous session state exists'.
+  const stateFile = path.join(this.tempDir, 'chromato', 'state.json');
+  if (fs.existsSync(stateFile)) {
+    fs.rmSync(stateFile);
+  }
+});
+
 Given('no configuration file exists', function (this: ChromatoWorld) {
   const configFile = path.join(this.tempDir, 'config', 'chromato', 'config.json');
   if (fs.existsSync(configFile)) {
@@ -106,7 +114,9 @@ Given('the TERM environment variable is set to {string}', function (
 Given(
   'the terminal environment reports COLORTERM={string} and TERM={string}',
   function (this: ChromatoWorld, colorterm: string, term: string) {
-    this.chromatoEnv = { ...this.chromatoEnv, COLORTERM: colorterm, TERM: term };
+    // Set FORCE_COLOR so chalk emits ANSI sequences even when stdout is a pipe (test harness).
+    const forceColor = colorterm === 'truecolor' ? '3' : '1';
+    this.chromatoEnv = { ...this.chromatoEnv, COLORTERM: colorterm, TERM: term, FORCE_COLOR: forceColor };
   }
 );
 
@@ -121,19 +131,21 @@ Given('the terminal environment reports TERM=dumb and LC_ALL=C', function (
   };
 });
 
-Given('the terminal supports 256 colors (TERM=xterm-256color)', function (
+Given(/^the terminal supports 256 colors \(TERM=xterm-256color\)$/, function (
   this: ChromatoWorld
 ) {
-  this.chromatoEnv = { ...this.chromatoEnv, TERM: 'xterm-256color' };
+  // Set FORCE_COLOR so chalk emits ANSI sequences even when stdout is a pipe.
+  this.chromatoEnv = { ...this.chromatoEnv, TERM: 'xterm-256color', FORCE_COLOR: '2' };
 });
 
 Given(
-  'the terminal supports Unicode block characters (LANG includes UTF-8)',
+  /^the terminal supports Unicode block characters \(LANG includes UTF-8\)$/,
   function (this: ChromatoWorld) {
     this.chromatoEnv = {
       ...this.chromatoEnv,
       LANG: 'en_US.UTF-8',
       LC_ALL: 'en_US.UTF-8',
+      FORCE_COLOR: '2',
     };
   }
 );

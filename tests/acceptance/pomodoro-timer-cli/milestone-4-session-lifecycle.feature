@@ -107,7 +107,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And the state file shows phase "IDLE"
 
   # AC-P6: No zombie processes after clean exit
-  @US-05 @AC-P6 @property @skip
+  @US-05 @AC-P6 @property
   Scenario: No chromato processes remain running after any clean exit path
     Given a work session is active
     When the developer terminates the session via Ctrl+C
@@ -115,7 +115,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And no child processes spawned by chromato remain running
 
   # AC-05.6: Session count is NOT incremented after an interrupted session
-  @US-05 @AC-05.6 @skip
+  @US-05 @AC-05.6
   Scenario: An interrupted session does not increment the completed count
     Given Natasha has completed 1 full Pomodoro today
     And a second session is active with 10 minutes remaining
@@ -146,14 +146,14 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
       | --work notanumber  |
 
   # AC-P5: Exit code consistency
-  @US-05 @AC-P5 @property @skip
+  @US-05 @AC-P5 @property
   Scenario: Exit code 0 for all normal terminations and 2 for all usage errors
     Given a session that completes normally
     When the session finishes and chromato exits
     Then the exit code is 0
 
   # AC-04.5 / AC-P4: State file is always valid JSON
-  @US-05 @AC-P4 @property @skip
+  @US-05 @AC-P4 @property
   Scenario: State file remains valid JSON at all times including during write operations
     Given a work session is actively writing to the state file every 5 seconds
     When the state file is read 20 times over 2 minutes at random intervals
@@ -161,7 +161,7 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
     And no read returns a partially-written or empty file
 
   # AC-04.3 / AC-04.4: State file appears within 1 second and updates regularly
-  @US-05 @AC-04.3 @skip
+  @US-05 @AC-04.3
   Scenario: State file appears within 1 second of session start and contains required fields
     Given no previous state file exists
     When the developer runs "chromato start"

@@ -86,6 +86,10 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
   writeIdle(): void {
     fs.mkdirSync(this.stateDir, { recursive: true });
 
+    // Preserve completedToday so an interrupted session does not reset the daily count.
+    // The last writeState() call wrote the current completedToday; read it back here.
+    const completedToday = this.readCompletedToday();
+
     const idleContents = {
       schemaVersion: 1,
       phase: 'IDLE',
@@ -94,7 +98,7 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
       progressFraction: 0,
       currentPomodoro: 0,
       cycleCount: 4,
-      completedToday: 0,
+      completedToday,
       streak: 0,
       isOverdue: false,
       overdueElapsedSeconds: 0,

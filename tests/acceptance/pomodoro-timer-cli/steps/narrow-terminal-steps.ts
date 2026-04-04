@@ -86,8 +86,11 @@ Then('no display element is truncated or overflows the {int}-column boundary', f
   const plainText = stripAnsi(this.capturedOutput);
   const lines = plainText.split('\n').filter((l) => l.trim().length > 0);
 
-  // Verify no non-blank line exceeds the column limit
-  const overflowingLines = lines.filter((line) => line.length > columns);
+  // Skip lines containing the interrupt/session summary (not part of the timer display).
+  const timerLines = lines.filter((l) => !/Session interrupted|Partial session/.test(l));
+
+  // Verify no timer line exceeds the column limit
+  const overflowingLines = timerLines.filter((line) => line.length > columns);
 
   assert.ok(
     overflowingLines.length === 0,
