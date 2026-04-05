@@ -4,12 +4,13 @@
  * Tests enter through SessionService (driving port) with in-memory stub ports.
  * Domain internals (PhaseStateMachine, TimerSnapshot) exercised indirectly.
  *
- * Test Budget: 5 distinct behaviors x 2 = 10 max unit tests
+ * Test Budget: 6 distinct behaviors x 2 = 12 max unit tests
  *   B1: tick() transitions phase from IDLE to WORK
  *   B2: getSnapshot() returns correct progressFraction after N ticks
  *   B3: drainEvents() returns PhaseChangedEvent after work period completes
  *   B4: interrupt() marks session as interrupted
  *   B5: WORK->LONG_BREAK transition after cycleCount completed work sessions
+ *   B6: currentPomodoro is bounded to cycleCount when initialCompletedToday exceeds cycleCount
  *
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
@@ -115,5 +116,15 @@ describe('Session aggregate root', () => {
     session.tick(2); // completes first work (1 % 4 !== 0 => BREAK)
     const snapshot = session.getSnapshot();
     expect(snapshot.phase).toBe('BREAK');
+  });
+
+  // B6: currentPomodoro is bounded to cycleCount when initialCompletedToday exceeds cycleCount
+  it('currentPomodoro is bounded to cycleCount when initialCompletedToday exceeds cycleCount', () => {
+    // Bug scenario: 9 sessions completed today with cycleCount=4 produces currentPomodoro=10
+    const config = makeConfig({ cycleCount: 4 });
+    const session = new Session(config, 9); // initialCompletedToday=9 exceeds cycleCount=4
+    session.tick(1); // IDLE -> WORK
+    const snapshot = session.getSnapshot();
+    expect(snapshot.currentPomodoro).toBeLessThanOrEqual(snapshot.config.cycleCount);
   });
 });
