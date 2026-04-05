@@ -84,7 +84,7 @@ Can be forced with `--ascii` flag. Auto-activation prints an informational messa
 
 ## chromato status
 
-Reads the active session state and outputs a formatted status string. Designed for tmux status bars, shell prompts, and scripts. Completes in under 50ms (does not load Ink or React).
+Reads the active session state and outputs a formatted status string. Designed for tmux status bars, shell prompts, and scripts. Completes in under 200ms wall-clock (Node.js startup); in-process execution is under 5ms (does not load Ink or React).
 
 ### Options
 
