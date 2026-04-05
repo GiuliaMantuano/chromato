@@ -10,10 +10,6 @@ function readPrTemplate(): string {
 }
 
 describe('PULL_REQUEST_TEMPLATE.md', () => {
-  it('exists at .github/PULL_REQUEST_TEMPLATE.md', () => {
-    expect(() => readPrTemplate()).not.toThrow()
-  })
-
   it('contains at least one checklist item', () => {
     const content = readPrTemplate()
     expect(content).toMatch(/- \[ \]/)

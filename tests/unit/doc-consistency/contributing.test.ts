@@ -10,10 +10,6 @@ function readContributing(): string {
 }
 
 describe('CONTRIBUTING.md', () => {
-  it('exists at the repository root', () => {
-    expect(() => readContributing()).not.toThrow()
-  })
-
   it('contains a Development Setup section', () => {
     const content = readContributing()
     expect(content).toContain('Development Setup')

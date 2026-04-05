@@ -15,10 +15,6 @@ function readSecurity(): string {
 }
 
 describe('CODE_OF_CONDUCT.md', () => {
-  it('exists at the repository root', () => {
-    expect(() => readCodeOfConduct()).not.toThrow()
-  })
-
   it('contains Contributor Covenant string', () => {
     const content = readCodeOfConduct()
     expect(content).toContain('Contributor Covenant')
@@ -31,10 +27,6 @@ describe('CODE_OF_CONDUCT.md', () => {
 })
 
 describe('SECURITY.md', () => {
-  it('exists at the repository root', () => {
-    expect(() => readSecurity()).not.toThrow()
-  })
-
   it('contains a Supported Versions section', () => {
     const content = readSecurity()
     expect(content).toContain('Supported Versions')

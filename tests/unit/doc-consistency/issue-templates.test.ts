@@ -15,10 +15,6 @@ function readFeatureRequest(): string {
 }
 
 describe('bug_report.md', () => {
-  it('exists at .github/ISSUE_TEMPLATE/bug_report.md', () => {
-    expect(() => readBugReport()).not.toThrow()
-  })
-
   it('front-matter name contains "bug" (case-insensitive)', () => {
     const content = readBugReport()
     const nameMatch = content.match(/^name:\s*(.+)$/m)
@@ -54,10 +50,6 @@ describe('bug_report.md', () => {
 })
 
 describe('feature_request.md', () => {
-  it('exists at .github/ISSUE_TEMPLATE/feature_request.md', () => {
-    expect(() => readFeatureRequest()).not.toThrow()
-  })
-
   it('front-matter name contains "feature" (case-insensitive)', () => {
     const content = readFeatureRequest()
     const nameMatch = content.match(/^name:\s*(.+)$/m)
