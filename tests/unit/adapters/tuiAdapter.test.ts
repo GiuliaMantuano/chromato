@@ -27,13 +27,15 @@
  * hexagonal testing mandate M4 (adapters tested with integration tests only).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import { render as inkRender } from 'ink';
+import * as inkModule from 'ink';
 import chalk from 'chalk';
 import { EventEmitter } from 'events';
-import { TimerFrame } from '../../../src/adapters/tuiAdapter.js';
+import { TimerFrame, TuiAdapter } from '../../../src/adapters/tuiAdapter.js';
+import { printBanner } from '../../../src/adapters/bannerAdapter.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 
 function stripAnsi(str: string): string {
@@ -419,6 +421,206 @@ describe('TuiAdapter flicker-free updates (AC-P1)', () => {
       const delta = currBlocks - prevBlocks;
       expect(delta).toBeGreaterThanOrEqual(0);
       expect(delta).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression tests R1–R5: TUI terminal-blocking bugs
+//
+// Test Budget: 5 distinct behaviors x 1 = 5 regression tests
+//   R1: useInput fires process.emit('SIGINT') when input='c' and key.ctrl=true
+//   R2: TuiAdapter.render() writes alternate-screen entry sequence as first stdout write
+//   R3: TuiAdapter.stop() writes alternate-screen exit sequence to stdout
+//   R4: alternate-screen sequence precedes any banner output in stdout write order
+//   R5: Ink render() is called with exitOnCtrlC: false
+// ---------------------------------------------------------------------------
+
+const REGRESSION_SNAPSHOT: SessionSnapshot = {
+  phase: 'WORK',
+  timer: {
+    totalSeconds: 1500,
+    elapsedSeconds: 0,
+    remainingSeconds: 1500,
+    progressFraction: 0,
+    isOverdue: false,
+    overdueElapsedSeconds: 0,
+  },
+  currentPomodoro: 1,
+  completedToday: 0,
+  streak: 0,
+  config: {
+    workDurationSeconds: 1500,
+    breakDurationSeconds: 300,
+    longBreakDurationSeconds: 900,
+    cycleCount: 4,
+    useAscii: false,
+    useColor: false,
+  },
+};
+
+describe('Regression R1: useInput fires SIGINT on Ctrl+C (Ink 4.x key interface)', () => {
+  // Ink 4.x Key interface has NO `name` property.
+  // The correct check is `input === 'c' && key.ctrl` NOT `key.name === 'c' && key.ctrl`.
+  // Current code (tuiAdapter.tsx line ~93): if (key.ctrl && key.name === 'c') — FAILS because
+  // key.name is always undefined; the condition never evaluates to true.
+  it('R1: process.emit("SIGINT") is called when useInput receives input="c" with key.ctrl=true', () => {
+    const emitSpy = vi.spyOn(process, 'emit');
+
+    // ink-testing-library exposes stdin.write() to simulate raw input.
+    // Ctrl+C in a real terminal sends byte 0x03 (ETX). In Ink 4.x raw mode
+    // useInput receives input='c' and key={ctrl:true} for this byte sequence.
+    const { stdin } = render(
+      React.createElement(TimerFrame, { snapshot: REGRESSION_SNAPSHOT, columns: 80 })
+    );
+
+    // Write the Ctrl+C byte to the fake stdin — Ink decodes it as input='c', key.ctrl=true
+    stdin.write('\x03');
+
+    try {
+      expect(emitSpy).toHaveBeenCalledWith('SIGINT');
+    } finally {
+      emitSpy.mockRestore();
+    }
+  });
+});
+
+describe('Regression R2: TuiAdapter.render() writes alternate-screen entry sequence', () => {
+  // BUG: TuiAdapter checks NODE_ENV==='test' at construction time and skips the alternate-screen
+  // entry sequence entirely in the test environment. This means the sequence
+  // \x1b[?1049h\x1b[2J\x1b[H is NEVER written when tests are run via Vitest, making it
+  // impossible to verify the alternate-screen behaviour from the test suite.
+  // The fix is to make the test-mode detection injectable (constructor parameter or
+  // factory function) rather than hardcoding process.env at construction.
+  //
+  // This test FAILS against the unmodified source because NODE_ENV=test is always set
+  // by Vitest, causing TuiAdapter to skip the alternate-screen write entirely.
+  it('R2: TuiAdapter.render() writes \\x1b[?1049h\\x1b[2J\\x1b[H as the first stdout write', () => {
+    const writes: string[] = [];
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      writes.push(typeof chunk === 'string' ? chunk : chunk.toString());
+      return true;
+    });
+
+    try {
+      // TuiAdapter reads NODE_ENV at construction. In Vitest, NODE_ENV=test → testMode=true
+      // → the alternate-screen sequence is skipped. The assertion below therefore FAILS.
+      const adapter = new TuiAdapter();
+      adapter.render(REGRESSION_SNAPSHOT);
+      adapter.stop();
+
+      // Asserts the alternate-screen entry sequence was the FIRST write.
+      // FAILS: testMode=true means TuiAdapter never writes this sequence.
+      expect(writes[0]).toBe('\x1b[?1049h\x1b[2J\x1b[H');
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+});
+
+describe('Regression R3: TuiAdapter.stop() writes alternate-screen exit sequence', () => {
+  // BUG: TuiAdapter checks NODE_ENV==='test' and skips the alternate-screen exit sequence
+  // \x1b[?1049l in the test environment. This means that TuiAdapter.stop() can never
+  // be verified to restore the primary terminal buffer from the test suite.
+  // The fix is the same as R2: make test-mode detection injectable.
+  //
+  // This test FAILS against the unmodified source because NODE_ENV=test is always set
+  // by Vitest, causing TuiAdapter.stop() to skip the alternate-screen exit write.
+  it('R3: TuiAdapter.stop() writes \\x1b[?1049l to stdout', () => {
+    const writes: string[] = [];
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      writes.push(typeof chunk === 'string' ? chunk : chunk.toString());
+      return true;
+    });
+
+    try {
+      // In Vitest (NODE_ENV=test), testMode=true → stop() skips the exit sequence.
+      const adapter = new TuiAdapter();
+      adapter.render(REGRESSION_SNAPSHOT);
+      writes.length = 0; // Reset: only capture writes from stop()
+      adapter.stop();
+
+      // Asserts that stop() wrote the alternate-screen exit sequence.
+      // FAILS: testMode=true means TuiAdapter.stop() never writes this sequence.
+      const stopWrites = writes.join('');
+      expect(stopWrites).toContain('\x1b[?1049l');
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+});
+
+describe('Regression R4: alternate-screen sequence must precede any banner output', () => {
+  // BUG: src/index.ts calls printBanner() at line 194 BEFORE calling TuiAdapter.render().
+  // This causes banner text to be written to the PRIMARY screen buffer before
+  // \x1b[?1049h switches to the alternate screen, leaving banner debris visible on the
+  // primary buffer after the session ends.
+  //
+  // Correct order: TuiAdapter.render() → writes \x1b[?1049h FIRST → then any banner output.
+  //
+  // This test reproduces the actual call order in src/index.ts and asserts the correct
+  // invariant: the alternate-screen sequence must be the first stdout write.
+  // FAILS with the current index.ts ordering: printBanner() writes banner text BEFORE
+  // the TuiAdapter even gets a chance to emit \x1b[?1049h.
+  //
+  // Additionally, in test mode (NODE_ENV=test), TuiAdapter skips the escape sequence
+  // entirely, so writes[0] is banner text and the assertion fails both because of the
+  // wrong call order AND because of the testMode bypass.
+  it('R4: \x1b[?1049h appears as the first stdout write when TuiAdapter.render() is called after printBanner()', () => {
+    const writes: string[] = [];
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      writes.push(typeof chunk === 'string' ? chunk : chunk.toString());
+      return true;
+    });
+
+    try {
+      // Reproduce src/index.ts line ordering: banner first, then TUI render.
+      // In production: printBanner writes to primary buffer, THEN \x1b[?1049h switches screen.
+      // noColor=true produces plain text — easier to read in failure output.
+      printBanner(true);
+      const adapter = new TuiAdapter();
+      adapter.render(REGRESSION_SNAPSHOT);
+      adapter.stop();
+
+      // INVARIANT: alternate-screen entry sequence must be the FIRST stdout write.
+      // FAILS: writes[0] is a banner line because printBanner() fired first.
+      expect(writes[0]).toBe('\x1b[?1049h\x1b[2J\x1b[H');
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+});
+
+describe('Regression R5: Ink render() called with exitOnCtrlC: false', () => {
+  // BUG: If exitOnCtrlC defaults to true (Ink default), Ink intercepts Ctrl+C and calls
+  // process.exit(0) directly — bypassing any SIGINT handlers that perform cleanup
+  // (save session state, write \x1b[?1049l to restore terminal, etc.).
+  // The fix requires passing exitOnCtrlC: false explicitly to ink.render().
+  //
+  // This test verifies the Ink render() call receives exitOnCtrlC: false by spying on
+  // the ink module's render export. It FAILS if Ink is called without this option.
+  //
+  // Note: In test mode (NODE_ENV=test), TuiAdapter passes debug: true to ink.render()
+  // but exitOnCtrlC: false must still be present regardless of debug mode.
+  it('R5: ink.render() options include exitOnCtrlC: false', () => {
+    // Spy on the ink module's render export.
+    // TuiAdapter imports { render } from 'ink' — the same ESM module instance
+    // as inkModule here, so the spy intercepts TuiAdapter's render calls.
+    const inkRenderSpy = vi.spyOn(inkModule, 'render');
+
+    try {
+      const adapter = new TuiAdapter();
+      adapter.render(REGRESSION_SNAPSHOT);
+      adapter.stop();
+
+      expect(inkRenderSpy).toHaveBeenCalled();
+      const callArgs = inkRenderSpy.mock.calls[0];
+      // ink.render(element, options) — options is second argument
+      const options = callArgs?.[1] as Record<string, unknown> | undefined;
+      expect(options).toBeDefined();
+      expect(options?.['exitOnCtrlC']).toBe(false);
+    } finally {
+      inkRenderSpy.mockRestore();
     }
   });
 });
