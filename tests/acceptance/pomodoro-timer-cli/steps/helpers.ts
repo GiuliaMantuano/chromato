@@ -300,3 +300,17 @@ export function stripAnsi(str: string): string {
   // eslint-disable-next-line no-control-regex
   return str.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
 }
+
+/**
+ * Strips all ANSI/VT CSI escape sequences using the full ECMA-48 pattern.
+ * Parameter bytes: 0x20–0x3F (includes '?', '<', '=', '>' for DEC private modes)
+ * Final byte: 0x40–0x7E
+ *
+ * This is a strict superset of stripAnsi: it also strips DEC private mode
+ * sequences such as \x1b[?1049h (alternate-screen enter) and \x1b[?1049l
+ * (alternate-screen exit) that stripAnsi leaves intact.
+ */
+export function stripAllEscapes(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[\x20-\x3F]*[\x40-\x7E]/g, '');
+}

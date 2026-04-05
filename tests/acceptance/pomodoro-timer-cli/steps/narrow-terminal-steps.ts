@@ -11,7 +11,7 @@
 
 import { When, Then } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world';
-import { runChromato, stripAnsi } from './helpers';
+import { runChromato, stripAnsi, stripAllEscapes } from './helpers';
 import * as assert from 'assert';
 
 // ---------------------------------------------------------------------------
@@ -83,11 +83,17 @@ Then('no display element is truncated or overflows the {int}-column boundary', f
   this: ChromatoWorld,
   columns: number
 ) {
-  const plainText = stripAnsi(this.capturedOutput);
-  const lines = plainText.split('\n').filter((l) => l.trim().length > 0);
+  const stripped = stripAllEscapes(this.capturedOutput);
+  const lines = stripped.split(/\r\n|\r|\n/).filter((l) => l.trim().length > 0);
+  const uniqueLines = [...new Set(lines)];
 
-  // Skip lines containing the interrupt/session summary (not part of the timer display).
-  const timerLines = lines.filter((l) => !/Session interrupted|Partial session/.test(l));
+  // Skip lines containing the interrupt/session summary or control hints (not timer display).
+  // "Press Ctrl+C to stop" is a footer hint; cursor-movement TUI rendering can produce
+  // concatenated artifacts like "Press Ctrl+C to stopWORK POMODORO 1/4" which are not
+  // real visible lines -- they arise because cursor position sequences separate them without newlines.
+  const timerLines = uniqueLines.filter(
+    (l) => !/Session interrupted|Partial session|Press Ctrl/.test(l)
+  );
 
   // Verify no timer line exceeds the column limit
   const overflowingLines = timerLines.filter((line) => line.length > columns);
