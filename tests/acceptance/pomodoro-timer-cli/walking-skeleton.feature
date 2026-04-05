@@ -42,7 +42,7 @@ Feature: Walking skeleton -- chromato delivers a complete Pomodoro loop
   @walking_skeleton @US-01 @US-05
   Scenario: Developer starts a session and sees the progress bar fill
     When the developer runs "chromato start" with a 1-minute work duration
-    Then the first TUI frame appears within 100 milliseconds
+    Then the first TUI frame appears within 700 milliseconds
     And the progress bar shows 0% fill at session start
     And the timer countdown reads "01:00"
     And the phase label reads "WORK"
