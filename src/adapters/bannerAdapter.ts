@@ -31,12 +31,14 @@ const LOGO_COLORS = [
 
 export const TAGLINE = 'The Pomodoro timer your terminal deserves';
 const HINT = 'Ctrl+C to quit';
-const DIVIDER = '─'.repeat(TAGLINE.length);
+const DIVIDER_UNICODE = '─'.repeat(TAGLINE.length);
+const DIVIDER_ASCII = '-'.repeat(TAGLINE.length);
 
-export function printBanner(noColor: boolean): void {
+export function printBanner(noColor: boolean, useAscii: boolean = false): void {
   if (process.env['NODE_ENV'] === 'test') return;
 
   const useColor = !noColor && !process.env['NO_COLOR'];
+  const divider = useAscii ? DIVIDER_ASCII : DIVIDER_UNICODE;
   const out = process.stdout;
 
   out.write('\n');
@@ -46,9 +48,9 @@ export function printBanner(noColor: boolean): void {
       out.write(chalk.hex(LOGO_COLORS[i])(LOGO[i]) + '\n');
     }
     out.write('\n');
-    out.write(chalk.dim(`  ${DIVIDER}`) + '\n');
+    out.write(chalk.dim(`  ${divider}`) + '\n');
     out.write(chalk.bold.white(`  ${TAGLINE}`) + '\n');
-    out.write(chalk.dim(`  ${DIVIDER}`) + '\n');
+    out.write(chalk.dim(`  ${divider}`) + '\n');
     out.write('\n');
     out.write(chalk.dim(`  ${HINT}`) + '\n');
   } else {
@@ -56,9 +58,9 @@ export function printBanner(noColor: boolean): void {
       out.write(line + '\n');
     }
     out.write('\n');
-    out.write(`  ${DIVIDER}\n`);
+    out.write(`  ${divider}\n`);
     out.write(`  ${TAGLINE}\n`);
-    out.write(`  ${DIVIDER}\n`);
+    out.write(`  ${divider}\n`);
     out.write('\n');
     out.write(`  ${HINT}\n`);
   }

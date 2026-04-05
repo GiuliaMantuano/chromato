@@ -109,7 +109,7 @@ Tmux integration:
 program.addHelpText('beforeAll', () => {
   const noColor = process.argv.includes('--no-color') || Boolean(process.env['NO_COLOR']);
   const useAscii = detectNonUnicode() || process.argv.includes('--ascii');
-  printBanner(noColor);
+  printBanner(noColor, useAscii);
   printHelpSplash(noColor, useAscii);
 });
 
@@ -223,5 +223,13 @@ program
     await service.run(config);
     process.exit(0);
   });
+
+// When chromato is invoked with no subcommand, Commander would normally
+// treat the missing command as an error (writes to stderr, exits 1).
+// A root action intercepts this case and routes it through program.help()
+// which uses writeOut (stdout) and exits 0 — matching AC-HSS-08.1.
+program.action(() => {
+  program.help();
+});
 
 program.parse(process.argv);
