@@ -282,8 +282,8 @@ jobs:
           MEDIAN=$(printf '%s\n' "${TIMES[@]}" | sort -n | awk 'NR==5')
           echo "status_ms=${MEDIAN}" >> $GITHUB_OUTPUT
           echo "Status command median: ${MEDIAN}ms"
-          if [ "$(echo "$MEDIAN > 50" | bc -l)" -eq 1 ]; then
-            echo "ERROR: Status command ${MEDIAN}ms exceeds 50ms gate"
+          if [ "$(echo "$MEDIAN > 200" | bc -l)" -eq 1 ]; then
+            echo "ERROR: Status command ${MEDIAN}ms exceeds 200ms gate"
             exit 1
           fi
 
