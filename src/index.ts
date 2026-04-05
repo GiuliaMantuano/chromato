@@ -79,17 +79,24 @@ const startModulesP = isStartCommand && !isMinimalStart
 
 // Full commander-based CLI for start, help, version, and future commands.
 // Loaded lazily: status path above exits before reaching this point.
-const [{ Command }, { loadConfig }] = await Promise.all([
+const [{ Command }, { loadConfig }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, chalk] = await Promise.all([
   import('commander'),
   import('./configLoader.js'),
-]);
+  import('./adapters/bannerAdapter.js'),
+  import('./adapters/helpAdapter.js'),
+  import('./utils/unicodeDetect.js'),
+  import('chalk'),
+] as const);
 
 const program = new Command();
 
 program
   .name('chromato')
-  .description(`The Pomodoro timer your terminal deserves
+  .version(VERSION);
 
+program.option('-C, --no-color', 'Suppress all ANSI color output');
+
+const examplesText = `
 Examples:
   chromato start                        Start a 25/5 Pomodoro session
   chromato start --work 50 --break 10   50-minute session with 10-minute break
@@ -97,8 +104,19 @@ Examples:
   chromato status --format tmux         Tmux status-right one-liner
 
 Tmux integration:
-  set -g status-right "#(chromato status --format tmux)"`)
-  .version(VERSION);
+  set -g status-right "#(chromato status --format tmux)"`;
+
+program.addHelpText('beforeAll', () => {
+  const noColor = process.argv.includes('--no-color') || Boolean(process.env['NO_COLOR']);
+  const useAscii = detectNonUnicode() || process.argv.includes('--ascii');
+  printBanner(noColor);
+  printHelpSplash(noColor, useAscii);
+});
+
+program.addHelpText('after', () => {
+  const noColor = process.argv.includes('--no-color') || Boolean(process.env['NO_COLOR']);
+  return noColor ? examplesText : chalk.default.dim(examplesText);
+});
 
 /**
  * Parses a CLI option value as a positive integer.
@@ -125,7 +143,6 @@ program
   .option('-l, --long-break <minutes>', 'Long break duration in minutes', parsePositiveInt('long-break'), 15)
   .option('-c, --count <count>', 'Number of Pomodoros per cycle', parsePositiveInt('count'), 4)
   .option('--minimal', 'Use plain text output (no TUI)')
-  .option('--no-color', 'Suppress all ANSI color output')
   .option('--ascii', 'Use ASCII progress bar characters (suppresses auto-detection message)')
   .action(async (opts: {
     work: number;
@@ -133,7 +150,6 @@ program
     longBreak: number;
     count: number;
     minimal?: boolean;
-    color?: boolean;
     ascii?: boolean;
   }) => {
     const { config, autoDetectedAscii } = loadConfig({
@@ -142,7 +158,7 @@ program
       longBreak: opts.longBreak,
       cycles: opts.count,
       minimal: opts.minimal ?? false,
-      noColor: opts.color === false,
+      noColor: program.opts().color === false,
       ascii: opts.ascii ?? false,
     });
 
@@ -157,16 +173,14 @@ program
         { SessionService },
         { PersistenceAdapter },
         { NotificationAdapter },
-        { printBanner },
       ] = await Promise.all([
         import('./adapters/minimalAdapter.js'),
         import('./application/sessionService.js'),
         import('./adapters/persistenceAdapter.js'),
         import('./adapters/notificationAdapter.js'),
-        import('./adapters/bannerAdapter.js'),
       ] as const);
 
-      printBanner(opts.color === false);
+      printBanner(program.opts().color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
       const notificationAdapter = new NotificationAdapter();
