@@ -603,6 +603,34 @@ describe('Regression R4: alternate-screen sequence must precede any banner outpu
   });
 });
 
+// ---------------------------------------------------------------------------
+// Regression R6: formatOverdueCountdown must display integer seconds
+//
+// BUG: overdueElapsedSeconds is accumulated via hrtime and may be a float
+// (e.g. 10.064662625). The expression `overdueElapsedSeconds % 60` on a float
+// produces a float result. String().padStart() then renders the full decimal
+// expansion: "+00:10.064662625000002" instead of "+00:10".
+//
+// Fix required: Math.floor(overdueElapsedSeconds % 60) before formatting.
+// ---------------------------------------------------------------------------
+
+describe('Regression R6: formatOverdueCountdown displays integer seconds for float input', () => {
+  it('formatOverdueCountdown displays integer seconds for float overdueElapsedSeconds', () => {
+    // overdueElapsedSeconds = 10.064662625 simulates real hrtime accumulation
+    const snapshot = makeOverdueSnapshot(10.064662625);
+    const { lastFrame } = render(
+      React.createElement(TimerFrame, { snapshot, columns: 80 })
+    );
+
+    const plain = stripAnsi(lastFrame() ?? '');
+
+    // Must display "+00:10" with integer seconds
+    expect(plain).toMatch(/\+00:10\b/);
+    // Must NOT display a decimal point after the seconds value
+    expect(plain).not.toContain('+00:10.');
+  });
+});
+
 describe('Regression R5: Ink render() called with exitOnCtrlC: false', () => {
   // BUG: If exitOnCtrlC defaults to true (Ink default), Ink intercepts Ctrl+C and calls
   // process.exit(0) directly — bypassing any SIGINT handlers that perform cleanup
