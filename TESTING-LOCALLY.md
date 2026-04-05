@@ -303,7 +303,7 @@ node_modules/.bin/vitest run
 pnpm test:acceptance
 ```
 
-✅ All 46 scenarios across milestones 1–5 should pass (273 steps, ~2m30s).
+✅ All 68 scenarios across milestones 1–7 should pass (405 steps, ~2m40s).
 
 ---
 
