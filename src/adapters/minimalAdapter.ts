@@ -27,6 +27,8 @@ function renderAsciiBar(fraction: number): string {
 }
 
 export class MinimalAdapter implements RenderPort {
+  private wroteOutput = false;
+
   render(snapshot: SessionSnapshot): void {
     const { phase, timer, currentPomodoro, config } = snapshot;
 
@@ -38,11 +40,22 @@ export class MinimalAdapter implements RenderPort {
     const bar = renderAsciiBar(timer.progressFraction);
     const pct = Math.round(timer.progressFraction * 100);
     const badge = `POMODORO ${currentPomodoro} of ${config.cycleCount}`;
+    const line = `${phase} ${time} ${bar} ${pct}% ${badge}`;
 
-    process.stdout.write(`${phase} ${time} ${bar} ${pct}% ${badge}\n`);
+    if (process.stdout.isTTY) {
+      // Overwrite the current line in place; pad to clear any residual characters
+      // from a previous longer line (e.g. LONG_BREAK → WORK).
+      process.stdout.write(`\r${line.padEnd(60)}`);
+    } else {
+      process.stdout.write(`${line}\n`);
+    }
+    this.wroteOutput = true;
   }
 
   stop(): void {
-    // No-op: plain-text line-by-line output has no persistent state to clean up.
+    // On TTY, move to a fresh line so the shell prompt appears below the last output.
+    if (process.stdout.isTTY && this.wroteOutput) {
+      process.stdout.write('\n');
+    }
   }
 }
