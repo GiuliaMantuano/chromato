@@ -1,17 +1,17 @@
 /**
- * BannerAdapter: renders the chromato ASCII art logo and welcome message.
+ * BannerAdapter: prints the chromato ASCII art banner to stdout.
  *
- * Printed to stdout once at `chromato start`, before the TUI renders.
- * Respects NO_COLOR and --no-color flag (AC-P3).
+ * Printed to stdout once at `chromato start` in the minimal/plain-text path.
+ * In TUI mode the banner is NOT printed (alternate-screen buffer incompatibility —
+ * the banner would be erased when the alternate screen activates).
  *
- * No ink/react imports — stdout only.
- * Not used in the `status` command path (performance: AC-03.1).
+ * CRITICAL: Must NOT import ink or react.
+ * Must NOT emit ANSI sequences in noColor mode.
  */
 
 import chalk from 'chalk';
 
-// ANSI Shadow font — chromato (8 chars, ~100 visual columns, 6 lines)
-const LOGO: readonly string[] = [
+const LOGO = [
   ' ██████╗██╗  ██╗██████╗  ██████╗ ███╗   ███╗ █████╗ ████████╗ ██████╗ ',
   '██╔════╝██║  ██║██╔══██╗██╔═══██╗████╗ ████║██╔══██╗╚══██╔══╝██╔═══██╗',
   '██║     ███████║██████╔╝██║   ██║██╔████╔██║███████║   ██║   ██║   ██║',
@@ -20,8 +20,7 @@ const LOGO: readonly string[] = [
   ' ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ',
 ];
 
-// Deep Ocean palette — navy → ice (top to bottom)
-const LOGO_COLORS: readonly string[] = [
+const LOGO_COLORS = [
   '#023e8a',
   '#0077b6',
   '#0096c7',
@@ -31,11 +30,10 @@ const LOGO_COLORS: readonly string[] = [
 ];
 
 const TAGLINE = 'The Pomodoro timer your terminal deserves';
-const HINT    = 'Ctrl+C to quit';
+const HINT = 'Ctrl+C to quit';
 const DIVIDER = '─'.repeat(TAGLINE.length);
 
 export function printBanner(noColor: boolean): void {
-  // Skip in test environments — tests assert on TUI output, not banner output.
   if (process.env['NODE_ENV'] === 'test') return;
 
   const useColor = !noColor && !process.env['NO_COLOR'];
@@ -45,7 +43,7 @@ export function printBanner(noColor: boolean): void {
 
   if (useColor) {
     for (let i = 0; i < LOGO.length; i++) {
-      out.write(chalk.hex(LOGO_COLORS[i]!)(LOGO[i]!) + '\n');
+      out.write(chalk.hex(LOGO_COLORS[i])(LOGO[i]) + '\n');
     }
     out.write('\n');
     out.write(chalk.dim(`  ${DIVIDER}`) + '\n');

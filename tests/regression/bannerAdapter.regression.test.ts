@@ -23,6 +23,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MinimalAdapter } from '../../src/adapters/minimalAdapter.js';
+import { printBanner } from '../../src/adapters/bannerAdapter.js';
 import type { SessionSnapshot } from '../../src/domain/types.js';
 
 // ---------------------------------------------------------------------------
@@ -104,12 +105,12 @@ describe('Regression: banner present before timer output in --minimal mode', () 
   });
 
   it('B1: stdout contains banner tagline before first timer output line in minimal mode', () => {
-    // Reproduce the minimal startup sequence from src/index.ts (unfixed):
-    //   create MinimalAdapter → call render() with first snapshot.
-    // The FIXED version must also call printBanner() before this sequence.
+    // Reproduce the minimal startup sequence from src/index.ts (fixed):
+    //   printBanner(noColor) → create MinimalAdapter → call render() with first snapshot.
+    // This mirrors the composition root in src/index.ts minimal path (step 01-02 fix).
     //
-    // Current (unfixed) code: no printBanner call precedes MinimalAdapter setup.
-    // This test will fail until src/index.ts minimal path is fixed in step 01-02.
+    // noColor=true because config.useColor is false in MINIMAL_SNAPSHOT.config.
+    printBanner(/* noColor */ true);
     const adapter = new MinimalAdapter();
     adapter.render(MINIMAL_SNAPSHOT);
 

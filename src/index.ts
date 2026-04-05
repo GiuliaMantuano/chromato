@@ -157,13 +157,16 @@ program
         { SessionService },
         { PersistenceAdapter },
         { NotificationAdapter },
+        { printBanner },
       ] = await Promise.all([
         import('./adapters/minimalAdapter.js'),
         import('./application/sessionService.js'),
         import('./adapters/persistenceAdapter.js'),
         import('./adapters/notificationAdapter.js'),
+        import('./adapters/bannerAdapter.js'),
       ] as const);
 
+      printBanner(opts.color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
       const notificationAdapter = new NotificationAdapter();
