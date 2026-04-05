@@ -26,7 +26,7 @@ Start a 25-minute work session with one command:
 $ chromato start
 ```
 
-Check what's running (completes in < 50ms):
+Check what's running (completes in <200ms wall-clock (<5ms in-process)):
 
 ```bash
 $ chromato status
@@ -56,7 +56,7 @@ Add this to your `~/.tmux.conf` to show session status in the status bar:
 set -g status-right "#(chromato status --format tmux)"
 ```
 
-The `tmux` format is optimized for narrow spaces (< 50ms, no TUI overhead).
+The `tmux` format is optimized for narrow spaces (<200ms wall-clock (<5ms in-process), no TUI overhead).
 
 ## Shell Prompt Integration
 
