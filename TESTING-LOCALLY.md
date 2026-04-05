@@ -52,7 +52,7 @@ Run:
 node_modules/.bin/tsx src/index.ts --help
 ```
 
-✅ You should see a list of commands (`start`, `status`) with descriptions.
+✅ You should see an ASCII banner, the tagline "The Pomodoro timer your terminal deserves", and a styled list of commands (`start`, `status`, `stop`) with descriptions.
 
 ---
 
@@ -72,7 +72,7 @@ CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start
 - ASCII art "chromato" banner in blue and cyan
 - Tagline: "The Pomodoro timer your terminal deserves"
 - **WORK** phase label
-- Countdown timer (6:00 → 5:59 → ... → 0:00)
+- Countdown timer (0:06 → 0:05 → ... → 0:00)
 - Progress bar filling left-to-right (Unicode blocks `█░` or ASCII `=--`)
 - **Session badge**: `POMODORO 1 of 4`
 
@@ -294,13 +294,18 @@ Return to the first window and press `Ctrl+C` to stop.
 **Goal**: Verify all unit, integration, and acceptance tests pass.
 
 ```
-node_modules/.bin/vitest run
+node node_modules/vitest/vitest.mjs run
 ```
 
 ✅ You should see test output with all tests passing. The acceptance test suite (BDD) runs separately:
 
 ```
 pnpm test:acceptance
+```
+
+Or if pnpm is not on PATH:
+```
+node node_modules/@cucumber/cucumber/bin/cucumber.js --config cucumber.config.mjs
 ```
 
 ✅ All 68 scenarios across milestones 1–7 should pass (405 steps, ~2m40s).
