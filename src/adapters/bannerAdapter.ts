@@ -29,7 +29,7 @@ const LOGO_COLORS = [
   '#caf0f8',
 ];
 
-const TAGLINE = 'The Pomodoro timer your terminal deserves';
+export const TAGLINE = 'The Pomodoro timer your terminal deserves';
 const HINT = 'Ctrl+C to quit';
 const DIVIDER = '─'.repeat(TAGLINE.length);
 

@@ -85,6 +85,31 @@ module.exports = {
       to: { dependencyTypes: ['npm'], path: '^react$' },
     },
 
+    {
+      name: 'help-adapter-no-ink',
+      severity: 'error',
+      from: { path: '^src/adapters/helpAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^ink$' },
+    },
+    {
+      name: 'help-adapter-no-react',
+      severity: 'error',
+      from: { path: '^src/adapters/helpAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^react$' },
+    },
+    {
+      name: 'banner-adapter-no-ink',
+      severity: 'error',
+      from: { path: '^src/adapters/bannerAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^ink$' },
+    },
+    {
+      name: 'banner-adapter-no-react',
+      severity: 'error',
+      from: { path: '^src/adapters/bannerAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^react$' },
+    },
+
     // Rule 4: adapters must not import each other
     {
       name: 'adapters-no-cross-import',
