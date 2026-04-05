@@ -4,3 +4,5 @@ coverage/
 *.js.map
 reports/*.json
 reports/*.html
+.env
+.DS_Store
