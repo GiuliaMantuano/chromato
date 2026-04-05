@@ -113,7 +113,7 @@ program.addHelpText('beforeAll', () => {
   printHelpSplash(noColor, useAscii);
 });
 
-program.addHelpText('after', () => {
+program.addHelpText('beforeAll', () => {
   const noColor = process.argv.includes('--no-color') || Boolean(process.env['NO_COLOR']);
   return noColor ? examplesText : chalk.default.dim(examplesText);
 });
