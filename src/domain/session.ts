@@ -67,11 +67,14 @@ export class Session {
     const phase = this.interrupted ? 'IDLE' : this.stateMachine.currentPhase();
 
     // During BREAK/LONG_BREAK/OVERDUE, completedCount() was already incremented
-    // when WORK ended — so currentPomodoro equals completedCount() (the one just finished).
+    // when WORK ended — so currentPomodoro is the one just finished, normalized to cycle position.
     // During WORK/IDLE, completedCount() reflects completed sessions, so +1 is the active one.
+    // Modulo normalization keeps currentPomodoro in [1, cycleCount] across multiple cycles.
+    const cycleCount = this.config.cycleCount;
+    const completedCount = this.stateMachine.completedCount();
     const currentPomodoro = (phase === 'BREAK' || phase === 'LONG_BREAK' || phase === 'OVERDUE')
-      ? this.stateMachine.completedCount()
-      : this.stateMachine.completedCount() + 1;
+      ? ((completedCount - 1) % cycleCount) + 1
+      : (completedCount % cycleCount) + 1;
 
     if (phase === 'OVERDUE') {
       // In OVERDUE state, the timer is fully elapsed (progressFraction = 1.0).
