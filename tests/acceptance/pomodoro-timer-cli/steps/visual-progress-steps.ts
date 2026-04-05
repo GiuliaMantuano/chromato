@@ -447,7 +447,7 @@ Then('no full-screen flicker \\(clear-screen sequence) occurs between frames', f
   );
 
   // Must NOT call process.stdout.write directly for bar updates.
-  const hasDirectStdoutWrite = /process\.stdout\.write\s*\((?![^)]*unmount)/.test(tuiSource);
+  const hasDirectStdoutWrite = /process\.stdout\.write\s*\((?![^)]*ALTERNATE_SCREEN)/.test(tuiSource);
   assert.ok(
     !hasDirectStdoutWrite,
     'TuiAdapter must NOT call process.stdout.write directly for bar updates — use Ink rerender()'

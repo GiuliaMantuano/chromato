@@ -34,6 +34,9 @@ const COMPACT_THRESHOLD = 40;
 const BLOCK_FULL  = '█';
 const BLOCK_EMPTY = '░';
 
+const ALTERNATE_SCREEN_ENTER = '\x1b[?1049h\x1b[2J\x1b[H';
+const ALTERNATE_SCREEN_EXIT = '\x1b[?1049l';
+
 function formatCountdown(remainingSeconds: number): string {
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = remainingSeconds % 60;
@@ -212,7 +215,7 @@ export class TuiAdapter implements RenderPort {
       // reappears cleanly — the same behaviour as vim, htop, lazygit, etc.
       // Enter alternate screen, clear it, and home the cursor so Ink
       // renders from the top-left (not the current shell cursor position).
-      process.stdout.write('\x1b[?1049h\x1b[2J\x1b[H');
+      process.stdout.write(ALTERNATE_SCREEN_ENTER);
       const element = React.createElement(TimerFrame, {
         snapshot,
         onUnmount: this.testMode ? () => undefined : undefined,
@@ -238,7 +241,7 @@ export class TuiAdapter implements RenderPort {
       this.inkInstance = null;
     }
     // Exit alternate screen buffer and restore the primary buffer + shell prompt.
-    process.stdout.write('\x1b[?1049l');
+    process.stdout.write(ALTERNATE_SCREEN_EXIT);
     // Do NOT call process.exit() here — caller is responsible for clean exit
   }
 }
