@@ -110,6 +110,17 @@ When('Kai runs chromato with the --help flag', async function (this: ChromatoHel
   this.secondExitCode = result.exitCode;
 });
 
+When('Kai runs chromato with the --no-color flag', async function (this: ChromatoHelpWorld) {
+  // --no-color is a Commander global flag; remove FORCE_COLOR so Chalk
+  // respects the flag rather than being overridden by FORCE_COLOR.
+  delete this.chromatoEnv['FORCE_COLOR'];
+  delete this.chromatoEnv['NO_COLOR'];
+  const result = await runChromato(this, ['--no-color'], 10_000);
+  this.capturedOutput = result.stdout;
+  this.capturedStderr = result.stderr;
+  this.exitCode = result.exitCode;
+});
+
 // ---------------------------------------------------------------------------
 // Then steps
 // ---------------------------------------------------------------------------
@@ -286,5 +297,40 @@ Then('the ASCII art logo is still present', function (this: ChromatoHelpWorld) {
   assert.ok(
     plain.includes('██████╗') || plain.includes('██╗') || plain.includes('CHROMATO'),
     `Expected ASCII art logo to be present.\nPlain text:\n${plain}`
+  );
+});
+
+Then('the process produces no output on stderr', function (this: ChromatoHelpWorld) {
+  const stripped = this.capturedStderr.trim();
+  assert.strictEqual(
+    stripped,
+    '',
+    `Expected empty stderr but got:\n${this.capturedStderr}`
+  );
+});
+
+Then('the tagline is rendered with bold ANSI styling', function (this: ChromatoHelpWorld) {
+  // chalk.bold emits SGR code 1 (\x1b[1m). Verify bold code is present in the
+  // output — this is the observable proxy for AC-HSS-02.2 (bold white tagline).
+  const hasBold = /\x1b\[1m/.test(this.capturedOutput);
+  assert.ok(
+    hasBold,
+    `Expected bold ANSI styling (\x1b[1m) for tagline but not found.\nOutput:\n${this.capturedOutput}`
+  );
+  // Also verify the tagline text itself is in the output.
+  const plain = stripAnsi(this.capturedOutput);
+  assert.ok(
+    plain.includes(TAGLINE),
+    `Expected tagline "${TAGLINE}" in output.\nPlain text:\n${plain}`
+  );
+});
+
+Then('the dividers are rendered with dim ANSI styling', function (this: ChromatoHelpWorld) {
+  // chalk.dim emits SGR code 2 (\x1b[2m). Verify dim code is present in the
+  // output — this is the observable proxy for AC-HSS-02.3 (dim dividers).
+  const hasDim = /\x1b\[2m/.test(this.capturedOutput);
+  assert.ok(
+    hasDim,
+    `Expected dim ANSI styling (\x1b[2m) for dividers but not found.\nOutput:\n${this.capturedOutput}`
   );
 });
