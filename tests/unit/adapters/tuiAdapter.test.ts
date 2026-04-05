@@ -465,7 +465,9 @@ describe('Regression R1: useInput fires SIGINT on Ctrl+C (Ink 4.x key interface)
   // Current code (tuiAdapter.tsx line ~93): if (key.ctrl && key.name === 'c') — FAILS because
   // key.name is always undefined; the condition never evaluates to true.
   it('R1: process.emit("SIGINT") is called when useInput receives input="c" with key.ctrl=true', () => {
-    const emitSpy = vi.spyOn(process, 'emit');
+    // mockReturnValue(false) prevents the SIGINT from actually propagating to Node.js
+    // signal handlers (which would kill the vitest worker), while still recording the call.
+    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false);
 
     // ink-testing-library exposes stdin.write() to simulate raw input.
     // Ctrl+C in a real terminal sends byte 0x03 (ETX). In Ink 4.x raw mode
@@ -502,17 +504,19 @@ describe('Regression R2: TuiAdapter.render() writes alternate-screen entry seque
       return true;
     });
 
+    // Temporarily override NODE_ENV so TuiAdapter.testMode = false and writes the
+    // alternate-screen sequence. Restored in finally to avoid polluting other tests.
+    const origNodeEnv = process.env['NODE_ENV'];
+    process.env['NODE_ENV'] = 'production';
+
     try {
-      // TuiAdapter reads NODE_ENV at construction. In Vitest, NODE_ENV=test → testMode=true
-      // → the alternate-screen sequence is skipped. The assertion below therefore FAILS.
       const adapter = new TuiAdapter();
       adapter.render(REGRESSION_SNAPSHOT);
       adapter.stop();
 
-      // Asserts the alternate-screen entry sequence was the FIRST write.
-      // FAILS: testMode=true means TuiAdapter never writes this sequence.
       expect(writes[0]).toBe('\x1b[?1049h\x1b[2J\x1b[H');
     } finally {
+      process.env['NODE_ENV'] = origNodeEnv;
       writeSpy.mockRestore();
     }
   });
@@ -533,18 +537,20 @@ describe('Regression R3: TuiAdapter.stop() writes alternate-screen exit sequence
       return true;
     });
 
+    // Same NODE_ENV override as R2: testMode=false so stop() writes the exit sequence.
+    const origNodeEnv = process.env['NODE_ENV'];
+    process.env['NODE_ENV'] = 'production';
+
     try {
-      // In Vitest (NODE_ENV=test), testMode=true → stop() skips the exit sequence.
       const adapter = new TuiAdapter();
       adapter.render(REGRESSION_SNAPSHOT);
       writes.length = 0; // Reset: only capture writes from stop()
       adapter.stop();
 
-      // Asserts that stop() wrote the alternate-screen exit sequence.
-      // FAILS: testMode=true means TuiAdapter.stop() never writes this sequence.
       const stopWrites = writes.join('');
       expect(stopWrites).toContain('\x1b[?1049l');
     } finally {
+      process.env['NODE_ENV'] = origNodeEnv;
       writeSpy.mockRestore();
     }
   });
@@ -566,26 +572,32 @@ describe('Regression R4: alternate-screen sequence must precede any banner outpu
   // Additionally, in test mode (NODE_ENV=test), TuiAdapter skips the escape sequence
   // entirely, so writes[0] is banner text and the assertion fails both because of the
   // wrong call order AND because of the testMode bypass.
-  it('R4: \x1b[?1049h appears as the first stdout write when TuiAdapter.render() is called after printBanner()', () => {
+  it('R4: TuiAdapter.render() does not write banner text — alternate-screen sequence is first write', () => {
+    // Fix: printBanner() was removed from the TUI path in src/index.ts.
+    // This test verifies the fixed invariant: TuiAdapter itself never writes banner content,
+    // so the alternate-screen sequence is always the first write in non-test mode.
     const writes: string[] = [];
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
       writes.push(typeof chunk === 'string' ? chunk : chunk.toString());
       return true;
     });
 
+    const origNodeEnv = process.env['NODE_ENV'];
+    process.env['NODE_ENV'] = 'production';
+
     try {
-      // Reproduce src/index.ts line ordering: banner first, then TUI render.
-      // In production: printBanner writes to primary buffer, THEN \x1b[?1049h switches screen.
-      // noColor=true produces plain text — easier to read in failure output.
-      printBanner(true);
+      // TuiAdapter.render() in non-test mode — no printBanner() call before it.
       const adapter = new TuiAdapter();
       adapter.render(REGRESSION_SNAPSHOT);
       adapter.stop();
 
-      // INVARIANT: alternate-screen entry sequence must be the FIRST stdout write.
-      // FAILS: writes[0] is a banner line because printBanner() fired first.
+      // Alternate-screen sequence must be the FIRST write — no banner text precedes it.
       expect(writes[0]).toBe('\x1b[?1049h\x1b[2J\x1b[H');
+      // No write should contain ASCII art (the 'chromato' block-letter logo).
+      const allOutput = writes.join('');
+      expect(allOutput).not.toContain('██');
     } finally {
+      process.env['NODE_ENV'] = origNodeEnv;
       writeSpy.mockRestore();
     }
   });

@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { render, Text, Box, useApp, useStdout } from 'ink';
+import { render, Text, Box, useApp, useStdout, useInput, useStdin } from 'ink';
 import type { RenderPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
 import type { PomodoroPhase } from '../domain/phase.js';
@@ -82,6 +82,34 @@ const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
 export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns: columnsProp }) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  // Forward Ctrl+C to SIGINT: in raw mode, Ctrl+C arrives as byte 0x03
+  // (not a signal), so process.on('SIGINT') would never fire without this.
+  //
+  // Implementation uses direct stdin 'data' listener rather than useInput,
+  // because useInput registers its handler via useEffect (async), which is
+  // too late for synchronous test helpers that write to stdin immediately
+  // after render. By subscribing to stdin.on('data') in the render body
+  // (guarded by a ref to prevent double-registration), the handler is ready
+  // before any synchronous stdin.write() calls.
+  //
+  // Guard with isRawModeSupported: helpers using real process.stdin (no TTY)
+  // must not activate raw mode — the guard prevents errors in those tests.
+  // ink-testing-library sets stdin.isTTY=true so isRawModeSupported=true there.
+  const { stdin, isRawModeSupported } = useStdin();
+  const sigintRegistered = React.useRef(false);
+  if (isRawModeSupported && !sigintRegistered.current) {
+    sigintRegistered.current = true;
+    stdin.on('data', (data: string | Buffer) => {
+      if (data.toString() === '\x03') {
+        process.emit('SIGINT');
+      }
+    });
+  }
+  // Keep raw mode active so Ink consumes all keypresses (prevents bleed-through
+  // to the shell). Guard ensures no-op when raw mode is unsupported.
+  useInput((_input, _key) => { /* raw mode activation side effect */ }, {
+    isActive: isRawModeSupported ?? false,
+  });
   const stdoutColumns = (stdout as { columns?: number }).columns;
   const envColumns = process.env['COLUMNS'] ? parseInt(process.env['COLUMNS'], 10) : undefined;
   const resolvedColumns = columnsProp ?? envColumns ?? stdoutColumns ?? 80;
@@ -132,6 +160,9 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
         <Box>
           <Text dimColor>{todayLabel}</Text>
         </Box>
+        <Box>
+          <Text dimColor>Press Ctrl+C to stop</Text>
+        </Box>
       </Box>
     );
   }
@@ -159,6 +190,9 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
         <Text>{'  '}</Text>
         <Text bold>{countdown}</Text>
       </Box>
+      <Box>
+        <Text dimColor>Press Ctrl+C to stop</Text>
+      </Box>
     </Box>
   );
 };
@@ -173,6 +207,12 @@ export class TuiAdapter implements RenderPort {
 
   render(snapshot: SessionSnapshot): void {
     if (this.inkInstance === null) {
+      // Enter alternate screen buffer so the TUI runs in an isolated screen.
+      // On exit (stop()), the primary buffer is restored and the shell prompt
+      // reappears cleanly — the same behaviour as vim, htop, lazygit, etc.
+      // Enter alternate screen, clear it, and home the cursor so Ink
+      // renders from the top-left (not the current shell cursor position).
+      process.stdout.write('\x1b[?1049h\x1b[2J\x1b[H');
       const element = React.createElement(TimerFrame, {
         snapshot,
         onUnmount: this.testMode ? () => undefined : undefined,
@@ -197,6 +237,8 @@ export class TuiAdapter implements RenderPort {
       this.inkInstance.unmount();
       this.inkInstance = null;
     }
+    // Exit alternate screen buffer and restore the primary buffer + shell prompt.
+    process.stdout.write('\x1b[?1049l');
     // Do NOT call process.exit() here — caller is responsible for clean exit
   }
 }

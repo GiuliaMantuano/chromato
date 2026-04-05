@@ -70,7 +70,6 @@ const isMinimalStart = isStartCommand && (
 
 const startModulesP = isStartCommand && !isMinimalStart
   ? Promise.all([
-      import('./adapters/bannerAdapter.js'),
       import('./adapters/tuiAdapter.js'),
       import('./application/sessionService.js'),
       import('./adapters/persistenceAdapter.js'),
@@ -177,21 +176,16 @@ program
 
     // Full TUI mode: await the pre-loaded modules (already resolving in parallel since argv check).
     const [
-      { printBanner },
       { TuiAdapter },
       { SessionService },
       { PersistenceAdapter },
       { NotificationAdapter },
     ] = await (startModulesP ?? Promise.all([
-      import('./adapters/bannerAdapter.js'),
       import('./adapters/tuiAdapter.js'),
       import('./application/sessionService.js'),
       import('./adapters/persistenceAdapter.js'),
       import('./adapters/notificationAdapter.js'),
     ] as const));
-
-    // Print ASCII art banner before TUI renders (stdout, stays above Ink output).
-    printBanner(opts.color === false);
 
     // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
     if (autoDetectedAscii) {
