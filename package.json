@@ -1,6 +1,6 @@
 {
   "name": "chromato",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "The Pomodoro timer your terminal deserves",
   "type": "module",
   "bin": {
@@ -46,18 +46,19 @@
   },
   "license": "MIT",
   "author": "Giulia Mantuano",
-  "homepage": "https://github.com/chromato/chromato#readme",
+  "homepage": "https://github.com/GiuliaMantuano/chromato#readme",
   "bugs": {
-    "url": "https://github.com/chromato/chromato/issues"
+    "url": "https://github.com/GiuliaMantuano/chromato/issues"
   },
   "files": [
     "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/chromato/chromato"
+    "url": "https://github.com/GiuliaMantuano/chromato"
   },
   "keywords": [
     "pomodoro",
