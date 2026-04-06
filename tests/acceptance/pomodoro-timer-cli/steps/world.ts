@@ -78,8 +78,14 @@ class ChromatoWorldImpl extends World implements ChromatoWorld {
     this.stateFilePath = path.join(this.tempDir, 'state.json');
 
     // Base environment: isolate XDG paths to the temp directory.
+    // Remove shell-local color overrides so acceptance scenarios control
+    // rendering mode explicitly instead of inheriting the parent terminal.
+    const inheritedEnv = { ...process.env };
+    delete inheritedEnv.NO_COLOR;
+    delete inheritedEnv.FORCE_COLOR;
+
     this.chromatoEnv = {
-      ...process.env,
+      ...inheritedEnv,
       XDG_DATA_HOME: this.tempDir,
       XDG_CONFIG_HOME: path.join(this.tempDir, 'config'),
       NODE_ENV: 'test',

@@ -33,9 +33,15 @@ const argv = process.argv;
 // Handles the status subcommand without loading commander, which adds 5-7ms
 // of cold-start cost incompatible with the <50ms AC-03.1 budget.
 if (argv[2] === 'status') {
-  const { PersistenceAdapter } = await import('./adapters/persistenceAdapter.js');
-  const { StatusAdapter } = await import('./adapters/statusAdapter.js');
-  const { StatusService } = await import('./application/statusService.js');
+  const [
+    { PersistenceAdapter },
+    { StatusAdapter },
+    { StatusService },
+  ] = await Promise.all([
+    import('./adapters/persistenceAdapter.js'),
+    import('./adapters/statusAdapter.js'),
+    import('./application/statusService.js'),
+  ] as const);
 
   const formatIdx = argv.indexOf('--format');
   const formatValue = formatIdx !== -1 ? argv[formatIdx + 1] : 'plain';
