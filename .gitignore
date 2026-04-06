@@ -6,3 +6,5 @@ reports/*.json
 reports/*.html
 .env
 .DS_Store
+.nwave/
+.pnpm-store/
