@@ -8,9 +8,9 @@ This guide walks you through manual testing of the chromato Pomodoro timer. Each
 
 **Goal**: Prepare your environment to run chromato.
 
-1. Open Terminal and navigate to the project folder:
+1. After cloning the repo, navigate into the project folder:
    ```
-   cd <repo>
+   cd chromato
    ```
    ✅ You should see the command prompt return with no errors.
 
@@ -250,9 +250,8 @@ node_modules/.bin/tsx src/index.ts start --work 1
 
 Let it run (the TUI displays the countdown).
 
-**Step 2**: Open a **second** Terminal window and navigate to the project:
+**Step 2**: Open a **second** Terminal window and navigate into your local `chromato` clone. Then activate the correct Node version:
 ```
-cd <repo>
 export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"
 ```
 
@@ -317,7 +316,7 @@ node node_modules/@cucumber/cucumber/bin/cucumber.js --config cucumber.config.mj
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | `error: option '--work' must be a positive integer` | `--work` only accepts whole minutes (1, 2, 3…) | Use `CHROMATO_WORK_SECONDS=6` instead for short tests |
-| `zsh: no such file or directory: node_modules/.bin/tsx` | Not in project folder | Run `cd <repo>` first |
+| `zsh: no such file or directory: node_modules/.bin/tsx` | Not in project folder | Run `cd` into the `chromato` folder first |
 | `command not found: nvm` | nvm not in current shell session | Run `export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"` |
 | Progress bar shows `=---` instead of `█░` | ASCII fallback (TERM or locale setting) | Run with `--ascii` to confirm fallback is working, or ignore |
 | Screen blank after `Ctrl+C` | Ink clears terminal on exit | Normal — your prompt will return |
