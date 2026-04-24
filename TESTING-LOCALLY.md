@@ -4,6 +4,16 @@ This guide walks you through manual testing of the chromato Pomodoro timer. Each
 
 ---
 
+## Prerequisites
+
+Before you start, make sure these are installed:
+
+- **Node.js** — v20 or newer (see `.nvmrc` for the exact version CI uses)
+- **pnpm** — the project's package manager. If you don't have it yet: `npm install -g pnpm`
+- **Git** — for cloning the repo
+
+---
+
 ## Setup (one time only)
 
 **Goal**: Prepare your environment to run chromato.
@@ -14,17 +24,11 @@ This guide walks you through manual testing of the chromato Pomodoro timer. Each
    ```
    ✅ You should see the command prompt return with no errors.
 
-2. Activate Node.js v24.13.0:
+2. Verify your Node.js version:
    ```
-   nvm use
+   node --version
    ```
-   ✅ You should see: `Now using node v24.13.0`
-
-   If `nvm use` fails with "command not found: nvm", run this instead:
-   ```
-   export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"
-   ```
-   ✅ No visible output is expected — the PATH is now updated.
+   ✅ Should print `v20.x.x` or newer. To match CI exactly, use the version pinned in `.nvmrc` — activate it via your preferred Node version manager (nvm, asdf, volta, fnm).
 
 3. Install dependencies:
    ```
@@ -250,10 +254,7 @@ node_modules/.bin/tsx src/index.ts start --work 1
 
 Let it run (the TUI displays the countdown).
 
-**Step 2**: Open a **second** Terminal window and navigate into your local `chromato` clone. Then activate the correct Node version:
-```
-export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"
-```
+**Step 2**: Open a **second** Terminal window and navigate into your local `chromato` clone. If your Node version manager requires re-activation per shell, do that now.
 
 **Step 3**: In the second window, check the plain-text status:
 ```
