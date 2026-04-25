@@ -56,7 +56,7 @@ Run:
 node_modules/.bin/tsx src/index.ts --help
 ```
 
-✅ You should see an ASCII banner, the tagline "The Pomodoro timer your terminal deserves", and a styled list of commands (`start`, `status`, `stop`) with descriptions.
+✅ You should see an ASCII banner, the tagline "The Pomodoro timer your terminal deserves", an "Examples" block with common invocations, a "Tmux integration" hint, and a "Commands" list. As of this writing, only `start` is listed under Commands; `status` is referenced in the Examples block (it's available but hidden from the top-level command list).
 
 ---
 
@@ -294,6 +294,11 @@ Return to the first window and press `Ctrl+C` to stop.
 **Goal**: Verify all unit, integration, and acceptance tests pass.
 
 ```
+pnpm test
+```
+
+Or if pnpm is not on PATH:
+```
 node node_modules/vitest/vitest.mjs run
 ```
 
@@ -339,4 +344,4 @@ node node_modules/@cucumber/cucumber/bin/cucumber.js --config cucumber.config.mj
 
 - **Run all sections** to verify the feature is working end-to-end.
 - **Report any crashes or unexpected output** to the development team.
-- **If tests fail** beyond the known `better-sqlite3` issue, investigate further.
+- **If tests fail**, investigate further.
