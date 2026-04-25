@@ -299,7 +299,7 @@ pnpm test
 
 Or if pnpm is not on PATH:
 ```
-node node_modules/vitest/vitest.mjs run
+node build.mjs && node node_modules/vitest/vitest.mjs run
 ```
 
 ✅ You should see test output with all tests passing. The acceptance test suite (BDD) runs separately:
