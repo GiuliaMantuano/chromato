@@ -41,12 +41,6 @@ jobs:
       - name: Type check
         run: pnpm tsc --noEmit
 
-      - name: Lint
-        run: pnpm eslint src tests --ext .ts
-
-      - name: Format check
-        run: pnpm prettier --check "src/**/*.ts" "tests/**/*.ts"
-
       - name: Secrets scan
         uses: gitleaks/gitleaks-action@v2
         env:

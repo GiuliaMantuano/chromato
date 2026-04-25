@@ -117,6 +117,7 @@ program.addHelpText('beforeAll', () => {
   const useAscii = detectNonUnicode() || process.argv.includes('--ascii');
   printBanner(noColor, useAscii);
   printHelpSplash(noColor, useAscii);
+  return '';
 });
 
 program.addHelpText('beforeAll', () => {
