@@ -19,10 +19,15 @@ jobs:
     name: Commit Stage
     runs-on: ubuntu-22.04
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -49,6 +54,9 @@ jobs:
       - name: Architecture check
         run: pnpm depcruise --validate .dependency-cruiser.cjs src
 
+      - name: Build
+        run: pnpm build
+
       - name: Unit tests with coverage
         run: pnpm vitest run --coverage --reporter=verbose tests/unit/
 
@@ -68,9 +76,6 @@ jobs:
 
       - name: Dependency audit
         run: pnpm audit --audit-level=high
-
-      - name: Build
-        run: pnpm build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
