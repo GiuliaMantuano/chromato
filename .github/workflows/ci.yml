@@ -306,8 +306,12 @@ jobs:
     steps:
       - name: Check all jobs passed
         run: |
+          # security job (CodeQL SAST) is not gated here: this repo is private
+          # under a personal account, and CodeQL on private repos requires
+          # GitHub Advanced Security (Enterprise org only). The job still runs
+          # for visibility but its result is not a merge blocker. Re-add the
+          # `needs.security.result` check here once the repo is made public.
           if [ "${{ needs.commit.result }}" != "success" ] || \
-             [ "${{ needs.security.result }}" != "success" ] || \
              [ "${{ needs.integration-tests.result }}" != "success" ] || \
              [ "${{ needs.tmux-matrix.result }}" != "success" ] || \
              [ "${{ needs.benchmarks.result }}" != "success" ]; then
