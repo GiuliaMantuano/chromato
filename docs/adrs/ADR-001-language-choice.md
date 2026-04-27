@@ -1,6 +1,6 @@
 # ADR-001: Language Choice -- TypeScript
 
-**Status**: Accepted (supersedes Python decision; revised 2026-03-28 per user feedback)
+**Status**: Accepted (supersedes Python decision; revised 2026-03-28 per user feedback). Startup-budget references in this document (line 13 "sub-100ms startup", line 63 "within the 100ms target") are partially superseded by [ADR-006](ADR-006-startup-budget-alignment.md) -- the 100ms target was always defined in `acceptance-criteria.md` as the post-MVP compiled-binary target; the Node.js MVP budget is 700ms.
 **Date**: 2026-03-28
 **Feature**: pomodoro-timer-cli
 **Deciders**: Morgan (solution-architect)

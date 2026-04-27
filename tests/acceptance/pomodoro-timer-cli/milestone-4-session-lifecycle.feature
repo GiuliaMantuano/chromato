@@ -24,12 +24,13 @@ Feature: Session lifecycle covers start, configuration, completion, and clean ex
   # HAPPY PATH
   # -----------------------------------------------------------------------
 
-  # AC-05.1: First TUI frame within 100ms
+  # AC-05.1: First TUI frame within 700ms (Node.js + Ink MVP budget)
+  # Post-MVP compiled-binary target: <100ms (see ADR-006)
   @US-05 @AC-05.1
-  Scenario: First TUI frame appears within 100 milliseconds of starting a session
+  Scenario: First TUI frame appears within 700 milliseconds of starting a session
     Given no previous session state exists
     When Natasha runs "chromato start" with default configuration
-    Then the first output frame appears within 100 milliseconds of process start
+    Then the first output frame appears within 700 milliseconds of process start
     And the frame shows the work phase timer at "25:00"
 
   # AC-05.2: Default session uses 25/5 with no config file required

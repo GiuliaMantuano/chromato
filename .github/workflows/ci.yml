@@ -1,8 +1,11 @@
 name: CI
 
 on:
+  # Run on PRs targeting main, plus PRs targeting any fix/* branch so that
+  # stacked PRs (e.g. PR #35 stacked on PR #34) get their own CI signal
+  # instead of waiting for the parent PR to merge first.
   pull_request:
-    branches: [main]
+    branches: [main, 'fix/**']
   push:
     branches: [main]
 

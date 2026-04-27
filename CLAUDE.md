@@ -125,7 +125,7 @@ Rule 3 is critical for performance: the `chromato status --format tmux` path mus
 
 These are behavioral invariants the crafter must preserve. They are tested in the acceptance test suite.
 
-- `chromato start` renders first frame within 100ms of invocation (AC-NF1)
+- `chromato start` renders first frame within 700ms of invocation (AC-NF1; aligned with documented AC value 2026-04-27 -- post-MVP compiled-binary target remains <100ms; see ADR-006)
 - `chromato status --format tmux` completes in under 50ms (AC-03.1)
 - `state.json` is valid JSON at all times, including during concurrent writes (AC-P4)
 - Phase transitions are atomic: no intermediate render state visible (AC-02.1)
