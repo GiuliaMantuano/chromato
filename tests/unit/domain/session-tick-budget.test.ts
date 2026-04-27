@@ -8,7 +8,7 @@
  *   M6-04: RSS memory stays below 35 MB during steady-state operation
  *
  * The authoritative CPU/RSS measurements run in the CI benchmark job
- * (scripts/benchmark-rss.js) against a live process. These unit tests verify
+ * (scripts/benchmark-rss.cjs) against a live process. These unit tests verify
  * the structural properties that *enable* meeting those budgets:
  *
  *   B1: events do not accumulate between drain() calls (no event-queue leak)

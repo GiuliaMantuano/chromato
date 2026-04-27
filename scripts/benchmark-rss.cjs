@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * benchmark-rss.js
+ * benchmark-rss.cjs
  *
  * Measures RSS memory and CPU usage of chromato in steady-state idle.
  *

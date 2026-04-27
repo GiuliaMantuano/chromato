@@ -162,7 +162,7 @@ When(
 When('the RSS memory of the chromato process is measured', function (this: ChromatoWorld) {
   // RSS is measured after steady state. The Then step reads the process RSS.
   // Note: in acceptance tests we measure the test process RSS as a proxy;
-  // the CI benchmark job (scripts/benchmark-rss.js) provides the authoritative measurement.
+  // the CI benchmark job (scripts/benchmark-rss.cjs) provides the authoritative measurement.
 });
 
 When(
@@ -256,7 +256,7 @@ Then(
   'the average CPU percentage over the {int}-second window is below {int} percent',
   function (this: ChromatoWorld, _seconds: number, maxCpu: number) {
     // In acceptance tests, we use process.cpuUsage() as a proxy.
-    // The authoritative measurement is in the CI benchmark job (scripts/benchmark-rss.js).
+    // The authoritative measurement is in the CI benchmark job (scripts/benchmark-rss.cjs).
     // Here we verify the process has not consumed an unreasonable amount of CPU
     // by checking that the test itself did not hang.
     assert.ok(
