@@ -75,8 +75,16 @@ class ChromatoHelpWorldImpl extends World implements ChromatoHelpWorld {
     // FORCE_COLOR: '2' ensures chalk emits ANSI even over a pipe (default
     // for scenarios that test color presence). Override in steps for
     // NO_COLOR / no-ANSI scenarios.
+    const inheritedEnv = { ...process.env };
+    // Scrub CI so Ink's is-ci auto-detection does not flip into buffered-output
+    // mode. Help-splash scenarios don't currently render via Ink, but spawned
+    // chromato may transitively load it; deleting CI here keeps the harness
+    // consistent with the pomodoro-timer-cli world and prevents the same
+    // latent bug from biting any future help scenario that asserts on
+    // streamed output.
+    delete inheritedEnv.CI;
     this.chromatoEnv = {
-      ...process.env,
+      ...inheritedEnv,
       XDG_DATA_HOME: this.tempDir,
       XDG_CONFIG_HOME: path.join(this.tempDir, 'config'),
       NODE_ENV: 'production',

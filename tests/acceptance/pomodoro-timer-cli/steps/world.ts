@@ -83,6 +83,13 @@ class ChromatoWorldImpl extends World implements ChromatoWorld {
     const inheritedEnv = { ...process.env };
     delete inheritedEnv.NO_COLOR;
     delete inheritedEnv.FORCE_COLOR;
+    // Scrub CI so Ink's is-ci auto-detection does not flip into buffered-output
+    // mode, which only flushes dynamic frame content at unmount and breaks any
+    // scenario that reads stdout while chromato is still running. The
+    // acceptance suite asserts on the production interactive rendering path;
+    // CI-aware buffering is the wrong mode under test even when GitHub Actions
+    // sets CI=true on the runner.
+    delete inheritedEnv.CI;
 
     this.chromatoEnv = {
       ...inheritedEnv,
