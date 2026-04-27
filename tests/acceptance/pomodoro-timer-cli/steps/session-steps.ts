@@ -312,11 +312,29 @@ When('the developer runs {string} with a {int}-minute work session', async funct
 
 When('Natasha runs {string}', async function (this: ChromatoWorld, command: string) {
   const args = parseCommand(command);
-  // Run chromato for 200ms to capture the initial TUI frame, then terminate.
-  const result = await runChromato(this, args, 200);
-  this.capturedOutput = result.stdout;
-  this.capturedStderr = result.stderr;
-  this.exitCode = result.exitCode;
+  // Spawn chromato, accumulate stdout, kill as soon as the initial TimerFrame
+  // (containing "25:00") is rendered. 5000ms upper bound covers slow CI.
+  // Same wait-for-content pattern as phase-transition-steps.ts (Marcus fixture).
+  // Replaces a previous 200ms fixed-wait that was too tight on ubuntu CI runners
+  // (first-byte 266-297ms) -- see ADR-006 for the empirical-NFR precedent.
+  const proc = spawnChromato(this, args);
+  let timedOut = false;
+  try {
+    await waitForOutput(proc, /25:00/, 5000);
+  } catch (err) {
+    timedOut = true;
+    // Fall through: kill, then let the assertion in the Then step report
+    // the empty/partial capturedOutput. Re-throwing here would mask the
+    // original Then-step failure with a less actionable timeout error.
+  }
+  await new Promise<void>((resolve) => {
+    if (proc.exitCode !== null || proc.killed) return resolve();
+    proc.once('exit', () => resolve());
+    proc.kill('SIGTERM');
+  });
+  // capturedOutput / capturedStderr / exitCode were set by spawnChromato's
+  // streaming listeners; no further wiring needed.
+  void timedOut; // Suppress unused-var warning; the timeout is intentionally swallowed.
 });
 
 When('Natasha runs {string} with default configuration', async function (
@@ -334,10 +352,23 @@ When('Natasha runs {string} with default configuration', async function (
 When('she starts chromato again later the same day', async function (this: ChromatoWorld) {
   // Restart chromato -- simulates a new process launch after a previous session.
   // The statePort will read completedToday from the persisted state.json written by the Given step.
-  const result = await runChromato(this, ['start', '--work', '25'], 500);
-  this.capturedOutput = result.stdout;
-  this.capturedStderr = result.stderr;
-  this.exitCode = result.exitCode;
+  // Wait for the initial TimerFrame ("25:00") rather than a fixed 500ms timeout
+  // (same root cause + fix as the "Natasha runs {string}" step above; flagged by RCA
+  // as flaky territory on ubuntu CI -- 500ms only had ~200ms margin over ubuntu's
+  // p95 first-byte time of 266-297ms).
+  const proc = spawnChromato(this, ['start', '--work', '25']);
+  let timedOut = false;
+  try {
+    await waitForOutput(proc, /25:00/, 5000);
+  } catch (err) {
+    timedOut = true;
+  }
+  await new Promise<void>((resolve) => {
+    if (proc.exitCode !== null || proc.killed) return resolve();
+    proc.once('exit', () => resolve());
+    proc.kill('SIGTERM');
+  });
+  void timedOut;
 });
 
 When('she runs {string}', async function (this: ChromatoWorld, command: string) {
