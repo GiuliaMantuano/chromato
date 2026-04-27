@@ -75,8 +75,21 @@ class ChromatoHelpWorldImpl extends World implements ChromatoHelpWorld {
     // FORCE_COLOR: '2' ensures chalk emits ANSI even over a pipe (default
     // for scenarios that test color presence). Override in steps for
     // NO_COLOR / no-ANSI scenarios.
+    const inheritedEnv = { ...process.env };
+    // Force Ink off its CI-aware buffered-output path. ci-info treats the
+    // literal string 'false' as a hard bypass that overrides every vendor
+    // signal (GITHUB_ACTIONS, BUILDKITE, CIRCLECI, ...); ink.js:17 honours
+    // the same convention. Deleting CI is insufficient because GH Actions
+    // runners set GITHUB_ACTIONS=true, which independently triggers
+    // ci-info's vendor detection.
+    //
+    // Refs:
+    //   node_modules/.pnpm/ci-info@3.9.0/node_modules/ci-info/index.js:57
+    //   node_modules/ink/build/ink.js:17
+    // If ci-info or ink are upgraded, re-verify this bypass still applies.
+    inheritedEnv.CI = 'false';
     this.chromatoEnv = {
-      ...process.env,
+      ...inheritedEnv,
       XDG_DATA_HOME: this.tempDir,
       XDG_CONFIG_HOME: path.join(this.tempDir, 'config'),
       NODE_ENV: 'production',

@@ -8,9 +8,14 @@
 
 export default {
   paths: ['tests/acceptance/pomodoro-timer-cli/**/*.feature'],
-  // Use `import` (not `require`) with tsx for ESM-compatible TS loading
-  import: ['tests/acceptance/pomodoro-timer-cli/steps/**/*.ts'],
-  requireModule: ['tsx'],
+  // Register tsx's ESM hook FIRST, then load step files. Order matters:
+  // the register file must precede any *.ts entries. requireModule was the
+  // legacy CJS recipe and is incompatible with this project's ESM-native config;
+  // keeping both produced a leaked esbuild service that hung CI.
+  import: [
+    './cucumber.tsx-register.mjs',
+    'tests/acceptance/pomodoro-timer-cli/steps/**/*.ts',
+  ],
   format: [
     'progress-bar',
     'json:reports/cucumber-report.json',
@@ -20,6 +25,11 @@ export default {
   timeout: 30_000,
   retry: process.env.CI ? 1 : 0,
   failFast: !process.env.CI,
+  // Force exit after the run. Default false lets the event loop drain naturally,
+  // which hangs CI forever if any transitive dep leaks a handle. Trade-off:
+  // could mask a future leak in step code; periodically run locally without
+  // this key to detect new leaks early.
+  forceExit: true,
   worldParameters: {
     chromatoLogLevel: process.env.CHROMATO_LOG_LEVEL || 'silent',
   },

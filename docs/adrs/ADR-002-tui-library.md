@@ -1,6 +1,6 @@
 # ADR-002: TUI Library -- Ink 4.x (with chalk-only status path)
 
-**Status**: Accepted (revised 2026-03-28; updated for TypeScript ecosystem)
+**Status**: Accepted (revised 2026-03-28; updated for TypeScript ecosystem). Startup-budget reference at line 109 ("the 100ms startup budget accommodates [Ink's React reconciler]") is partially superseded by [ADR-006](ADR-006-startup-budget-alignment.md) -- the start-path MVP budget is 700ms; the 100ms target moves to the post-MVP compiled binary.
 **Date**: 2026-03-28
 **Feature**: pomodoro-timer-cli
 **Deciders**: Morgan (solution-architect)
