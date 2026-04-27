@@ -76,13 +76,18 @@ class ChromatoHelpWorldImpl extends World implements ChromatoHelpWorld {
     // for scenarios that test color presence). Override in steps for
     // NO_COLOR / no-ANSI scenarios.
     const inheritedEnv = { ...process.env };
-    // Scrub CI so Ink's is-ci auto-detection does not flip into buffered-output
-    // mode. Help-splash scenarios don't currently render via Ink, but spawned
-    // chromato may transitively load it; deleting CI here keeps the harness
-    // consistent with the pomodoro-timer-cli world and prevents the same
-    // latent bug from biting any future help scenario that asserts on
-    // streamed output.
-    delete inheritedEnv.CI;
+    // Force Ink off its CI-aware buffered-output path. ci-info treats the
+    // literal string 'false' as a hard bypass that overrides every vendor
+    // signal (GITHUB_ACTIONS, BUILDKITE, CIRCLECI, ...); ink.js:17 honours
+    // the same convention. Deleting CI is insufficient because GH Actions
+    // runners set GITHUB_ACTIONS=true, which independently triggers
+    // ci-info's vendor detection.
+    //
+    // Refs:
+    //   node_modules/.pnpm/ci-info@3.9.0/node_modules/ci-info/index.js:57
+    //   node_modules/ink/build/ink.js:17
+    // If ci-info or ink are upgraded, re-verify this bypass still applies.
+    inheritedEnv.CI = 'false';
     this.chromatoEnv = {
       ...inheritedEnv,
       XDG_DATA_HOME: this.tempDir,

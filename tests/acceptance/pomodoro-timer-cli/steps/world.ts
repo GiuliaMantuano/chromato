@@ -83,13 +83,18 @@ class ChromatoWorldImpl extends World implements ChromatoWorld {
     const inheritedEnv = { ...process.env };
     delete inheritedEnv.NO_COLOR;
     delete inheritedEnv.FORCE_COLOR;
-    // Scrub CI so Ink's is-ci auto-detection does not flip into buffered-output
-    // mode, which only flushes dynamic frame content at unmount and breaks any
-    // scenario that reads stdout while chromato is still running. The
-    // acceptance suite asserts on the production interactive rendering path;
-    // CI-aware buffering is the wrong mode under test even when GitHub Actions
-    // sets CI=true on the runner.
-    delete inheritedEnv.CI;
+    // Force Ink off its CI-aware buffered-output path. ci-info treats the
+    // literal string 'false' as a hard bypass that overrides every vendor
+    // signal (GITHUB_ACTIONS, BUILDKITE, CIRCLECI, ...); ink.js:17 honours
+    // the same convention. Deleting CI is insufficient because GH Actions
+    // runners set GITHUB_ACTIONS=true, which independently triggers
+    // ci-info's vendor detection.
+    //
+    // Refs:
+    //   node_modules/.pnpm/ci-info@3.9.0/node_modules/ci-info/index.js:57
+    //   node_modules/ink/build/ink.js:17
+    // If ci-info or ink are upgraded, re-verify this bypass still applies.
+    inheritedEnv.CI = 'false';
 
     this.chromatoEnv = {
       ...inheritedEnv,
