@@ -130,7 +130,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-12, macos-14]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, macos-15]
 
     steps:
       - name: Checkout
@@ -160,7 +160,7 @@ jobs:
         run: pnpm vitest run --reporter=verbose tests/integration/
 
       - name: Acceptance tests
-        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-12'
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-14'
         run: pnpm cucumber-js --config tests/acceptance/pomodoro-timer-cli/cucumber.config.ts --publish-quiet
 
   tmux-matrix:
