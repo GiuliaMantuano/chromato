@@ -154,9 +154,45 @@ jobs:
       - name: Integration tests
         run: pnpm vitest run --reporter=verbose tests/integration/
 
+  acceptance-tests:
+    name: Acceptance Tests (${{ matrix.os }})
+    needs: commit
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    env:
+      TERM: xterm-256color
+      LANG: en_US.UTF-8
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Acceptance tests
-        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-14'
-        run: pnpm cucumber-js --config tests/acceptance/pomodoro-timer-cli/cucumber.config.ts --publish-quiet
+        run: pnpm test:acceptance
 
   tmux-matrix:
     name: tmux Integration (tmux ${{ matrix.tmux-version }})
@@ -291,7 +327,7 @@ jobs:
 
   all-checks:
     name: All CI Checks
-    needs: [commit, security, integration-tests, tmux-matrix, benchmarks]
+    needs: [commit, security, integration-tests, acceptance-tests, tmux-matrix, benchmarks]
     runs-on: ubuntu-22.04
     if: always()
     steps:
@@ -304,6 +340,7 @@ jobs:
           # `needs.security.result` check here once the repo is made public.
           if [ "${{ needs.commit.result }}" != "success" ] || \
              [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.acceptance-tests.result }}" != "success" ] || \
              [ "${{ needs.tmux-matrix.result }}" != "success" ] || \
              [ "${{ needs.benchmarks.result }}" != "success" ]; then
             echo "One or more CI jobs failed"
