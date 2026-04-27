@@ -57,6 +57,10 @@ pnpm coverage
 | `pnpm coverage` | Run tests and produce a coverage report |
 | `pnpm check:arch` | Enforce dependency-cruiser architecture rules |
 
+### Bumping the package manager
+
+`package.json` pins the package manager via the `packageManager` field (e.g. `"pnpm@10.33.2"`). If you change that version, regenerate `pnpm-lock.yaml` locally with `pnpm install` and commit both files together -- otherwise CI will fail with a lockfile/version mismatch.
+
 ---
 
 ## Test Structure
@@ -89,7 +93,7 @@ chromato uses TypeScript strict mode (`"strict": true` in `tsconfig.json`). A fe
   Adapters must not import each other. Enforced by `pnpm check:arch`.
 - **OOP**: class-based design with dependency injection at the composition root (`src/index.ts`).
 - **No global state**: all state flows through the `Session` aggregate root.
-- **Formatting**: Prettier config in the repository. Run `pnpm format` before committing.
+- **Formatting**: an automated formatter is not yet wired up. Match the surrounding style.
 
 ---
 
