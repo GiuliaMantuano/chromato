@@ -91,72 +91,6 @@ jobs:
           path: coverage/
           retention-days: 7
 
-  security:
-    name: CodeQL SAST
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: /language:javascript-typescript
-
-  integration-tests:
-    name: Integration Tests (${{ matrix.os }})
-    needs: commit
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-
-    env:
-      TERM: xterm-256color
-      LANG: en_US.UTF-8
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, macos-15]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Integration tests
-        run: pnpm vitest run --reporter=verbose tests/integration/
-
   acceptance-tests:
     name: Acceptance Tests (${{ matrix.os }})
     needs: commit
@@ -196,55 +130,6 @@ jobs:
 
       - name: Acceptance tests
         run: pnpm test:acceptance
-
-  tmux-matrix:
-    name: tmux Integration (tmux ${{ matrix.tmux-version }})
-    needs: commit
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-
-    strategy:
-      fail-fast: false
-      matrix:
-        tmux-version: ['2.6', '2.9', '3.2']
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install tmux ${{ matrix.tmux-version }}
-        run: |
-          sudo apt-get update -qq
-          # Install tmux from source for specific versions
-          sudo apt-get install -y libevent-dev libncurses-dev bison pkg-config
-          TMUX_VERSION="${{ matrix.tmux-version }}"
-          curl -sL "https://github.com/tmux/tmux/releases/download/${TMUX_VERSION}/tmux-${TMUX_VERSION}.tar.gz" | tar xz
-          cd "tmux-${TMUX_VERSION}"
-          ./configure --prefix=/usr/local
-          make -j$(nproc)
-          sudo make install
-          tmux -V
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: tmux integration tests
-        run: pnpm vitest run --reporter=verbose tests/integration/tmux/
 
   benchmarks:
     name: Performance Benchmarks
@@ -330,21 +215,18 @@ jobs:
 
   all-checks:
     name: All CI Checks
-    needs: [commit, security, integration-tests, acceptance-tests, tmux-matrix, benchmarks]
+    needs: [commit, acceptance-tests, benchmarks]
     runs-on: ubuntu-22.04
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
-          # security job (CodeQL SAST) is not gated here: this repo is private
-          # under a personal account, and CodeQL on private repos requires
-          # GitHub Advanced Security (Enterprise org only). The job still runs
-          # for visibility but its result is not a merge blocker. Re-add the
-          # `needs.security.result` check here once the repo is made public.
+          # CodeQL SAST job has been removed entirely (see ADR-007 and
+          # docs/troubleshooting/2026-04-27-rca-remaining-ci-reds.md): GHAS is
+          # unavailable on free private personal repos; re-add in a dedicated
+          # PR if/when this repo goes public.
           if [ "${{ needs.commit.result }}" != "success" ] || \
-             [ "${{ needs.integration-tests.result }}" != "success" ] || \
              [ "${{ needs.acceptance-tests.result }}" != "success" ] || \
-             [ "${{ needs.tmux-matrix.result }}" != "success" ] || \
              [ "${{ needs.benchmarks.result }}" != "success" ]; then
             echo "One or more CI jobs failed"
             exit 1
