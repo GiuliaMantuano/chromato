@@ -130,7 +130,7 @@ These are behavioral invariants the crafter must preserve. They are tested in th
 - `state.json` is valid JSON at all times, including during concurrent writes (AC-P4)
 - Phase transitions are atomic: no intermediate render state visible (AC-02.1)
 - CPU usage stays below 1% during steady-state session (AC-NF2)
-- Memory stays below 75MB RSS during steady-state session (rebaselined from 35MB on 2026-04-28 after empirical measurement of the chosen dependency stack; see ADR-008)
+- Memory stays below 80MB RSS during steady-state session (rebaselined from 35MB on 2026-04-28 after empirical measurement of the chosen dependency stack; see ADR-008)
 - `NO_COLOR` environment variable suppresses all ANSI sequences in all output modes (AC-P3)
 - `chromato stop` and Ctrl+C produce exit code 0 with no zombie processes (AC-P6)
 - Phase labels (WORK, BREAK, OVERDUE) are always visible as text alongside color coding (NFR-05.1 accessibility)

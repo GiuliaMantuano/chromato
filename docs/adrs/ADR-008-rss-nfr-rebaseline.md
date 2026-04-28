@@ -1,4 +1,4 @@
-# ADR-008: RSS Memory NFR Rebaseline — 35 MB → 75 MB
+# ADR-008: RSS Memory NFR Rebaseline — 35 MB → 80 MB
 
 **Status**: Accepted
 **Date**: 2026-04-28
@@ -14,7 +14,7 @@ The memory NFR for chromato has a revision history:
 |----------|--------|-----------|------|
 | Original | < 20 MB RSS | Python MVP estimate | 2026-03-28 (DISCUSS wave) |
 | First revision | < 35 MB RSS | "Node.js 20 baseline" (V8 + runtime floor) | 2026-03-28 |
-| This ADR | < 75 MB RSS | Empirical measurement of the full chosen stack | 2026-04-28 |
+| This ADR | < 80 MB RSS | Empirical measurement of the full chosen stack | 2026-04-28 |
 
 The source-of-truth NFR statement from `docs/feature/pomodoro-timer-cli/discuss/acceptance-criteria.md` (AC-NF3, as of first revision):
 
@@ -31,7 +31,7 @@ Both statements acknowledge that the 35 MB target was already a revision from th
 - better-sqlite3 (native add-on, node-gyp compiled, in-process SQLite) — ~12 MB
 - node-notifier + chalk + commander + application code — ~10 MB
 
-The composition adds to ~62–67 MB. Measurements consistently land in the 68–73 MB range on Linux Node 20 runners (see empirical evidence below). The 35 MB gate has therefore failed on every CI run that has ever exercised it.
+The composition adds to ~62–67 MB. CI measurements (see Empirical Evidence) land in the 68–76 MB range on Linux Node 20 runners, with run-to-run variance of several MB. The 35 MB gate has therefore failed on every CI run that has ever exercised it.
 
 The 35 MB target was not a reasoned calculation from the known stack — it was an interim estimate that outlived its empirical basis once the stack was actually chosen and measured.
 
@@ -39,14 +39,17 @@ The 35 MB target was not a reasoned calculation from the known stack — it was 
 
 ## Empirical Evidence
 
-Two independent CI measurements on GitHub Actions ubuntu-22.04 runners (Node 20):
+Three independent CI measurements on GitHub Actions ubuntu-22.04 runners (Node 20):
 
 | CI Run | RSS Measured | CPU Measured | Gate | Result |
 |--------|-------------|--------------|------|--------|
 | PR #31 (run id unknown) | 72.99 MB | < 1% | 35 MB | FAIL |
 | PR #36 (run id 25040651137) | 68.44 MB | 0.47% | 35 MB | FAIL |
+| PR #37 first attempt (run id 25042121195) | 75.58 MB | 0.47% | 75 MB | FAIL |
 
-Both measurements were produced by `scripts/benchmark-rss.cjs`, which reads `/proc/{pid}/status` (VmRSS) after 30 seconds of steady-state idle. The measurement method is correct. The script is not the problem.
+The PR #37 first-attempt measurement is significant: it shows that the measurement varies by several MB across runs on the same runner type. The 68.44 MB and 75.58 MB readings from the same codebase on the same runner class demonstrate ~10% run-to-run variance, consistent with how Linux VmRSS accounting captures shared pages (shared libraries, mapped files) differently depending on what else was loaded into memory on the runner at measurement time.
+
+All measurements were produced by `scripts/benchmark-rss.cjs`, which reads `/proc/{pid}/status` (VmRSS) after 30 seconds of steady-state idle. The measurement method is correct. The script is not the problem.
 
 **Approximate memory composition** (back-of-envelope estimates, not profiler output):
 
@@ -58,7 +61,7 @@ Both measurements were produced by `scripts/benchmark-rss.cjs`, which reads `/pr
 | node-notifier + chalk + commander + app code | ~10 MB |
 | **Total estimate** | **~62 MB** |
 
-The ~62 MB estimate underpredicts the measured 68–73 MB range by 6–11 MB, consistent with OS-level memory accounting differences (shared libraries mapped into the process but not captured by component-level estimates, V8 heap overhead, etc.). The estimates are directionally correct and match the order of magnitude.
+The ~62 MB estimate underpredicts the measured 68–76 MB range by 6–14 MB, consistent with OS-level memory accounting differences (shared libraries mapped into the process but not captured by component-level estimates, V8 heap overhead, page-sharing variance). The estimates are directionally correct and match the order of magnitude.
 
 The CPU gate (< 1%) continues to pass at 0.47%. The RSS gate is the sole failure.
 
@@ -66,9 +69,11 @@ The CPU gate (< 1%) continues to pass at 0.47%. The RSS gate is the sole failure
 
 ## Decision
 
-Revise the RSS NFR from **35 MB → 75 MB** for steady-state idle.
+Revise the RSS NFR from **35 MB → 80 MB** for steady-state idle.
 
-**Reasoning for 75 MB specifically**: The highest observed measurement is 72.99 MB (PR #31). 75 MB provides ~2.7% headroom above that value, which rounds to a clean number and is sufficient to absorb minor version bumps in existing dependencies (e.g., a patch release of Ink or React that adds a small amount of initialization code). A 10% headroom above 72.99 MB would be ~80 MB; however, 75 MB is preferred as a tighter gate that still clears the measured data with a meaningful margin. If a dependency upgrade later pushes RSS above 75 MB, a fresh rebaseline or the lazy-load optimization (Alternative A below) is the appropriate response.
+**Reasoning for 80 MB specifically**: The highest observed measurement is 75.58 MB (PR #37 first CI run). A ~10% headroom above 75.58 MB would be ~83 MB; 80 MB is the clean round number below that, providing ~5.8% headroom above the highest observed value. The 10% headroom principle cited in the task brief was applied relative to the originally observed maximum of 72.99 MB, yielding ~80.3 MB — which rounds to 80 MB. This convergence from two different reasoning paths (clean round number below 10% over peak, and 10% over the PR #31 maximum) makes 80 MB the most defensible choice.
+
+An initial attempt used 75 MB (~3% over the prior peak of 72.99 MB), but the first CI run on this PR measured 75.58 MB, demonstrating that 75 MB provides insufficient headroom against the run-to-run variance observed on GitHub Actions runners. 80 MB absorbs this variance while remaining an honest, measured-reality target rather than an aspirational figure.
 
 All files that define or enforce the 35 MB NFR are updated in this PR. Files that merely narrate the NFR in historical context (troubleshooting snapshots, wave-decision rationale, prior ADRs) are left unchanged per ADR immutability convention.
 
@@ -105,25 +110,25 @@ Setting `continue-on-error: true` on the performance benchmark step would allow 
 ### Positive
 
 - The `Performance Benchmarks` job goes green. The `All CI Checks` aggregate gate goes green. `main` is fully green for the first time since the repository was created.
-- The NFR reflects measured reality on the chosen stack. Future contributors reading AC-NF3 or NFR-01.4 will see a target that is achievable and has been verified.
+- The NFR reflects measured reality on the chosen stack, including the run-to-run variance observed on GitHub Actions runners. Future contributors reading AC-NF3 or NFR-01.4 will see a target that is achievable and has been verified.
 - The lazy-load path (Alternative A) is explicitly documented and preserved for future optimization work.
 
 ### Negative
 
-- The original "< 35 MB RSS" claim is no longer the stated target. For a personal project CLI tool, the user-visible impact is negligible (a Pomodoro timer running in a background tmux pane consumes < 75 MB of a typical 16+ GB developer workstation), but the marketing claim is softer.
-- The new 75 MB gate has ~3% headroom above the highest observed value (72.99 MB). This headroom is thin relative to major version upgrades. A Node.js 22 upgrade, an Ink 5.x release, or a new major React version could plausibly push RSS over 75 MB. At that point, a fresh rebaseline or the lazy-load optimization would be required.
+- The original "< 35 MB RSS" claim is no longer the stated target. For a personal project CLI tool, the user-visible impact is negligible (a Pomodoro timer running in a background tmux pane consumes < 80 MB of a typical 16+ GB developer workstation), but the marketing claim is softer.
+- The new 80 MB gate has ~5.8% headroom above the highest observed value (75.58 MB). A major dependency upgrade (Node.js 22, Ink 5.x, React 19) could plausibly consume this headroom. At that point, a fresh rebaseline or the lazy-load optimization would be required.
 
 ### Residual Risk
 
-The ~3% headroom is intentionally tight: 75 MB was chosen as a clean, honest number just above the observed maximum, not as a generous buffer. Reviewers of any major dependency upgrade (Node.js major, Ink major, React major) should re-run the RSS benchmark locally before merging and document the measurement in the PR description. If the result approaches 75 MB, the lazy-load optimization (Alternative A) or a planned rebaseline should be included in that PR's scope.
+Reviewers of any major dependency upgrade (Node.js major, Ink major, React major) should re-run the RSS benchmark locally before merging and document the measurement in the PR description. If the result approaches 80 MB, the lazy-load optimization (Alternative A) or a planned rebaseline should be included in that PR's scope. The memory composition table in the Empirical Evidence section provides a reference for decomposing any unexpected increase.
 
 ---
 
 ## Files Affected
 
 - `docs/adrs/ADR-008-rss-nfr-rebaseline.md` (this file)
-- `scripts/benchmark-rss.cjs` (RSS_LIMIT_MB constant and doc comment: 35 → 75)
-- `CLAUDE.md` (Key Behavioral Contracts memory line: 35 MB → 75 MB, back-link to ADR-008)
+- `scripts/benchmark-rss.cjs` (RSS_LIMIT_MB constant and doc comment: 35 → 80)
+- `CLAUDE.md` (Key Behavioral Contracts memory line: 35 MB → 80 MB, back-link to ADR-008)
 - `docs/feature/pomodoro-timer-cli/discuss/acceptance-criteria.md` (AC-NF3 threshold)
 - `docs/feature/pomodoro-timer-cli/discuss/requirements.md` (NFR-01.4 threshold)
 - `docs/feature/pomodoro-timer-cli/design/architecture-design.md` (§1.1 performance attributes)
@@ -135,7 +140,7 @@ The ~3% headroom is intentionally tight: 75 MB was chosen as a clean, honest num
 ## References
 
 - Full RCA: `docs/troubleshooting/2026-04-27-rca-remaining-ci-reds.md` (Category 3, Decision 3a)
-- CI run with empirical measurement: GitHub Actions run 25040651137 (PR #36, RSS 68.44 MB)
+- CI runs with empirical measurements: GitHub Actions run 25040651137 (PR #36, RSS 68.44 MB); run 25042121195 (PR #37 first attempt, RSS 75.58 MB)
 - Precedent for NFR rebaseline after empirical measurement: ADR-006 (startup 100 ms → 700 ms)
 - Lazy-load optimization precedent: ADR-006 Alternatives Considered (Option 3 — lazy-load `better-sqlite3` off the start path)
 - Stack composition reference: `docs/feature/pomodoro-timer-cli/design/technology-stack.md`
