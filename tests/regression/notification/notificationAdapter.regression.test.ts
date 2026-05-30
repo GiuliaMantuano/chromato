@@ -68,7 +68,7 @@ class FakeCommandRunner {
 // GREEN when the bell-on-failure logic is wired.
 // ---------------------------------------------------------------------------
 
-describe.skip('Regression: bell fires when notification command fails (R1, R2) [pending runner seam]', () => {
+describe('Regression: bell fires when notification command fails (R1, R2) [pending runner seam]', () => {
   let origNodeEnv: string | undefined;
   let origPlatform: string;
 

@@ -141,7 +141,7 @@ describe('NotificationAdapter — bell fallback in test environment (B1, B2)', (
 // route to osascript. DELIVER must implement the runner seam and platform branch.
 // ---------------------------------------------------------------------------
 
-describe.skip('NotificationAdapter — macOS native notification (B3, B4) [pending runner seam]', () => {
+describe('NotificationAdapter — macOS native notification (B3, B4) [pending runner seam]', () => {
   let origNodeEnv: string | undefined;
   let origPlatform: string;
 
@@ -212,7 +212,7 @@ describe.skip('NotificationAdapter — macOS native notification (B3, B4) [pendi
 // desktop delivery is outside test scope.
 // ---------------------------------------------------------------------------
 
-describe.skip('NotificationAdapter — Linux native notification (B5, B6) [pending runner seam]', () => {
+describe('NotificationAdapter — Linux native notification (B5, B6) [pending runner seam]', () => {
   let origNodeEnv: string | undefined;
   let origPlatform: string;
 
@@ -273,7 +273,7 @@ describe.skip('NotificationAdapter — Linux native notification (B5, B6) [pendi
 // DELIVER must wire: runner.run() non-zero exit → bell(); runner throws → bell().
 // ---------------------------------------------------------------------------
 
-describe.skip('NotificationAdapter — bell fallback on command failure (B7, B8) [pending runner seam]', () => {
+describe('NotificationAdapter — bell fallback on command failure (B7, B8) [pending runner seam]', () => {
   let origNodeEnv: string | undefined;
   let origPlatform: string;
 
@@ -330,7 +330,7 @@ describe.skip('NotificationAdapter — bell fallback on command failure (B7, B8)
 // DELIVER must add: platform === 'win32' (or unknown) → bell directly.
 // ---------------------------------------------------------------------------
 
-describe.skip('NotificationAdapter — unsupported platform falls back to bell (B9) [pending runner seam]', () => {
+describe('NotificationAdapter — unsupported platform falls back to bell (B9) [pending runner seam]', () => {
   let origNodeEnv: string | undefined;
   let origPlatform: string;
 
@@ -371,7 +371,7 @@ describe.skip('NotificationAdapter — unsupported platform falls back to bell (
 // seam, this verifies that phase label mapping is correct end-to-end.
 // ---------------------------------------------------------------------------
 
-describe.skip('NotificationAdapter — phase label correctness in notification message (B10) [pending runner seam]', () => {
+describe('NotificationAdapter — phase label correctness in notification message (B10) [pending runner seam]', () => {
   let origNodeEnv: string | undefined;
   let origPlatform: string;
 
