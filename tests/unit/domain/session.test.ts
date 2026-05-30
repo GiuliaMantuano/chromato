@@ -1,16 +1,22 @@
 /**
  * Unit tests: Session domain aggregate root
  *
- * Tests enter through SessionService (driving port) with in-memory stub ports.
- * Domain internals (PhaseStateMachine, TimerSnapshot) exercised indirectly.
+ * These tests construct `Session` directly. This is the documented TDD-Mandate-2
+ * exception for a complex standalone algorithm: the Pomodoro state machine
+ * (phase transitions, internal event queue, overdue tracking) with a stable
+ * public interface (tick, getSnapshot, drainEvents, interrupt, isInterrupted).
  *
- * Test Budget: 6 distinct behaviors x 2 = 12 max unit tests
- *   B1: tick() transitions phase from IDLE to WORK
- *   B2: getSnapshot() returns correct progressFraction after N ticks
- *   B3: drainEvents() returns PhaseChangedEvent after work period completes
- *   B4: interrupt() marks session as interrupted
- *   B5: WORK->LONG_BREAK transition after cycleCount completed work sessions
- *   B6: currentPomodoro is bounded to cycleCount when initialCompletedToday exceeds cycleCount
+ * Scope is deliberately the domain contract the driving-port test cannot reach:
+ *   B1: IDLE baseline before any tick
+ *   B2: WORK-start progress baseline (progressFraction 0)
+ *   B3: drainEvents() queue-clearing contract (not merely that an event fires)
+ *   B4: interrupt() marks the session and resets the snapshot to IDLE
+ *   B5: WORK->LONG_BREAK transition after cycleCount (no port-level equivalent)
+ *   B6: currentPomodoro overflow bound (regression: fix-pomodoro-counter-overflow)
+ *
+ * Behaviors already exercised through SessionService (IDLE->WORK transition,
+ * 0.5 progressFraction) were removed from here to avoid duplication; see
+ * tests/unit/application/sessionService.test.ts B1/B2.
  *
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
@@ -32,34 +38,19 @@ function makeConfig(overrides: Partial<SessionConfig> = {}): SessionConfig {
 }
 
 describe('Session aggregate root', () => {
-  // B1: tick() transitions phase from IDLE to WORK
-  it('transitions to WORK phase when tick() is called on an IDLE session', () => {
-    const session = new Session(makeConfig());
-    session.tick(1);
-    const snapshot = session.getSnapshot();
-    expect(snapshot.phase).toBe('WORK');
-  });
-
+  // B1: IDLE baseline before any tick (IDLE->WORK transition covered by SessionService B1)
   it('starts with IDLE phase before any tick', () => {
     const session = new Session(makeConfig());
     const snapshot = session.getSnapshot();
     expect(snapshot.phase).toBe('IDLE');
   });
 
-  // B2: getSnapshot() returns correct progressFraction after N ticks
+  // B2: WORK-start progress baseline (0.5 case covered by SessionService B2)
   it('returns progressFraction of 0 at the start of WORK phase', () => {
     const session = new Session(makeConfig({ workDurationSeconds: 10 }));
     session.tick(1); // transitions to WORK
     const snapshot = session.getSnapshot();
     expect(snapshot.timer.progressFraction).toBeCloseTo(0, 5);
-  });
-
-  it('returns progressFraction close to 0.5 after half the work duration has elapsed', () => {
-    const session = new Session(makeConfig({ workDurationSeconds: 10 }));
-    session.tick(1); // transitions IDLE -> WORK, starts timer
-    session.tick(5); // advance 5 seconds into 10-second work period
-    const snapshot = session.getSnapshot();
-    expect(snapshot.timer.progressFraction).toBeCloseTo(0.5, 1);
   });
 
   // B3: drainEvents() returns PhaseChangedEvent after work period completes

@@ -30,12 +30,12 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
   # STARTUP AND VERSION CHECKS
   # -----------------------------------------------------------------------
 
-  # AC-NF1 / CI startup benchmark
+  # AC-NF1 / CI startup benchmark (700ms MVP wall-clock; post-MVP compiled binary: 100ms — see ADR-006)
   @US-05 @AC-NF1 @infrastructure @skip
-  Scenario: First TUI frame appears within 100 milliseconds on the CI runner
+  Scenario: First TUI frame appears within 700 milliseconds on the CI runner
     Given a clean CI environment with Node.js 20 installed
     When the CI runner executes "chromato start" and measures time to first stdout byte
-    Then the first output byte arrives within 100 milliseconds of process start
+    Then the first output byte arrives within 700 milliseconds of process start
 
   # CI cold start benchmark: --version
   @US-05 @infrastructure
@@ -57,13 +57,13 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
     When CPU usage is sampled continuously for 30 seconds
     Then the average CPU percentage over the 30-second window is below 1 percent
 
-  # AC-NF3: RSS memory below 35MB steady state
+  # AC-NF3: RSS memory below 80MB steady state (rebaselined from 35MB on 2026-04-28; see ADR-008)
   @US-05 @AC-NF3 @infrastructure @skip
-  Scenario: chromato RSS memory stays below 35 megabytes during steady-state operation
+  Scenario: chromato RSS memory stays below 80 megabytes during steady-state operation
     Given a chromato session is running with a 25-minute work duration
     And 30 seconds have elapsed for the process to reach steady state
     When the RSS memory of the chromato process is measured
-    Then the RSS memory is less than 35 megabytes
+    Then the RSS memory is less than 80 megabytes
 
   # AC-NF5: Status command latency below 50ms
   @US-03 @US-04 @AC-NF5 @infrastructure @skip
