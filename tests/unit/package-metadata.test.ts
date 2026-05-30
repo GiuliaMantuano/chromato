@@ -111,7 +111,8 @@ describe('package.json -- npm page quality fields (B4)', () => {
 // ---------------------------------------------------------------------------
 
 describe('package.json -- runtime dependency placement (B5)', () => {
-  const REQUIRED_RUNTIME_DEPS = ['chalk', 'commander', 'ink', 'react', 'better-sqlite3', 'node-notifier'];
+  // node-notifier removed per ADR-010 (native osascript / notify-send instead)
+  const REQUIRED_RUNTIME_DEPS = ['chalk', 'commander', 'ink', 'react', 'better-sqlite3'];
 
   for (const dep of REQUIRED_RUNTIME_DEPS) {
     it(`"${dep}" is listed in dependencies (not devDependencies)`, () => {

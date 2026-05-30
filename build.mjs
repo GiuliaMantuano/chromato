@@ -46,7 +46,6 @@ await build({
     'chalk',
     'ink',
     'react',
-    'node-notifier',
     'react-devtools-core',
   ],
   sourcemap: true,

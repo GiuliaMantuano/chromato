@@ -30,7 +30,6 @@
     "chalk": "^5.0.0",
     "commander": "^14.0.3",
     "ink": "^4.0.0",
-    "node-notifier": "^10.0.0",
     "react": "^18.0.0"
   },
   "devDependencies": {
