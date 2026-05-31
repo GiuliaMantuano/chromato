@@ -109,13 +109,13 @@ describe('palette registry (palette.ts)', () => {
     expect(palette.gradient).toHaveLength(6);
   });
 
-  it.skip('R6: all 4 palettes have distinct gradient stop [0] (visually different primaries)', () => {
+  it('R6: all 4 palettes have distinct gradient stop [0] (visually different primaries)', () => {
     const lightStops = VALID_PALETTE_NAMES.map((n) => PALETTES[n].gradient[0]);
     const unique = new Set(lightStops);
     expect(unique.size).toBe(4);
   });
 
-  it.skip('R7: OVERDUE phase color is distinct from WORK color for each palette (alert invariant)', () => {
+  it('R7: OVERDUE phase color is distinct from WORK color for each palette (alert invariant)', () => {
     for (const name of VALID_PALETTE_NAMES) {
       const { phases } = PALETTES[name];
       expect(phases['OVERDUE'].fg).not.toBe(phases['WORK'].fg);
@@ -130,37 +130,37 @@ describe('palette registry (palette.ts)', () => {
 
 describe('resolvePaletteName (palette.ts)', () => {
 
-  it.skip('N1: "ocean" resolves to PaletteName "ocean"', () => {
+  it('N1: "ocean" resolves to PaletteName "ocean"', () => {
     expect(resolvePaletteName('ocean')).toBe('ocean');
   });
 
-  it.skip('N2: "lavender" resolves to PaletteName "lavender"', () => {
+  it('N2: "lavender" resolves to PaletteName "lavender"', () => {
     expect(resolvePaletteName('lavender')).toBe('lavender');
   });
 
-  it.skip('N3: "berry" resolves to PaletteName "berry"', () => {
+  it('N3: "berry" resolves to PaletteName "berry"', () => {
     expect(resolvePaletteName('berry')).toBe('berry');
   });
 
-  it.skip('N4: "forest" resolves to PaletteName "forest"', () => {
+  it('N4: "forest" resolves to PaletteName "forest"', () => {
     expect(resolvePaletteName('forest')).toBe('forest');
   });
 
-  it.skip('N5: unknown name "catppuccin-latte" returns null', () => {
+  it('N5: unknown name "catppuccin-latte" returns null', () => {
     expect(resolvePaletteName('catppuccin-latte')).toBeNull();
   });
 
-  it.skip('N6: empty string returns null', () => {
+  it('N6: empty string returns null', () => {
     expect(resolvePaletteName('')).toBeNull();
   });
 
-  it.skip('N7: hex-pattern string (custom-hex, deferred D4) returns null', () => {
+  it('N7: hex-pattern string (custom-hex, deferred D4) returns null', () => {
     // Per locked decision D4: custom hex is out of scope for v1.
     // resolvePaletteName treats any non-matching string as null.
     expect(resolvePaletteName('#d8f0ff,#8fd4f0,#4db8e8,#2a82c0,#185a8a,#0c2f4a')).toBeNull();
   });
 
-  it.skip('N8: wrong-cased name "Ocean" returns null (names are lowercase)', () => {
+  it('N8: wrong-cased name "Ocean" returns null (names are lowercase)', () => {
     expect(resolvePaletteName('Ocean')).toBeNull();
   });
 
