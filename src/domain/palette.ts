@@ -45,20 +45,19 @@ export const VALID_PALETTE_NAMES: readonly PaletteName[] = [
 /**
  * Palette registry. All 4 named palettes.
  *
- * Phase A1 (no-op refactor): ocean is set to chromato's CURRENT colors —
- * gradient = the former bannerAdapter LOGO_COLORS (light→dark), phases = the
- * former tuiAdapter PHASE_COLORS. This proves the structural refactor is a
- * byte-identical no-op before Phase A2 switches ocean to the refined spec.
+ * ocean (default): refined spec per palette-spec.md. The gradient is ordered
+ * light (index 0) → dark (index 5), which folds the fix-logo-gradient-direction
+ * flip (OI-PT-01) directly into the data — no branch merge required.
  */
 export const PALETTES: Record<PaletteName, Palette> = {
   ocean: {
-    gradient: ['#023e8a', '#0077b6', '#0096c7', '#00b4d8', '#90e0ef', '#caf0f8'],
+    gradient: ['#d8f0ff', '#8fd4f0', '#4db8e8', '#2a82c0', '#185a8a', '#0c2f4a'],
     phases: {
-      WORK:       { fg: '#00d7ff', bg: '#00ff00' },
-      BREAK:      { fg: '#005fff', bg: '#5f00ff' },
-      LONG_BREAK: { fg: '#af00ff', bg: '#00afff' },
-      OVERDUE:    { fg: '#ff0000', bg: '#ffaf00' },
-      IDLE:       { fg: '#808080', bg: '#808080' },
+      WORK:       { fg: '#4db8e8', bg: '#0a1620' },
+      BREAK:      { fg: '#f0c674', bg: '#0a1620' },
+      LONG_BREAK: { fg: '#2a82c0', bg: '#0a1620' },
+      OVERDUE:    { fg: '#ff6b6b', bg: '#0a1620' },
+      IDLE:       { fg: '#5a6b7a', bg: '#0a1620' },
     },
   },
   lavender: {

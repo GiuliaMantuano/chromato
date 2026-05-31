@@ -62,14 +62,14 @@ describe('palette registry (palette.ts)', () => {
     expect(PALETTES['ocean'].gradient[0]).toBe('#d8f0ff');
   });
 
-  it.skip('R2: each palette gradient has exactly 6 stops (light→dark)', () => {
+  it('R2: each palette gradient has exactly 6 stops (light→dark)', () => {
     for (const name of VALID_PALETTE_NAMES) {
       const palette = PALETTES[name];
       expect(palette.gradient).toHaveLength(6);
     }
   });
 
-  it.skip('R3: each palette has all 5 phases with fg and bg entries', () => {
+  it('R3: each palette has all 5 phases with fg and bg entries', () => {
     const requiredPhases: string[] = ['WORK', 'BREAK', 'LONG_BREAK', 'OVERDUE', 'IDLE'];
     for (const name of VALID_PALETTE_NAMES) {
       const { phases } = PALETTES[name];
@@ -83,7 +83,7 @@ describe('palette registry (palette.ts)', () => {
     }
   });
 
-  it.skip('R4: ocean gradient matches palette-spec.md (light→dark, gradient-direction fix absorbed)', () => {
+  it('R4: ocean gradient matches palette-spec.md (light→dark, gradient-direction fix absorbed)', () => {
     // Source of truth: docs/feature/palette-themes/discuss/palette-spec.md
     // gradient: #d8f0ff #8fd4f0 #4db8e8 #2a82c0 #185a8a #0c2f4a
     const expected = ['#d8f0ff', '#8fd4f0', '#4db8e8', '#2a82c0', '#185a8a', '#0c2f4a'];
@@ -94,7 +94,7 @@ describe('palette registry (palette.ts)', () => {
     expect(PALETTES['ocean'].gradient[5]).toBe('#0c2f4a');
   });
 
-  it.skip('R4b: ocean phase colors match palette-spec.md', () => {
+  it('R4b: ocean phase colors match palette-spec.md', () => {
     const { phases } = PALETTES['ocean'];
     expect(phases['WORK'].fg).toBe('#4db8e8');
     expect(phases['BREAK'].fg).toBe('#f0c674');
@@ -103,7 +103,7 @@ describe('palette registry (palette.ts)', () => {
     expect(phases['IDLE'].fg).toBe('#5a6b7a');
   });
 
-  it.skip('R5: getPalette("ocean") returns the ocean palette struct', () => {
+  it('R5: getPalette("ocean") returns the ocean palette struct', () => {
     const palette = getPalette('ocean');
     expect(palette).toBe(PALETTES['ocean']);
     expect(palette.gradient).toHaveLength(6);
