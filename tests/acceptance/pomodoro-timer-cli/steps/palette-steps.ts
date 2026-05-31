@@ -17,7 +17,7 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world.js';
-import { runChromato, spawnChromato } from './helpers.js';
+import { runChromato } from './helpers.js';
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -29,26 +29,6 @@ function writeConfigJson(world: ChromatoWorld, content: string): void {
   const configDir = path.join(world.tempDir, 'config', 'chromato');
   fs.mkdirSync(configDir, { recursive: true });
   fs.writeFileSync(path.join(configDir, 'config.json'), content, 'utf8');
-}
-
-// ---------------------------------------------------------------------------
-// Helper: run chromato start with a short session (CHROMATO_WORK_SECONDS=1)
-// so the acceptance test completes quickly.
-// ---------------------------------------------------------------------------
-async function runStartWithPalette(world: ChromatoWorld, extraArgs: string[] = []): Promise<void> {
-  const env: NodeJS.ProcessEnv = {
-    ...world.chromatoEnv,
-    CHROMATO_WORK_SECONDS: '1',
-    CHROMATO_BREAK_SECONDS: '1',
-  };
-  const originalEnv = world.chromatoEnv;
-  world.chromatoEnv = env;
-  const args = ['start', '--minimal', ...extraArgs];
-  const result = await runChromato(world, args, 10_000);
-  world.chromatoEnv = originalEnv;
-  world.capturedOutput = result.stdout;
-  world.capturedStderr = result.stderr;
-  world.exitCode = result.exitCode;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,13 +115,6 @@ When('the user runs {string}', async function (this: ChromatoWorld, command: str
   this.exitCode = result.exitCode;
 });
 
-When(
-  'the user runs "chromato start --minimal" and the session initializes',
-  async function (this: ChromatoWorld) {
-    await runStartWithPalette(this);
-  },
-);
-
 When('the session renders its first frame', function (this: ChromatoWorld) {
   // @manual-verify-only — no-op in CI; human visually confirms the frame.
 });
@@ -163,10 +136,16 @@ Then('the process exits with code 0 after the session ends', function (this: Chr
 });
 
 Then('no error message appears on standard error', function (this: ChromatoWorld) {
+  // The notification adapter's bell fallback writes BEL (\x07) to stderr on
+  // phase transitions — that is an intentional audible alert, not an error
+  // message. Strip non-printable control characters before asserting that no
+  // textual error message remains.
+  // eslint-disable-next-line no-control-regex
+  const errorText = this.capturedStderr.replace(/[\x00-\x1f\x7f]/g, '').trim();
   assert.strictEqual(
-    this.capturedStderr.trim(),
+    errorText,
     '',
-    `Expected empty stderr but got:\n${this.capturedStderr}`,
+    `Expected no error message on stderr but got:\n${JSON.stringify(this.capturedStderr)}`,
   );
 });
 
@@ -180,13 +159,9 @@ Then(
   },
 );
 
-Then('the process exits with code 1', function (this: ChromatoWorld) {
-  assert.strictEqual(
-    this.exitCode,
-    1,
-    `Expected exit code 1 but got ${this.exitCode}.\nStdout: ${this.capturedOutput}\nStderr: ${this.capturedStderr}`,
-  );
-});
+// NOTE: "the process exits with code 1" is handled by the shared
+// 'the process exits with code {int}' step in session-steps.ts. A local
+// duplicate here caused an ambiguous-match error, so it is intentionally omitted.
 
 Then(
   'the error output contains the unknown palette name {string}',
@@ -238,7 +213,7 @@ Then(
 );
 
 Then(
-  'the session starts with the forest palette (flag is highest precedence)',
+  'the session starts with the forest palette \\(flag is highest precedence)',
   function (this: ChromatoWorld) {
     // Observable: session starts without error (exit 0). Visual color verification
     // is @manual-verify-only. The unit tests (configLoader.palette.test.ts P4/P5/P6)
@@ -260,7 +235,7 @@ Then(
 );
 
 Then(
-  'functional text output (phase label and timer) is visible in standard output',
+  'functional text output \\(phase label and timer) is visible in standard output',
   function (this: ChromatoWorld) {
     // Minimal mode output should contain at least a phase name or time indicator
     const hasContent = this.capturedOutput.trim().length > 0;

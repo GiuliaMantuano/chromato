@@ -43,7 +43,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
   # This is the outer-loop anchor: proves --palette flag is wired from CLI
   # through configLoader to the composition root. Enable first.
 
-  @AC-PT-04 @walking_skeleton @driving_port @skip
+  @AC-PT-04 @walking_skeleton @driving_port
   Scenario: M9-01 User applies a named palette via the flag and the session starts
     Given no palette is set in the environment or config file
     When the user runs "chromato start --palette lavender" and the session initializes
@@ -56,7 +56,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
   # -------------------------------------------------------------------------
 
   # AC-PT-04: --palette flag wires through to session start
-  @AC-PT-04 @skip
+  @AC-PT-04
   Scenario: M9-02 Flag overrides config file palette (flag beats config)
     Given the user has written '{"palette":"lavender"}' to the chromato config file
     When the user runs "chromato start --palette ocean" and the session initializes
@@ -64,7 +64,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
     And no mention of "lavender" appears in standard error
 
   # AC-PT-05: env var applies when no flag set
-  @AC-PT-05 @skip
+  @AC-PT-05
   Scenario: M9-03 Environment variable applies the palette when no flag is set
     Given the CHROMATO_PALETTE environment variable is set to "berry"
     And no --palette flag is used
@@ -72,7 +72,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
     Then chromato starts a Pomodoro session without error
 
   # AC-PT-06 + AC-PT-07: config.json key applies at lowest precedence
-  @AC-PT-06 @AC-PT-07 @skip
+  @AC-PT-06 @AC-PT-07
   Scenario: M9-04 Config file palette key applies when no flag or env var is set
     Given the user has written '{"palette":"forest"}' to the chromato config file
     And no CHROMATO_PALETTE environment variable is set
@@ -81,7 +81,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
     Then chromato starts a Pomodoro session without error
 
   # AC-PT-07: full precedence chain verification (flag > env > config > default)
-  @AC-PT-07 @skip
+  @AC-PT-07
   Scenario: M9-05 Flag beats env var beats config in the precedence chain
     Given the CHROMATO_PALETTE environment variable is set to "berry"
     And the user has written '{"palette":"lavender"}' to the chromato config file
@@ -94,7 +94,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
   # -------------------------------------------------------------------------
 
   # Sad_UnknownPaletteName — explicit name per Mandate 11
-  @AC-PT-08 @error @skip
+  @AC-PT-08 @error
   Scenario: Sad_UnknownPaletteName: unknown --palette name exits with code 1 and names valid palettes
     Given no palette is set in the environment or config file
     When the user runs "chromato start --palette catppuccin-latte"
@@ -104,7 +104,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
     And no Pomodoro session is started
 
   # Sad_UnknownEnvPalette
-  @AC-PT-08 @error @skip
+  @AC-PT-08 @error
   Scenario: Sad_UnknownEnvPalette: unknown palette in env var exits with code 1
     Given the CHROMATO_PALETTE environment variable is set to "dracula"
     When the user runs "chromato start"
@@ -113,7 +113,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
     And the error output lists all 4 valid palette names: ocean, lavender, berry, forest
 
   # Sad_InvalidConfigJson
-  @AC-PT-06 @error @skip
+  @AC-PT-06 @error
   Scenario: Sad_InvalidConfigJson: malformed config.json causes exit 1 (not silent)
     Given the chromato config file contains invalid JSON content
     When the user runs "chromato start"
@@ -121,7 +121,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
     And the error output indicates a configuration file parse error
 
   # Sad_UnknownConfigPalette
-  @AC-PT-06 @AC-PT-08 @error @skip
+  @AC-PT-06 @AC-PT-08 @error
   Scenario: Sad_UnknownConfigPalette: unknown palette name in config.json exits with code 1
     Given the user has written '{"palette":"nord"}' to the chromato config file
     And no CHROMATO_PALETTE environment variable is set
@@ -136,7 +136,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
   # -------------------------------------------------------------------------
 
   # Sad_NoColorSuppressesPalette — palette is configured but suppressed by NO_COLOR
-  @AC-PT-09 @error @skip
+  @AC-PT-09 @error
   Scenario: Sad_NoColorSuppressesPalette: NO_COLOR suppresses all palette rendering
     Given the CHROMATO_PALETTE environment variable is set to "lavender"
     And the NO_COLOR environment variable is set
@@ -149,7 +149,7 @@ Feature: User selects a named color palette that applies to every chromato surfa
   # HELP DOCUMENTATION (AC-PT-10)
   # -------------------------------------------------------------------------
 
-  @AC-PT-10 @skip
+  @AC-PT-10
   Scenario: M9-10 --help documents the --palette flag with valid names and config path
     When the user runs "chromato --help"
     Then the output includes "--palette" with valid palette names listed

@@ -80,7 +80,6 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
   // Fails because loadConfig does not yet return resolvedPalette.
   it('P1: --palette lavender flag sets resolvedPalette to the lavender palette', () => {
     process.env['LANG'] = 'en_US.UTF-8';
-    // @ts-expect-error — palette field does not exist yet on StartFlags; added by DELIVER
     const result = loadConfig({ palette: 'lavender' });
     // resolvedPalette does not exist on the current ConfigResult shape — RED
     expect((result as unknown as Record<string, unknown>)['resolvedPalette']).toBeDefined();
@@ -89,10 +88,9 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     ).toHaveProperty('gradient');
   });
 
-  it.skip('P2: CHROMATO_PALETTE=berry env sets resolvedPalette to berry when no --palette flag', () => {
+  it('P2: CHROMATO_PALETTE=berry env sets resolvedPalette to berry when no --palette flag', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     process.env['CHROMATO_PALETTE'] = 'berry';
-    // @ts-expect-error — palette extension pending
     const result = loadConfig({});
     const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
     expect(resolved).toBeDefined();
@@ -101,10 +99,9 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     expect(gradient[0]).toBe('#ffe3ef');
   });
 
-  it.skip('P3: config.json "palette": "forest" sets resolvedPalette to forest when no flag/env', () => {
+  it('P3: config.json "palette": "forest" sets resolvedPalette to forest when no flag/env', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     withConfigJson('{"palette":"forest"}', () => {
-      // @ts-expect-error — palette extension pending
       const result = loadConfig({});
       const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
       expect(resolved).toBeDefined();
@@ -113,10 +110,9 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     });
   });
 
-  it.skip('P4: --palette flag beats CHROMATO_PALETTE env var (flag > env precedence)', () => {
+  it('P4: --palette flag beats CHROMATO_PALETTE env var (flag > env precedence)', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     process.env['CHROMATO_PALETTE'] = 'berry';
-    // @ts-expect-error — palette extension pending
     const result = loadConfig({ palette: 'lavender' });
     const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
     const gradient = (resolved as Record<string, unknown>)['gradient'] as string[];
@@ -124,10 +120,9 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     expect(gradient[0]).toBe('#ece4ff');
   });
 
-  it.skip('P5: --palette flag beats config.json key (flag > config precedence)', () => {
+  it('P5: --palette flag beats config.json key (flag > config precedence)', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     withConfigJson('{"palette":"berry"}', () => {
-      // @ts-expect-error — palette extension pending
       const result = loadConfig({ palette: 'forest' });
       const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
       const gradient = (resolved as Record<string, unknown>)['gradient'] as string[];
@@ -136,11 +131,10 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     });
   });
 
-  it.skip('P6: CHROMATO_PALETTE env beats config.json key (env > config precedence)', () => {
+  it('P6: CHROMATO_PALETTE env beats config.json key (env > config precedence)', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     process.env['CHROMATO_PALETTE'] = 'ocean';
     withConfigJson('{"palette":"lavender"}', () => {
-      // @ts-expect-error — palette extension pending
       const result = loadConfig({});
       const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
       const gradient = (resolved as Record<string, unknown>)['gradient'] as string[];
@@ -149,10 +143,9 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     });
   });
 
-  it.skip('P7: default ocean palette when no flag, env, or config.json key is set', () => {
+  it('P7: default ocean palette when no flag, env, or config.json key is set', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     delete process.env['CHROMATO_PALETTE'];
-    // @ts-expect-error — palette extension pending
     const result = loadConfig({});
     const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
     const gradient = (resolved as Record<string, unknown>)['gradient'] as string[];
@@ -164,14 +157,12 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
   // Error paths (AC-PT-08)
   // ---------------------------------------------------------------------------
 
-  it.skip('P8: unknown palette name via --palette flag throws and enumerates valid names', () => {
+  it('P8: unknown palette name via --palette flag throws and enumerates valid names', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     expect(() => {
-      // @ts-expect-error — palette extension pending
       loadConfig({ palette: 'catppuccin-latte' });
     }).toThrow();
     try {
-      // @ts-expect-error — palette extension pending
       loadConfig({ palette: 'catppuccin-latte' });
     } catch (err) {
       const msg = String((err as Error).message);
@@ -183,15 +174,13 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     }
   });
 
-  it.skip('P9: unknown palette name via CHROMATO_PALETTE env throws and enumerates valid names', () => {
+  it('P9: unknown palette name via CHROMATO_PALETTE env throws and enumerates valid names', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     process.env['CHROMATO_PALETTE'] = 'dracula';
     expect(() => {
-      // @ts-expect-error — palette extension pending
       loadConfig({});
     }).toThrow();
     try {
-      // @ts-expect-error — palette extension pending
       loadConfig({});
     } catch (err) {
       const msg = String((err as Error).message);
@@ -200,15 +189,13 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     }
   });
 
-  it.skip('P10: unknown palette name in config.json throws and enumerates valid names', () => {
+  it('P10: unknown palette name in config.json throws and enumerates valid names', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     withConfigJson('{"palette":"nord"}', () => {
       expect(() => {
-        // @ts-expect-error — palette extension pending
         loadConfig({});
       }).toThrow();
       try {
-        // @ts-expect-error — palette extension pending
         loadConfig({});
       } catch (err) {
         const msg = String((err as Error).message);
@@ -218,25 +205,22 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     });
   });
 
-  it.skip('P11: config.json present but invalid JSON throws (exit 1 path, not silent)', () => {
+  it('P11: config.json present but invalid JSON throws (exit 1 path, not silent)', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     withConfigJson('{ not valid json }', () => {
       expect(() => {
-        // @ts-expect-error — palette extension pending
         loadConfig({});
       }).toThrow();
     });
   });
 
-  it.skip('P12: config.json absent — falls through to default ocean (no error)', () => {
+  it('P12: config.json absent — falls through to default ocean (no error)', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     // XDG_CONFIG_HOME points to a tmp dir with no chromato/config.json
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chromato-noconfig-'));
     process.env['XDG_CONFIG_HOME'] = tmpDir;
     try {
-      // @ts-expect-error — palette extension pending
       expect(() => loadConfig({})).not.toThrow();
-      // @ts-expect-error — palette extension pending
       const result = loadConfig({});
       const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
       const gradient = (resolved as Record<string, unknown>)['gradient'] as string[];
@@ -251,10 +235,9 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
   // NO_COLOR short-circuit (AC-PT-09)
   // ---------------------------------------------------------------------------
 
-  it.skip('P13: NO_COLOR env set — resolvedPalette is default ocean; useColor is false', () => {
+  it('P13: NO_COLOR env set — resolvedPalette is default ocean; useColor is false', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     process.env['NO_COLOR'] = '1';
-    // @ts-expect-error — palette extension pending
     const result = loadConfig({});
     expect(result.config.useColor).toBe(false);
     // resolvedPalette is set to ocean default (adapters ignore it; useColor=false is the signal)
@@ -262,21 +245,19 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     expect(resolved).toBeDefined();
   });
 
-  it.skip('P14: --no-color flag — resolvedPalette is default ocean; useColor is false', () => {
+  it('P14: --no-color flag — resolvedPalette is default ocean; useColor is false', () => {
     process.env['LANG'] = 'en_US.UTF-8';
-    // @ts-expect-error — palette extension pending
     const result = loadConfig({ noColor: true });
     expect(result.config.useColor).toBe(false);
     const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
     expect(resolved).toBeDefined();
   });
 
-  it.skip('P15: NO_COLOR set + CHROMATO_PALETTE set — palette NOT resolved, useColor=false', () => {
+  it('P15: NO_COLOR set + CHROMATO_PALETTE set — palette NOT resolved, useColor=false', () => {
     process.env['LANG'] = 'en_US.UTF-8';
     process.env['NO_COLOR'] = '1';
     process.env['CHROMATO_PALETTE'] = 'lavender';
     // NO_COLOR takes precedence — palette resolution is skipped entirely
-    // @ts-expect-error — palette extension pending
     const result = loadConfig({});
     expect(result.config.useColor).toBe(false);
     // resolvedPalette still defined (set to ocean default); lavender NOT applied
