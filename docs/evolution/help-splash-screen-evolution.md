@@ -5,6 +5,16 @@
 **Type**: User-facing UX feature
 **Commits**: 4 (one per step)
 
+> **Superseded (2026-05-31, PR #52)**: the banner this feature introduced was
+> redesigned by the banner/tagline refresh. The tagline changed from
+> "The Pomodoro timer your terminal deserves" to **"Focus in full colour"**, the
+> bold-white tagline + dim double-divider gave way to a per-character gradient
+> accent underline + bold palette-accent tagline + a dim descriptor line
+> ("Work, break, repeat — right in your terminal"), and the banner no longer emits
+> the `─` divider character. See `docs/evolution/2026-05-31-palette-themes.md` and
+> the current `src/adapters/bannerAdapter.ts`. The architecture decisions below
+> (Commander hook, tagline dedup, Unicode detection, `--no-color` scope) still hold.
+
 ## Problem
 
 Running `chromato` with no args showed plain Commander boilerplate with no visual identity.
