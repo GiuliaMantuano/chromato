@@ -1,8 +1,8 @@
 # chromato
 
-**The Pomodoro timer your terminal deserves**
+**Focus in full colour** — work, break, repeat, right in your terminal.
 
-A fast, animated Pomodoro timer for terminal developers. Color-gradient progress bar, phase transitions you won't miss, and seamless tmux/shell integration.
+An animated Pomodoro timer for terminal developers. Colour-gradient progress bar, phase transitions you won't miss, and seamless tmux/shell integration.
 
 ```
 chromato · POMODORO 1 of 4

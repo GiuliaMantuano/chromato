@@ -1,6 +1,6 @@
 # Contributing to chromato
 
-Thank you for your interest in contributing to chromato -- the Pomodoro timer your terminal deserves.
+Thank you for your interest in contributing to chromato -- focus in full colour, a Pomodoro timer for the terminal.
 Whether you are fixing a bug, improving the docs, or adding a new feature, this guide will help you
 get started. Check the issue tracker for tickets labeled **good first issue** if you are looking for
 a place to begin.

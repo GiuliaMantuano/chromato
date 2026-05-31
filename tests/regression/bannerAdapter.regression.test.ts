@@ -7,7 +7,7 @@
  * no code in the minimal path invokes it.
  *
  * Invariant under test: when chromato starts in --minimal mode, the chromato
- * banner (tagline: "The Pomodoro timer your terminal deserves") must appear in
+ * banner (tagline: "Focus in full colour") must appear in
  * stdout BEFORE any timer output line.
  *
  * Failure mode (current code): MinimalAdapter.render() writes the first timer
@@ -59,7 +59,7 @@ const MINIMAL_SNAPSHOT: SessionSnapshot = {
 // Source: src/adapters/bannerAdapter.ts — const TAGLINE constant.
 // ---------------------------------------------------------------------------
 
-const BANNER_TAGLINE = 'The Pomodoro timer your terminal deserves';
+const BANNER_TAGLINE = 'Focus in full colour';
 
 // ---------------------------------------------------------------------------
 // Regression test

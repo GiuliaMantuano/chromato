@@ -1,7 +1,7 @@
 # chromato -- Project Context for Claude
 
 **Feature ID**: pomodoro-timer-cli
-**UVP**: "The Pomodoro timer your terminal deserves"
+**UVP**: "Focus in full colour" (an animated Pomodoro timer for the terminal)
 **Wave status**: DESIGN complete (TypeScript revision applied 2026-03-28); handoff to acceptance-designer (DISTILL) and software-crafter (BUILD) cleared
 
 ---

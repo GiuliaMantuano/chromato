@@ -45,7 +45,7 @@ Feature: Help splash screen shows banner and help on bare invocation
     When Kai runs chromato with no subcommand
     Then the ASCII art logo appears at the top of the output
     And the output contains ANSI color sequences on the logo lines
-    And the tagline "The Pomodoro timer your terminal deserves" appears in the output
+    And the tagline "Focus in full colour" appears in the output
     And the Commander help text appears below the banner
     And the process exits with code 0
     And the process produces no output on stderr
@@ -68,16 +68,16 @@ Feature: Help splash screen shows banner and help on bare invocation
   Scenario: Tagline appears exactly once in the output
     Given Kai's terminal has color support enabled
     When Kai runs chromato with no subcommand
-    Then the tagline "The Pomodoro timer your terminal deserves" appears exactly once in the output
+    Then the tagline "Focus in full colour" appears exactly once in the output
 
   # AC-HSS-02.2, AC-HSS-02.3
   @US-HSS-01 @AC-HSS-02.2
-  Scenario: Color mode renders tagline in bold and dividers in dim
+  Scenario: Color mode renders tagline in bold and descriptor in dim
     Given Kai's terminal has color support enabled
     And the NO_COLOR environment variable is not set
     When Kai runs chromato with no subcommand
     Then the tagline is rendered with bold ANSI styling
-    And the dividers are rendered with dim ANSI styling
+    And the descriptor and hint are rendered with dim ANSI styling
 
   # AC-HSS-07.1, AC-HSS-07.2
   # NOTE: AC-HSS-07.2 (require.cache inspection) is covered by structural
@@ -98,7 +98,7 @@ Feature: Help splash screen shows banner and help on bare invocation
     When Kai runs chromato with no subcommand
     Then no ANSI escape sequences appear in the output
     And the ASCII art logo is present as plain text
-    And the tagline "The Pomodoro timer your terminal deserves" is present as plain text
+    And the tagline "Focus in full colour" is present as plain text
     And the Commander help text is present as plain text
     And the process exits with code 0
     And the process produces no output on stderr
@@ -109,7 +109,7 @@ Feature: Help splash screen shows banner and help on bare invocation
     When Kai runs chromato with the --no-color flag
     Then no ANSI escape sequences appear in the output
     And the ASCII art logo is present as plain text
-    And the tagline "The Pomodoro timer your terminal deserves" is present as plain text
+    And the tagline "Focus in full colour" is present as plain text
     And the Commander help text is present as plain text
     And the process exits with code 0
     And the process produces no output on stderr
@@ -121,7 +121,7 @@ Feature: Help splash screen shows banner and help on bare invocation
     When Kai runs chromato with no subcommand
     Then no ANSI escape sequences appear in the output
     And the ASCII art logo is present as plain text
-    And the tagline "The Pomodoro timer your terminal deserves" is present as plain text
+    And the tagline "Focus in full colour" is present as plain text
 
   # AC-HSS-06.1, AC-HSS-06.2
   @US-HSS-01 @AC-HSS-06.1
@@ -129,5 +129,5 @@ Feature: Help splash screen shows banner and help on bare invocation
     Given the terminal is set to dumb mode with an ASCII-only locale
     When Kai runs chromato with no subcommand
     Then the output does not contain the Unicode divider character "─"
-    And the tagline "The Pomodoro timer your terminal deserves" is still present
+    And the tagline "Focus in full colour" is still present
     And the ASCII art logo is still present

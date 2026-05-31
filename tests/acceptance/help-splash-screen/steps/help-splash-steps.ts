@@ -22,7 +22,7 @@ import * as fs from 'fs';
 // Allow up to 15 s per step — process spawning + Node.js cold-start can be slow on CI.
 setDefaultTimeout(15_000);
 
-const TAGLINE = 'The Pomodoro timer your terminal deserves';
+const TAGLINE = 'Focus in full colour';
 
 // ---------------------------------------------------------------------------
 // Lifecycle hooks
@@ -325,12 +325,13 @@ Then('the tagline is rendered with bold ANSI styling', function (this: ChromatoH
   );
 });
 
-Then('the dividers are rendered with dim ANSI styling', function (this: ChromatoHelpWorld) {
+Then('the descriptor and hint are rendered with dim ANSI styling', function (this: ChromatoHelpWorld) {
   // chalk.dim emits SGR code 2 (\x1b[2m). Verify dim code is present in the
-  // output — this is the observable proxy for AC-HSS-02.3 (dim dividers).
+  // output — this is the observable proxy for AC-HSS-02.3 (dim descriptor + hint
+  // beneath the colored tagline and the gradient accent underline).
   const hasDim = /\x1b\[2m/.test(this.capturedOutput);
   assert.ok(
     hasDim,
-    `Expected dim ANSI styling (\x1b[2m) for dividers but not found.\nOutput:\n${this.capturedOutput}`
+    `Expected dim ANSI styling (\x1b[2m) for descriptor/hint but not found.\nOutput:\n${this.capturedOutput}`
   );
 });

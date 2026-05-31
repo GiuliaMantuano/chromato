@@ -204,7 +204,7 @@ These colors are never the only way chromato communicates phase information. The
 
 ## The Design Philosophy in Action
 
-The five-phase cycle, the countdown-to-count-up transition, the persistence of state, and the OVERDUE escalation all work together to achieve chromato's core UVP: **"The Pomodoro timer your terminal deserves."**
+The five-phase cycle, the countdown-to-count-up transition, the persistence of state, and the OVERDUE escalation all work together to achieve chromato's core UVP: **"Focus in full colour."**
 
 A terminal-native developer using chromato gets:
 

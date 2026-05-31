@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * chromato -- The Pomodoro timer your terminal deserves.
+ * chromato -- Focus in full colour. A Pomodoro timer for the terminal.
  *
  * CLI entry point and composition root.
  * This is the only file that imports from all layers.

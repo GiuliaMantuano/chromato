@@ -1,7 +1,7 @@
 {
   "name": "chromato",
   "version": "1.0.0",
-  "description": "The Pomodoro timer your terminal deserves",
+  "description": "Focus in full colour - an animated Pomodoro timer for the terminal",
   "type": "module",
   "bin": {
     "chromato": "dist/index.js"

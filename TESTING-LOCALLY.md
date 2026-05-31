@@ -56,7 +56,7 @@ Run:
 node_modules/.bin/tsx src/index.ts --help
 ```
 
-✅ You should see an ASCII banner, the tagline "The Pomodoro timer your terminal deserves", an "Examples" block with common invocations, a "Tmux integration" hint, and a "Commands" list. As of this writing, only `start` is listed under Commands; `status` is referenced in the Examples block (it's available but hidden from the top-level command list).
+✅ You should see an ASCII banner, the tagline "Focus in full colour", an "Examples" block with common invocations, a "Tmux integration" hint, and a "Commands" list. As of this writing, only `start` is listed under Commands; `status` is referenced in the Examples block (it's available but hidden from the top-level command list).
 
 ---
 
@@ -74,7 +74,7 @@ CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start
 
 ✅ You should see:
 - ASCII art "chromato" banner in blue and cyan
-- Tagline: "The Pomodoro timer your terminal deserves"
+- Tagline: "Focus in full colour"
 - **WORK** phase label
 - Countdown timer (0:06 → 0:05 → ... → 0:00)
 - Progress bar filling left-to-right (Unicode blocks `█░` or ASCII `=--`)

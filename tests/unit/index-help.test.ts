@@ -90,7 +90,8 @@ describe('help splash sequence', () => {
     printHelpSplash(false, false);
 
     const output = writtenChunks.join('');
-    // Divider character must appear (at minimum plain divider '─' is present in banner)
+    // Divider character must appear in the combined output (the help splash
+    // examples block uses the '─' box-drawing divider in unicode mode).
     expect(output).toContain('─');
   });
 });
