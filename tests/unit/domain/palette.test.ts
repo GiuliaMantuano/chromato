@@ -84,7 +84,7 @@ describe('palette registry (palette.ts)', () => {
   });
 
   it('R4: ocean gradient matches palette-spec.md (light→dark, gradient-direction fix absorbed)', () => {
-    // Source of truth: docs/feature/palette-themes/discuss/palette-spec.md
+    // Source of truth: docs/architecture/palette-themes/palette-spec.md
     // gradient: #d8f0ff #8fd4f0 #4db8e8 #2a82c0 #185a8a #0c2f4a
     const expected = ['#d8f0ff', '#8fd4f0', '#4db8e8', '#2a82c0', '#185a8a', '#0c2f4a'];
     expect(PALETTES['ocean'].gradient).toEqual(expected);

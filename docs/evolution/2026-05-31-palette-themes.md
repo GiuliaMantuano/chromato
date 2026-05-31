@@ -89,20 +89,27 @@ d5ecfd6 feat(palette): --palette flag, env, config.json, precedence, errors, hel
 4c8c806 test(palette-themes): DISTILL acceptance + unit tests (RED handoff)
 ```
 
-## Permanent artifacts & follow-up
+## Permanent artifacts (post-finalize)
 
-- **ADR**: `docs/adrs/ADR-011-palette-registry.md` (already permanent).
-- **Colour source of truth**: `palette-spec.md` — currently still in the temporary
-  workspace (`docs/feature/palette-themes/discuss/palette-spec.md`) and **referenced
-  by a comment in `src/domain/palette.ts`**.
-- **Deferred — workspace migration/cleanup**: the standard finalize step (migrate
-  lasting artifacts → `docs/architecture/` + `docs/ux/`, then delete the temp
-  workspace) was intentionally **not** performed here. Reason: `palette.ts` points
-  at `palette-spec.md` inside the workspace, and the `doc-consistency` test suite
-  guards the docs tree — a safe cleanup must migrate `palette-spec.md` to a
-  permanent home (e.g. `docs/architecture/palette-themes/`) and update the
-  `palette.ts` comment in the same change, then re-run `pnpm test`. Tracked as a
-  follow-up.
+The temporary workspace `docs/feature/palette-themes/` has been removed; lasting
+artifacts were migrated to permanent homes:
+
+- **ADR**: `docs/adrs/ADR-011-palette-registry.md`
+- **Architecture**: `docs/architecture/palette-themes/` — `architecture-design.md`,
+  `component-boundaries.md`, `data-models.md`, `technology-stack.md`
+- **Colour source of truth**: `docs/architecture/palette-themes/palette-spec.md`
+  (referenced by the comment in `src/domain/palette.ts` and the `palette.test.ts`
+  R4 assertion)
+- **UX journeys**: `docs/ux/palette-themes/` — `journey-palette-selection.yaml`,
+  `journey-palette-selection-visual.md`
+- **Visual preview**: `docs/design/palette-preview.html`
+
+Discarded as process scaffolding (decisions captured in this document): JTBD
+analyses, story map, user stories, acceptance criteria, DoR checklist,
+outcome-KPIs, shared-artifacts registry, starting decisions, upstream issues,
+DISCUSS/DESIGN `wave-decisions.md`, the DISCUSS journey `.feature`, and the DISTILL
+`acceptance-design.md`. The executable acceptance tests live permanently under
+`tests/acceptance/`.
 
 > Note: this feature was delivered via direct commits rather than the nWave
 > `deliver/` execute machinery, so no `deliver/roadmap.json` or

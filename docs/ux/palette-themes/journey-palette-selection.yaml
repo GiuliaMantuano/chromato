@@ -1,0 +1,282 @@
+schema_version: 1
+
+journey:
+  name: "Palette Selection"
+  goal: "Apply a named palette so that the ASCII art logo and TUI progress bar render coherently with the user's terminal theme"
+  persona: "Aiko Tanaka -- staff engineer, VS Code + iTerm2, catppuccin dotfiles (selects lavender in chromato), r/unixporn poster"
+  feature_id: palette-themes
+  date: "2026-05-30"
+
+  emotional_arc:
+    start: "Bothered (logo and bar render in mismatched colors; tool looks unfinished)"
+    middle: "Curious -> Confident (--palette flag is discoverable via --help; trial run confirms both surfaces update)"
+    end: "Delighted -> Proud (lavender renders coherently; screenshot is publication-worthy)"
+
+  arc_pattern: "Problem Relief -> Discovery Joy"
+
+steps:
+  - id: 1
+    name: "Notice Surface Incoherence"
+    command: "chromato start"
+
+    tui_mockup: |
+      +-- chromato start (default / no palette) ─────────────────────+
+      |  Logo: 6-row gradient #023e8a → #caf0f8 (ocean hardcoded)    |
+      |  Bar: per-phase WORK cyan (#00d7ff) -- different color family  |
+      |  User's iTerm2: catppuccin Mauve/Lavender                     |
+      |  Observation: "logo and bar look like different programs"      |
+      +────────────────────────────────────────────────────────────────+
+
+    shared_artifacts:
+      - name: "palette_gradient"
+        source: "src/domain/palette.ts (PaletteRegistry, resolved at startup)"
+        displayed_as: "${PALETTE_GRADIENT[0..5]}"
+        consumers:
+          - "src/adapters/bannerAdapter.ts (logo row coloring)"
+      - name: "palette_phases"
+        source: "src/domain/palette.ts (PaletteRegistry, resolved at startup)"
+        displayed_as: "${PALETTE_PHASES.WORK.fg}"
+        consumers:
+          - "src/adapters/tuiAdapter.tsx (progress bar phase colors)"
+
+    emotional_state:
+      entry: "Satisfied with chromato's timer function"
+      exit: "Bothered by color surface incoherence"
+
+    integration_checkpoint: |
+      Before this step resolves: palette registry exists in domain layer;
+      both adapters consume palette struct (not hardcoded constants).
+      This is Phase A (foundation) prerequisite.
+
+    failure_modes:
+      - "Hardcoded constants remain in one or both adapters after Phase A (surfaces diverge)"
+      - "Ocean palette must render per refined palette-spec.md spec; milestone visual baselines rebaselined in Phase A"
+
+    gherkin: |
+      Scenario: Default ocean palette renders on both surfaces
+        Given no palette configuration is set
+        When Aiko runs "chromato start"
+        Then the ASCII art logo renders using the ocean palette gradient
+        And the TUI progress bar renders using the ocean palette phase colors
+        And the rendering matches the refined ocean spec from palette-spec.md
+
+  - id: 2
+    name: "Discover --palette via --help"
+    command: "chromato --help"
+
+    tui_mockup: |
+      +-- chromato --help ────────────────────────────────────────+
+      |  FLAGS                                                     |
+      |    --palette   Color palette [default: ocean]             |
+      |                ocean | lavender | berry | forest          |
+      |  EXAMPLES                                                 |
+      |    chromato start --palette lavender                      |
+      |  CONFIGURATION                                            |
+      |    ~/.config/chromato/config.json: { "palette": "..." }  |
+      |    Precedence: flag > $CHROMATO_PALETTE > config > default|
+      +────────────────────────────────────────────────────────────+
+
+    shared_artifacts:
+      - name: "valid_palette_names"
+        source: "src/domain/palette.ts (PaletteRegistry.validNames() -> ocean, lavender, berry, forest)"
+        displayed_as: "${VALID_PALETTE_NAMES}"
+        consumers:
+          - "--help output (flag description)"
+          - "error message on unknown palette name"
+      - name: "config_file_path"
+        source: "src/configLoader.ts (XDG_CONFIG_HOME resolution)"
+        displayed_as: "${CONFIG_FILE_PATH}"
+        consumers:
+          - "--help output (CONFIGURATION section)"
+          - "error messages referencing config"
+
+    emotional_state:
+      entry: "Bothered by incoherence; looking for a fix"
+      exit: "Curious -> Confident ('oh, --palette exists')"
+
+    integration_checkpoint: |
+      --help must document --palette with:
+      (1) all 4 valid names listed (ocean, lavender, berry, forest)
+      (2) at least one named example (--palette lavender)
+      (3) config.json key and path documented
+      (4) precedence order documented
+
+    failure_modes:
+      - "--palette not documented in --help (feature is undiscoverable)"
+      - "Valid names not listed in --help (user must guess)"
+
+    gherkin: |
+      Scenario: --palette flag is documented and discoverable via --help
+        Given Aiko wants to change chromato's color palette
+        When she runs "chromato --help"
+        Then the output documents the "--palette <name>" flag
+        And the output lists all 4 valid palette names (ocean, lavender, berry, forest)
+        And the output shows at least one named-palette example
+        And the output documents the config.json key with its file path
+
+  - id: 3
+    name: "Trial Run with Named Palette"
+    command: "chromato start --palette lavender"
+
+    tui_mockup: |
+      +-- chromato start --palette lavender ──────────────────────+
+      |  Logo: lavender gradient (purple/mauve family)            |
+      |  Bar WORK phase: lavender WORK fg/bg colors               |
+      |  Bar BREAK phase: lavender BREAK fg/bg colors             |
+      |  Both surfaces: visually coherent, same color family       |
+      +────────────────────────────────────────────────────────────+
+
+    shared_artifacts:
+      - name: "resolved_palette"
+        source: "src/domain/palette.ts (resolved from flag at startup)"
+        displayed_as: "${RESOLVED_PALETTE}"
+        consumers:
+          - "src/adapters/bannerAdapter.ts (gradient coloring)"
+          - "src/adapters/tuiAdapter.tsx (phase bar colors)"
+
+    emotional_state:
+      entry: "Curious (will both surfaces update?)"
+      exit: "Confident (logo and bar look unified -- same color family)"
+
+    integration_checkpoint: |
+      IC-PT-1: Both adapters must receive the same resolved palette struct.
+      Neither adapter reads from a hardcoded constant after Phase A.
+      Verified by: starting with lavender and observing logo + bar share
+      the same hue family.
+
+    failure_modes:
+      - "One adapter still uses hardcoded color (surfaces diverge after palette change)"
+      - "Palette flag accepted but not applied to banner (logo ignores selection)"
+
+    gherkin: |
+      Scenario: Named palette applied consistently to logo and progress bar
+        Given Aiko runs "chromato start --palette lavender"
+        When the TUI renders
+        Then the ASCII art logo renders using the lavender palette gradient
+        And the TUI progress bar renders using the lavender palette phase colors
+        And both surfaces are visually coherent (same color family, no per-adapter divergence)
+        And shared artifact "${RESOLVED_PALETTE}" matches "lavender" for both consumers
+
+  - id: 4
+    name: "Persist Palette in config.json"
+    command: "editor ~/.config/chromato/config.json"
+
+    tui_mockup: |
+      +-- ~/.config/chromato/config.json ───────────────────────+
+      |  {                                                        |
+      |    "palette": "lavender"                                 |
+      |  }                                                        |
+      +──────────────────────────────────────────────────────────+
+      +-- chromato start (no flag) ─────────────────────────────+
+      |  lavender applied automatically via config key           |
+      +──────────────────────────────────────────────────────────+
+
+    shared_artifacts:
+      - name: "config_file_path"
+        source: "src/configLoader.ts (XDG_CONFIG_HOME or ~/.config)"
+        displayed_as: "${CONFIG_FILE_PATH}"
+        consumers:
+          - "src/configLoader.ts (reads palette key at startup)"
+      - name: "palette_precedence"
+        source: "src/configLoader.ts (resolution order)"
+        displayed_as: "flag > $CHROMATO_PALETTE > config.palette > default"
+        consumers:
+          - "--help output"
+          - "error messages"
+
+    emotional_state:
+      entry: "Confident (flag works); wants persistence"
+      exit: "Satisfied (config key survives restarts and upgrades)"
+
+    integration_checkpoint: |
+      IC-PT-3: Precedence chain resolves correctly.
+      If both flag and config key are present, flag wins.
+      If only config key is present, config key wins.
+      If neither is present, ocean default applies.
+
+    failure_modes:
+      - "Config key not read at startup (palette defaults to ocean despite config)"
+      - "Config key overrides explicit --palette flag (precedence inverted)"
+      - "Malformed config.json produces cryptic error instead of helpful message"
+
+    gherkin: |
+      Scenario: Config file palette key applied when no flag is set
+        Given Aiko has written '{ "palette": "lavender" }' to ~/.config/chromato/config.json
+        When she runs "chromato start" with no --palette flag
+        Then the lavender palette is applied to both surfaces
+
+      Scenario: Flag overrides config file
+        Given Aiko has '{ "palette": "lavender" }' in her config file
+        When she runs "chromato start --palette ocean"
+        Then the ocean palette is applied (flag wins over config)
+        And the lavender config key is not applied
+
+  - id: 5
+    name: "Error Path -- Unknown Palette Name"
+    command: "chromato start --palette noop"
+
+    tui_mockup: |
+      +-- chromato start --palette noop ────────────────────────+
+      |                                                          |
+      |  Error: unknown palette "noop"                           |
+      |                                                          |
+      |  Valid palette names:                                    |
+      |    ocean (default)                                       |
+      |    lavender                                              |
+      |    berry                                                 |
+      |    forest                                                |
+      |                                                          |
+      |  Exit code: 1                                            |
+      |  (no session started)                                    |
+      +──────────────────────────────────────────────────────────+
+
+    shared_artifacts:
+      - name: "valid_palette_names"
+        source: "src/domain/palette.ts (PaletteRegistry.validNames() -> ocean, lavender, berry, forest)"
+        displayed_as: "${VALID_PALETTE_NAMES}"
+        consumers:
+          - "error message on unknown palette name"
+          - "--help output"
+
+    emotional_state:
+      entry: "Uncertain about exact palette name"
+      exit: "Corrected not punished -- error is a discovery surface for valid names"
+
+    integration_checkpoint: |
+      IC-PT-5: Validation fires BEFORE session initialization.
+      Exit code 1. No state file written. No timer started.
+      Error message lists all valid names (sourced from PaletteRegistry).
+
+    failure_modes:
+      - "Unknown palette name silently falls back to ocean (error swallowed)"
+      - "Error message does not list valid names (unhelpful)"
+      - "Session partially initializes before error detected (state corruption)"
+
+    gherkin: |
+      Scenario: Unknown palette name produces actionable error
+        Given Aiko runs "chromato start --palette noop"
+        When the command is evaluated
+        Then chromato outputs an error containing "unknown palette" and the name "noop"
+        And the error lists all 4 valid palette names (ocean, lavender, berry, forest)
+        And the process exits with code 1
+        And no Pomodoro session is started
+
+integration_validation:
+  shared_artifact_consistency:
+    - artifact: "palette_gradient and palette_phases"
+      must_match_across: [1, 3, 4]
+      failure_message: "Both bannerAdapter and tuiAdapter must receive palette from the same resolved struct; hardcoded constants in either adapter violate IC-PT-1"
+    - artifact: "valid_palette_names"
+      must_match_across: [2, 5]
+      failure_message: "--help and error messages must list identical valid names; sourced from same PaletteRegistry method"
+    - artifact: "config_file_path"
+      must_match_across: [2, 4]
+      failure_message: "--help and config reader must reference the same XDG-resolved path"
+
+changelog:
+  - date: "2026-05-30"
+    feature: "palette-themes"
+    change: "Initial journey artifact; reconciles US-06 + US-06b into single palette-selection journey"
+  - date: "2026-05-30"
+    feature: "palette-themes"
+    change: "Reconciliation pass: palette set finalized to ocean/lavender/berry/forest (4 palettes); catppuccin re-anchored to lavender; ocean default updated to refined palette-spec.md spec; all palette name references updated"

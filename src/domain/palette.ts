@@ -4,7 +4,7 @@
  * Domain-pure: imports only PomodoroPhase from phase.ts. No I/O, no external packages.
  * Holds the PALETTES registry (Record<PaletteName, Palette>) plus resolution helpers.
  *
- * Hex values are sourced from docs/feature/palette-themes/discuss/palette-spec.md
+ * Hex values are sourced from docs/architecture/palette-themes/palette-spec.md
  * (the authoritative spec). The gradient is ordered light (index 0) → dark (index 5).
  *
  * ADR-011 (palette registry placement + adapter injection).
