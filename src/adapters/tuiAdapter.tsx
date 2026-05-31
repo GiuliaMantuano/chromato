@@ -16,19 +16,7 @@ import { render, Text, Box, useApp, useStdout, useInput, useStdin } from 'ink';
 import type { RenderPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
 import type { PomodoroPhase } from '../domain/phase.js';
-
-interface PhaseColor {
-  fg: string;
-  bg: string;
-}
-
-const PHASE_COLORS: Record<PomodoroPhase, PhaseColor> = {
-  WORK:       { fg: '#00d7ff', bg: '#00ff00' },
-  BREAK:      { fg: '#005fff', bg: '#5f00ff' },
-  LONG_BREAK: { fg: '#af00ff', bg: '#00afff' },
-  OVERDUE:    { fg: '#ff0000', bg: '#ffaf00' },
-  IDLE:       { fg: '#808080', bg: '#808080' },
-};
+import { getPalette, type Palette } from '../domain/palette.js';
 
 const COMPACT_THRESHOLD = 40;
 const BLOCK_FULL  = '█';
@@ -69,6 +57,8 @@ function renderProgressBar(fraction: number, useAscii: boolean, columns: number)
 
 export interface FrameProps {
   snapshot: SessionSnapshot;
+  /** Resolved palette injected by the composition root. Defaults to ocean. */
+  palette?: Palette | undefined;
   onUnmount?: (() => void) | undefined;
   /** Terminal column count. When omitted, reads from useStdout() hook. */
   columns?: number | undefined;
@@ -82,7 +72,7 @@ const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
   IDLE:       'IDLE',
 };
 
-export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns: columnsProp }) => {
+export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount, columns: columnsProp }) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
   // Forward Ctrl+C to SIGINT: in raw mode, Ctrl+C arrives as byte 0x03
@@ -118,7 +108,8 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
   const resolvedColumns = columnsProp ?? envColumns ?? stdoutColumns ?? 80;
 
   const { phase, timer, currentPomodoro, completedToday, config } = snapshot;
-  const colors = PHASE_COLORS[phase];
+  const activePalette = palette ?? getPalette('ocean');
+  const colors = activePalette.phases[phase];
   const useColor = config.useColor;
   const useAscii = config.useAscii;
 
@@ -203,8 +194,10 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, onUnmount, columns:
 export class TuiAdapter implements RenderPort {
   private inkInstance: ReturnType<typeof render> | null = null;
   private testMode: boolean;
+  private palette: Palette;
 
-  constructor() {
+  constructor(palette: Palette = getPalette('ocean')) {
+    this.palette = palette;
     this.testMode = process.env['NODE_ENV'] === 'test';
   }
 
@@ -218,6 +211,7 @@ export class TuiAdapter implements RenderPort {
       process.stdout.write(ALTERNATE_SCREEN_ENTER);
       const element = React.createElement(TimerFrame, {
         snapshot,
+        palette: this.palette,
         onUnmount: this.testMode ? () => undefined : undefined,
       });
       this.inkInstance = render(element, { debug: this.testMode, exitOnCtrlC: false });
@@ -230,7 +224,7 @@ export class TuiAdapter implements RenderPort {
       }
     } else {
       this.inkInstance.rerender(
-        React.createElement(TimerFrame, { snapshot })
+        React.createElement(TimerFrame, { snapshot, palette: this.palette })
       );
     }
   }

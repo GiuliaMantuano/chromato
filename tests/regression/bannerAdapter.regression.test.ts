@@ -24,6 +24,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MinimalAdapter } from '../../src/adapters/minimalAdapter.js';
 import { printBanner } from '../../src/adapters/bannerAdapter.js';
+import { getPalette } from '../../src/domain/palette.js';
 import type { SessionSnapshot } from '../../src/domain/types.js';
 
 // ---------------------------------------------------------------------------
@@ -110,7 +111,7 @@ describe('Regression: banner present before timer output in --minimal mode', () 
     // This mirrors the composition root in src/index.ts minimal path (step 01-02 fix).
     //
     // noColor=true because config.useColor is false in MINIMAL_SNAPSHOT.config.
-    printBanner(/* noColor */ true);
+    printBanner(getPalette('ocean'), /* noColor */ true);
     const adapter = new MinimalAdapter();
     adapter.render(MINIMAL_SNAPSHOT);
 

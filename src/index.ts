@@ -85,12 +85,13 @@ const startModulesP = isStartCommand && !isMinimalStart
 
 // Full commander-based CLI for start, help, version, and future commands.
 // Loaded lazily: status path above exits before reaching this point.
-const [{ Command }, { loadConfig }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, chalk] = await Promise.all([
+const [{ Command }, { loadConfig }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
   import('commander'),
   import('./configLoader.js'),
   import('./adapters/bannerAdapter.js'),
   import('./adapters/helpAdapter.js'),
   import('./utils/unicodeDetect.js'),
+  import('./domain/palette.js'),
   import('chalk'),
 ] as const);
 
@@ -107,7 +108,13 @@ Examples:
   chromato start                        Start a 25/5 Pomodoro session
   chromato start --work 50 --break 10   50-minute session with 10-minute break
   chromato start --minimal              Plain-text output (no TUI, tmux-safe)
+  chromato start --palette lavender     Start with the lavender color palette
   chromato status --format tmux         Tmux status-right one-liner
+
+Color palettes (--palette):
+  Valid names: ocean (default), lavender, berry, forest
+  Resolution precedence: --palette flag > CHROMATO_PALETTE env > config.json > default (ocean)
+  Config file: \${XDG_CONFIG_HOME:-~/.config}/chromato/config.json  (key: "palette")
 
 Tmux integration:
   set -g status-right "#(chromato status --format tmux)"`;
@@ -115,7 +122,7 @@ Tmux integration:
 program.addHelpText('beforeAll', () => {
   const noColor = process.argv.includes('--no-color') || Boolean(process.env['NO_COLOR']);
   const useAscii = detectNonUnicode() || process.argv.includes('--ascii');
-  printBanner(noColor, useAscii);
+  printBanner(getPalette('ocean'), noColor, useAscii);
   printHelpSplash(noColor, useAscii);
   return '';
 });
@@ -151,6 +158,7 @@ program
   .option('-c, --count <count>', 'Number of Pomodoros per cycle', parsePositiveInt('count'), 4)
   .option('--minimal', 'Use plain text output (no TUI)')
   .option('--ascii', 'Use ASCII progress bar characters (suppresses auto-detection message)')
+  .option('-p, --palette <name>', 'Color palette name (ocean, lavender, berry, forest)')
   .action(async (opts: {
     work: number;
     break: number;
@@ -158,16 +166,27 @@ program
     count: number;
     minimal?: boolean;
     ascii?: boolean;
+    palette?: string;
   }) => {
-    const { config, autoDetectedAscii } = loadConfig({
-      work: opts.work,
-      breakDuration: opts.break,
-      longBreak: opts.longBreak,
-      cycles: opts.count,
-      minimal: opts.minimal ?? false,
-      noColor: program.opts().color === false,
-      ascii: opts.ascii ?? false,
-    });
+    let configResult;
+    try {
+      configResult = loadConfig({
+        work: opts.work,
+        breakDuration: opts.break,
+        longBreak: opts.longBreak,
+        cycles: opts.count,
+        minimal: opts.minimal ?? false,
+        noColor: program.opts().color === false,
+        ascii: opts.ascii ?? false,
+        palette: opts.palette,
+      });
+    } catch (err) {
+      // Unknown palette name or invalid config.json → exit 1 with a clear message.
+      // No session is started.
+      process.stderr.write(`${(err as Error).message}\n`);
+      process.exit(1);
+    }
+    const { config, autoDetectedAscii, resolvedPalette } = configResult;
 
     // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
     // Color suppression implies the caller wants plain text output with no ANSI sequences.
@@ -187,7 +206,7 @@ program
         import('./adapters/notificationAdapter.js'),
       ] as const);
 
-      printBanner(program.opts().color === false);
+      printBanner(resolvedPalette, program.opts().color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
       const notificationAdapter = new NotificationAdapter();
@@ -218,7 +237,7 @@ program
       );
     }
 
-    const tuiAdapter = new TuiAdapter();
+    const tuiAdapter = new TuiAdapter(resolvedPalette);
     const persistenceAdapter = new PersistenceAdapter();
     const notificationAdapter = new NotificationAdapter();
     const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
