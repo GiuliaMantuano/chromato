@@ -71,8 +71,9 @@ describe('help splash sequence', () => {
   it('tagline appears exactly once in combined banner + help splash output', async () => {
     const { printBanner, TAGLINE } = await import('../../src/adapters/bannerAdapter.js');
     const { printHelpSplash } = await import('../../src/adapters/helpAdapter.js');
+    const { getPalette } = await import('../../src/domain/palette.js');
 
-    printBanner(true);       // noColor=true → plain text
+    printBanner(getPalette('ocean'), true);       // noColor=true → plain text
     printHelpSplash(true, false);
 
     const output = writtenChunks.join('');
@@ -83,8 +84,9 @@ describe('help splash sequence', () => {
   it('divider appears after tagline in combined output when noColor=false', async () => {
     const { printBanner } = await import('../../src/adapters/bannerAdapter.js');
     const { printHelpSplash } = await import('../../src/adapters/helpAdapter.js');
+    const { getPalette } = await import('../../src/domain/palette.js');
 
-    printBanner(false);
+    printBanner(getPalette('ocean'), false);
     printHelpSplash(false, false);
 
     const output = writtenChunks.join('');

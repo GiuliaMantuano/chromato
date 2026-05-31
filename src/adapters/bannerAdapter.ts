@@ -10,6 +10,7 @@
  */
 
 import chalk from 'chalk';
+import type { Palette } from '../domain/palette.js';
 
 const LOGO = [
   ' ██████╗██╗  ██╗██████╗  ██████╗ ███╗   ███╗ █████╗ ████████╗ ██████╗ ',
@@ -20,21 +21,12 @@ const LOGO = [
   ' ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ',
 ];
 
-const LOGO_COLORS = [
-  '#023e8a',
-  '#0077b6',
-  '#0096c7',
-  '#00b4d8',
-  '#90e0ef',
-  '#caf0f8',
-];
-
 export const TAGLINE = 'The Pomodoro timer your terminal deserves';
 const HINT = 'Ctrl+C to quit';
 const DIVIDER_UNICODE = '─'.repeat(TAGLINE.length);
 const DIVIDER_ASCII = '-'.repeat(TAGLINE.length);
 
-export function printBanner(noColor: boolean, useAscii: boolean = false): void {
+export function printBanner(palette: Palette, noColor: boolean, useAscii: boolean = false): void {
   if (process.env['NODE_ENV'] === 'test') return;
 
   const useColor = !noColor && !process.env['NO_COLOR'];
@@ -45,7 +37,7 @@ export function printBanner(noColor: boolean, useAscii: boolean = false): void {
 
   if (useColor) {
     for (let i = 0; i < LOGO.length; i++) {
-      out.write(chalk.hex(LOGO_COLORS[i])(LOGO[i]) + '\n');
+      out.write(chalk.hex(palette.gradient[i])(LOGO[i]) + '\n');
     }
     out.write('\n');
     out.write(chalk.dim(`  ${divider}`) + '\n');

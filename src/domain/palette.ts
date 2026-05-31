@@ -1,11 +1,14 @@
 /**
- * Palette registry — RED scaffold (created by DISTILL wave, palette-themes).
+ * Palette registry — single source of truth for chromato's named color palettes.
  *
- * DELIVER replaces all stub bodies with real implementations.
- * Remove this file header comment (and __SCAFFOLD__) once all stubs are replaced.
+ * Domain-pure: imports only PomodoroPhase from phase.ts. No I/O, no external packages.
+ * Holds the PALETTES registry (Record<PaletteName, Palette>) plus resolution helpers.
+ *
+ * Hex values are sourced from docs/feature/palette-themes/discuss/palette-spec.md
+ * (the authoritative spec). The gradient is ordered light (index 0) → dark (index 5).
+ *
+ * ADR-011 (palette registry placement + adapter injection).
  */
-
-export const __SCAFFOLD__ = true;
 
 import type { PomodoroPhase } from './phase.js';
 
@@ -21,12 +24,13 @@ export interface PhaseColorEntry {
 }
 
 export interface Palette {
+  /** 6 hex stops, ordered light (index 0) → dark (index 5). */
   readonly gradient: readonly string[];
   readonly phases: Readonly<Record<PomodoroPhase, PhaseColorEntry>>;
 }
 
 // ---------------------------------------------------------------------------
-// Constants — stubs; DELIVER fills real hex values from palette-spec.md
+// Constants
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_PALETTE_NAME: PaletteName = 'ocean';
@@ -38,16 +42,23 @@ export const VALID_PALETTE_NAMES: readonly PaletteName[] = [
   'forest',
 ];
 
-/** Minimal stub — all 4 keys present so TypeScript is satisfied; hex values are placeholders. */
+/**
+ * Palette registry. All 4 named palettes.
+ *
+ * Phase A1 (no-op refactor): ocean is set to chromato's CURRENT colors —
+ * gradient = the former bannerAdapter LOGO_COLORS (light→dark), phases = the
+ * former tuiAdapter PHASE_COLORS. This proves the structural refactor is a
+ * byte-identical no-op before Phase A2 switches ocean to the refined spec.
+ */
 export const PALETTES: Record<PaletteName, Palette> = {
   ocean: {
-    gradient: ['#000000', '#000000', '#000000', '#000000', '#000000', '#000000'],
+    gradient: ['#023e8a', '#0077b6', '#0096c7', '#00b4d8', '#90e0ef', '#caf0f8'],
     phases: {
-      WORK:       { fg: '#000000', bg: '#000000' },
-      BREAK:      { fg: '#000000', bg: '#000000' },
-      LONG_BREAK: { fg: '#000000', bg: '#000000' },
-      OVERDUE:    { fg: '#000000', bg: '#000000' },
-      IDLE:       { fg: '#000000', bg: '#000000' },
+      WORK:       { fg: '#00d7ff', bg: '#00ff00' },
+      BREAK:      { fg: '#005fff', bg: '#5f00ff' },
+      LONG_BREAK: { fg: '#af00ff', bg: '#00afff' },
+      OVERDUE:    { fg: '#ff0000', bg: '#ffaf00' },
+      IDLE:       { fg: '#808080', bg: '#808080' },
     },
   },
   lavender: {
@@ -83,21 +94,19 @@ export const PALETTES: Record<PaletteName, Palette> = {
 };
 
 // ---------------------------------------------------------------------------
-// Functions — stubs throw so tests classify as RED (not BROKEN)
+// Functions
 // ---------------------------------------------------------------------------
 
-/**
- * Type-safe registry lookup. Never returns null.
- * DELIVER replaces stub with: return PALETTES[name];
- */
-export function getPalette(_name: PaletteName): Palette {
-  throw new Error('Not yet implemented -- RED scaffold');
+/** Type-safe registry lookup. Never returns null. */
+export function getPalette(name: PaletteName): Palette {
+  return PALETTES[name];
 }
 
 /**
- * Parses a raw string input. Returns null if the value is not a valid palette name.
- * DELIVER replaces stub with: return VALID_PALETTE_NAMES.includes(raw as PaletteName) ? raw as PaletteName : null;
+ * Parses a raw string input. Returns the typed PaletteName if the value is a
+ * valid (exact-case) palette name; returns null otherwise. Hex-pattern strings
+ * and unknown names return null (custom-hex deferred per locked decision D4).
  */
-export function resolvePaletteName(_raw: string): PaletteName | null {
-  throw new Error('Not yet implemented -- RED scaffold');
+export function resolvePaletteName(raw: string): PaletteName | null {
+  return VALID_PALETTE_NAMES.includes(raw as PaletteName) ? (raw as PaletteName) : null;
 }

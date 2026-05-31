@@ -85,12 +85,13 @@ const startModulesP = isStartCommand && !isMinimalStart
 
 // Full commander-based CLI for start, help, version, and future commands.
 // Loaded lazily: status path above exits before reaching this point.
-const [{ Command }, { loadConfig }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, chalk] = await Promise.all([
+const [{ Command }, { loadConfig }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
   import('commander'),
   import('./configLoader.js'),
   import('./adapters/bannerAdapter.js'),
   import('./adapters/helpAdapter.js'),
   import('./utils/unicodeDetect.js'),
+  import('./domain/palette.js'),
   import('chalk'),
 ] as const);
 
@@ -115,7 +116,7 @@ Tmux integration:
 program.addHelpText('beforeAll', () => {
   const noColor = process.argv.includes('--no-color') || Boolean(process.env['NO_COLOR']);
   const useAscii = detectNonUnicode() || process.argv.includes('--ascii');
-  printBanner(noColor, useAscii);
+  printBanner(getPalette('ocean'), noColor, useAscii);
   printHelpSplash(noColor, useAscii);
   return '';
 });
@@ -187,7 +188,7 @@ program
         import('./adapters/notificationAdapter.js'),
       ] as const);
 
-      printBanner(program.opts().color === false);
+      printBanner(getPalette('ocean'), program.opts().color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
       const notificationAdapter = new NotificationAdapter();
@@ -218,7 +219,7 @@ program
       );
     }
 
-    const tuiAdapter = new TuiAdapter();
+    const tuiAdapter = new TuiAdapter(getPalette('ocean'));
     const persistenceAdapter = new PersistenceAdapter();
     const notificationAdapter = new NotificationAdapter();
     const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
