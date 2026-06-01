@@ -13,8 +13,22 @@
  * Tests exercise the function directly as a pure configuration function.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { loadConfig } from '../../src/configLoader.js';
+
+// Hermetic isolation: point XDG_CONFIG_HOME at a fresh EMPTY temp dir before
+// every test. loadConfig resolves palette from ~/.config/chromato/config.json,
+// so a real on-disk config could otherwise make loadConfig throw (invalid JSON
+// / unknown palette) and break these Unicode-detection assertions spuriously.
+let isolatedConfigHome = '';
+
+beforeEach(() => {
+  isolatedConfigHome = fs.mkdtempSync(path.join(os.tmpdir(), 'chromato-xdg-'));
+  process.env['XDG_CONFIG_HOME'] = isolatedConfigHome;
+});
 
 // Restore env after each test to prevent cross-test contamination.
 afterEach(() => {
@@ -22,6 +36,11 @@ afterEach(() => {
   delete process.env['LC_ALL'];
   delete process.env['TERM'];
   delete process.env['NO_COLOR'];
+  delete process.env['XDG_CONFIG_HOME'];
+  if (isolatedConfigHome) {
+    fs.rmSync(isolatedConfigHome, { recursive: true, force: true });
+    isolatedConfigHome = '';
+  }
 });
 
 describe('loadConfig Unicode detection (configLoader)', () => {

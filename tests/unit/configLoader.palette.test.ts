@@ -38,17 +38,35 @@
  * return resolvedPalette.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { loadConfig } from '../../src/configLoader.js';
+
+// Hermetic isolation: point XDG_CONFIG_HOME at a fresh EMPTY temp dir before
+// every test so config resolution (resolveConfigFilePath in configLoader.ts)
+// can never read the developer's real ~/.config/chromato/config.json. Without
+// this, a real on-disk config leaked into "no config" assertions — P7 (expects
+// the ocean default) failed when a real `palette: lavender` config existed.
+// Tests that need a config (withConfigJson / P12) override XDG_CONFIG_HOME with
+// their own temp dir; this default just guarantees the "absent" baseline.
+let isolatedConfigHome = '';
+
+beforeEach(() => {
+  isolatedConfigHome = fs.mkdtempSync(path.join(os.tmpdir(), 'chromato-xdg-'));
+  process.env['XDG_CONFIG_HOME'] = isolatedConfigHome;
+});
 
 // Restore env after each test to prevent cross-test contamination.
 afterEach(() => {
   delete process.env['NO_COLOR'];
   delete process.env['CHROMATO_PALETTE'];
   delete process.env['XDG_CONFIG_HOME'];
+  if (isolatedConfigHome) {
+    fs.rmSync(isolatedConfigHome, { recursive: true, force: true });
+    isolatedConfigHome = '';
+  }
   // Restore UTF-8 env for Unicode detection
   process.env['LANG'] = 'en_US.UTF-8';
 });
@@ -269,6 +287,26 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
         expect(gradient[0]).not.toBe('#ece4ff'); // Not lavender's first stop
       }
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // REGRESSION (test-isolation bug): the "no config" baseline must come from an
+  // empty isolated XDG_CONFIG_HOME, never the developer's real ~/.config. Before
+  // the beforeEach isolation, this assertion read a real `palette: lavender`
+  // config and got '#ece4ff' instead of ocean's '#d8f0ff'. Guards P7 et al.
+  // ---------------------------------------------------------------------------
+  it('REG: "no config" resolution is isolated from the real ~/.config (no leak)', () => {
+    process.env['LANG'] = 'en_US.UTF-8';
+    delete process.env['CHROMATO_PALETTE'];
+    // The beforeEach pointed XDG_CONFIG_HOME at a fresh empty temp dir.
+    expect(process.env['XDG_CONFIG_HOME']).toBe(isolatedConfigHome);
+    expect(fs.existsSync(path.join(isolatedConfigHome, 'chromato', 'config.json'))).toBe(false);
+
+    const result = loadConfig({});
+    const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'];
+    const gradient = (resolved as Record<string, unknown>)['gradient'] as string[];
+    // Ocean default — proves no real on-disk config (e.g. lavender) leaked in.
+    expect(gradient[0]).toBe('#d8f0ff');
   });
 
 });

@@ -60,6 +60,71 @@ node_modules/.bin/tsx src/index.ts --help
 
 ---
 
+## Run the Current Build (and the First-Run Wizard)
+
+**Goal**: Ensure you are running today's code, not a stale globally-installed binary, and trigger the first-run setup wizard.
+
+**Why this matters**: the globally-installed `chromato` command may be a stale build that predates recent features. Use one of the two methods below to run the actual source.
+
+### Option A — Direct (no global install)
+
+1. Build the project:
+   ```
+   pnpm build
+   ```
+   ✅ A `dist/` directory is created (or updated).
+
+2. Run the built code directly:
+   ```
+   node dist/index.js
+   ```
+   ✅ You are running the freshly compiled code. Repeat step 1 after every code change.
+
+### Option B — Point the global command at this build
+
+1. Build and link:
+   ```
+   pnpm build && pnpm link --global
+   ```
+   ✅ `chromato` now resolves to `dist/index.js` in this project.
+
+2. After any code change, rebuild before running:
+   ```
+   pnpm build
+   ```
+
+3. To undo and restore the previous global install:
+   ```
+   pnpm uninstall --global chromato
+   ```
+
+### Trigger the first-run wizard
+
+The wizard runs only when there is no config file **and** stdin is an interactive TTY. It is intentionally skipped under `NO_COLOR`, `CI`, or piped/non-TTY input.
+
+1. Remove the config file:
+   ```
+   rm -f ~/.config/chromato/config.json
+   ```
+
+2. Run the bare command in an interactive terminal:
+   ```
+   chromato
+   ```
+   Or, using the direct path: `node dist/index.js`
+
+   ✅ The first-run setup wizard launches.
+
+### Re-run the wizard without deleting config
+
+```
+chromato setup
+```
+
+✅ The setup wizard starts regardless of whether a config file exists.
+
+---
+
 ## Watch a 6-Second Session
 
 **Goal**: See the full Pomodoro cycle in fast-forward.

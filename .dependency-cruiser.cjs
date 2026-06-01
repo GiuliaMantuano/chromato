@@ -117,6 +117,19 @@ module.exports = {
       from: { path: '^src/adapters/' },
       to: { path: '^src/adapters/' },
     },
+
+    // Rule 5: firstRun guard must stay pure — no ink, react, or adapter imports
+    // (ADR-012 DD-2). The guard runs on the help + non-interactive paths, so it
+    // must never pull in the heavy TUI stack.
+    {
+      name: 'firstRun-no-external',
+      severity: 'error',
+      from: { path: '^src/firstRun\\.' },
+      to: {
+        path: ['^src/adapters/', '^ink$', '^react$'],
+        dependencyTypes: ['npm', 'local'],
+      },
+    },
   ],
 
   options: {

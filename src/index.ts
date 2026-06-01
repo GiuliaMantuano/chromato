@@ -79,15 +79,15 @@ const startModulesP = isStartCommand && !isMinimalStart
       import('./adapters/tuiAdapter.js'),
       import('./application/sessionService.js'),
       import('./adapters/persistenceAdapter.js'),
-      import('./adapters/notificationAdapter.js'),
     ] as const)
   : null;
 
 // Full commander-based CLI for start, help, version, and future commands.
 // Loaded lazily: status path above exits before reaching this point.
-const [{ Command }, { loadConfig }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
+const [{ Command }, { loadConfig, configFileExists }, { shouldRunWizard }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
   import('commander'),
   import('./configLoader.js'),
+  import('./firstRun.js'),
   import('./adapters/bannerAdapter.js'),
   import('./adapters/helpAdapter.js'),
   import('./utils/unicodeDetect.js'),
@@ -167,14 +167,19 @@ program
     minimal?: boolean;
     ascii?: boolean;
     palette?: string;
-  }) => {
+  }, command: import('commander').Command) => {
+    // Only forward a timing flag when the user EXPLICITLY supplied it on the CLI
+    // (source 'cli'), not when commander filled in its declared default (source
+    // 'default'). This is what lets config.json timing (DD-4) win over the
+    // built-in default while an explicit --work still wins over config.json.
+    const fromCli = (name: string): boolean => command.getOptionValueSource(name) === 'cli';
     let configResult;
     try {
       configResult = loadConfig({
-        work: opts.work,
-        breakDuration: opts.break,
-        longBreak: opts.longBreak,
-        cycles: opts.count,
+        ...(fromCli('work') ? { work: opts.work } : {}),
+        ...(fromCli('break') ? { breakDuration: opts.break } : {}),
+        ...(fromCli('longBreak') ? { longBreak: opts.longBreak } : {}),
+        ...(fromCli('count') ? { cycles: opts.count } : {}),
         minimal: opts.minimal ?? false,
         noColor: program.opts().color === false,
         ascii: opts.ascii ?? false,
@@ -186,7 +191,21 @@ program
       process.stderr.write(`${(err as Error).message}\n`);
       process.exit(1);
     }
-    const { config, autoDetectedAscii, resolvedPalette } = configResult;
+    const { config, autoDetectedAscii, resolvedPalette, notifications } = configResult;
+
+    // Notifications off (ADR-014 / DD-1): the wizard's notifications=false is a
+    // composition-root injection, not a domain field. Select the no-op
+    // NullNotificationAdapter so a work→break transition fires no desktop
+    // notification and no bell; otherwise use the real NotificationAdapter.
+    // Returns a NotificationPort either way; SessionService is untouched.
+    const buildNotificationPort = async (): Promise<import('./domain/ports.js').NotificationPort> => {
+      if (!notifications) {
+        const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
+        return new NullNotificationAdapter();
+      }
+      const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
+      return new NotificationAdapter();
+    };
 
     // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
     // Color suppression implies the caller wants plain text output with no ANSI sequences.
@@ -198,18 +217,16 @@ program
         { MinimalAdapter },
         { SessionService },
         { PersistenceAdapter },
-        { NotificationAdapter },
       ] = await Promise.all([
         import('./adapters/minimalAdapter.js'),
         import('./application/sessionService.js'),
         import('./adapters/persistenceAdapter.js'),
-        import('./adapters/notificationAdapter.js'),
       ] as const);
 
       printBanner(resolvedPalette, program.opts().color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
-      const notificationAdapter = new NotificationAdapter();
+      const notificationAdapter = await buildNotificationPort();
       const service = new SessionService(renderAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
       process.on('SIGTERM', () => { service.interrupt(); });
@@ -222,12 +239,10 @@ program
       { TuiAdapter },
       { SessionService },
       { PersistenceAdapter },
-      { NotificationAdapter },
     ] = await (startModulesP ?? Promise.all([
       import('./adapters/tuiAdapter.js'),
       import('./application/sessionService.js'),
       import('./adapters/persistenceAdapter.js'),
-      import('./adapters/notificationAdapter.js'),
     ] as const));
 
     // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
@@ -239,7 +254,7 @@ program
 
     const tuiAdapter = new TuiAdapter(resolvedPalette);
     const persistenceAdapter = new PersistenceAdapter();
-    const notificationAdapter = new NotificationAdapter();
+    const notificationAdapter = await buildNotificationPort();
     const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
     process.on('SIGTERM', () => {
@@ -250,11 +265,117 @@ program
     process.exit(0);
   });
 
-// When chromato is invoked with no subcommand, Commander would normally
-// treat the missing command as an error (writes to stderr, exits 1).
-// A root action intercepts this case and routes it through program.help()
-// which uses writeOut (stdout) and exits 0 — matching AC-HSS-08.1.
-program.action(() => {
+/**
+ * Launch handoff (step 04-01): start a real `chromato start` session from the
+ * WizardResult the user just confirmed on the Summary screen. The wizard has
+ * already persisted the six-key config atomically (ConfigFileWriterAdapter), so
+ * we read it back through loadConfig — the single resolution path — to honour the
+ * chosen theme + timing exactly as a flagless `chromato start` would. DD-8 graceful
+ * degrade: if the write failed the wizard still resolved the in-memory result, so
+ * we fall back to those values (no flags) and the session starts regardless.
+ */
+async function launchSessionFromWizard(
+  result: import('./configTypes.js').WizardResult,
+): Promise<void> {
+  const { loadConfig } = await import('./configLoader.js');
+  const { config, resolvedPalette, notifications } = loadConfig({
+    work: result.work,
+    breakDuration: result.break,
+    longBreak: result.longBreak,
+    cycles: result.cycles,
+    palette: result.palette,
+  });
+
+  const [{ TuiAdapter }, { SessionService }, { PersistenceAdapter }] = await Promise.all([
+    import('./adapters/tuiAdapter.js'),
+    import('./application/sessionService.js'),
+    import('./adapters/persistenceAdapter.js'),
+  ] as const);
+
+  const buildNotificationPort = async (): Promise<import('./domain/ports.js').NotificationPort> => {
+    if (!notifications) {
+      const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
+      return new NullNotificationAdapter();
+    }
+    const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
+    return new NotificationAdapter();
+  };
+
+  const tuiAdapter = new TuiAdapter(resolvedPalette);
+  const persistenceAdapter = new PersistenceAdapter();
+  const notificationAdapter = await buildNotificationPort();
+  const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
+
+  process.on('SIGTERM', () => { service.interrupt(); });
+  await service.run(config);
+}
+
+program
+  .command('setup')
+  .description('Run the first-run setup wizard (choose a colour theme)')
+  .action(async () => {
+    // Non-TTY refusal (US-06 AC-06.4, ADR-012): the wizard needs raw-mode stdin.
+    // Refuse with guidance BEFORE the dynamic import() below, so ink/react stay
+    // off the refusal path and Ink's setRawMode is never reached on a non-TTY.
+    if (!process.stdin.isTTY) {
+      process.stderr.write(
+        'chromato setup needs an interactive terminal (a TTY). Run it directly in your terminal.\n'
+      );
+      process.exit(1);
+    }
+
+    // Dynamic import keeps ink/react off the --help and non-interactive paths
+    // (ADR-012, AC-HSS-07): the wizard adapter is loaded only when `setup` runs.
+    const [{ SetupWizardAdapter }, { ConfigFileWriterAdapter }] = await Promise.all([
+      import('./adapters/setupWizardAdapter.js'),
+      import('./adapters/configWriterAdapter.js'),
+    ] as const);
+
+    const adapter = new SetupWizardAdapter(new ConfigFileWriterAdapter());
+    const tmuxDetected = process.env['TMUX'] !== undefined;
+    const result = await adapter.run({ tmuxDetected });
+    // Launch handoff (04-01): on Summary confirm, hand off to a real session in the
+    // chosen theme; Q/Ctrl+C resolves null → no session, clean exit.
+    if (result) {
+      await launchSessionFromWizard(result);
+    }
+    process.exit(0);
+  });
+
+// When chromato is invoked with no subcommand, the first-run guard decides
+// between auto-launching the setup wizard and falling back to help.
+//
+// The guard (pure shouldRunWizard + configFileExists) is evaluated BEFORE the
+// wizard's dynamic import() so ink/react stay off the help and non-interactive
+// paths (ADR-012, AC-HSS-07). Only the bare `chromato` invocation auto-launches
+// (DD-3); the `start` action and other subcommands are untouched.
+program.action(async () => {
+  const launchWizard = shouldRunWizard({
+    isTTY: Boolean(process.stdin.isTTY),
+    env: process.env,
+    configExists: configFileExists(),
+  });
+
+  if (launchWizard) {
+    const [{ SetupWizardAdapter }, { ConfigFileWriterAdapter }] = await Promise.all([
+      import('./adapters/setupWizardAdapter.js'),
+      import('./adapters/configWriterAdapter.js'),
+    ] as const);
+
+    const adapter = new SetupWizardAdapter(new ConfigFileWriterAdapter());
+    const tmuxDetected = process.env['TMUX'] !== undefined;
+    const result = await adapter.run({ tmuxDetected });
+    // Launch handoff (04-01): the first-run wizard flows straight into the user's
+    // first session in the chosen theme when they confirm the Summary.
+    if (result) {
+      await launchSessionFromWizard(result);
+    }
+    process.exit(0);
+  }
+
+  // Non-interactive / config-present / help fallback: Commander would normally
+  // treat the missing command as an error (stderr, exit 1). program.help() uses
+  // writeOut (stdout) and exits 0 — matching AC-HSS-08.1.
   program.help();
 });
 

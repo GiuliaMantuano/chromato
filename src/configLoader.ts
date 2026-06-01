@@ -9,6 +9,7 @@ import * as os from 'os';
 import * as path from 'path';
 import type { SessionConfig } from './domain/config.js';
 import { DEFAULT_CONFIG, validateConfig } from './domain/config.js';
+import type { PersistedConfig } from './configTypes.js';
 import {
   getPalette,
   resolvePaletteName,
@@ -43,6 +44,13 @@ export interface ConfigResult {
    * ocean palette — adapters ignore it because config.useColor is false.
    */
   resolvedPalette: Palette;
+  /**
+   * Whether desktop notifications are enabled (config.json "notifications",
+   * default true). NOT a domain SessionConfig field (ADR-014 / DD-1): it is a
+   * composition-root concern surfaced here so index.ts can select the real
+   * NotificationAdapter (true) or the NullNotificationAdapter (false).
+   */
+  notifications: boolean;
 }
 
 /**
@@ -69,14 +77,28 @@ function resolveConfigFilePath(): string {
 }
 
 /**
- * Reads the "palette" string from config.json, if present.
- * - File absent or "palette" key absent → undefined (silent fallthrough).
- * - File present but invalid JSON → throws (CLI surfaces as exit 1).
+ * Whether a chromato config.json already exists on disk.
+ * Reuses resolveConfigFilePath so the composition root (firstRun guard) does
+ * not re-implement XDG path resolution.
  */
-function readConfigFilePalette(): string | undefined {
+export function configFileExists(): boolean {
+  return fs.existsSync(resolveConfigFilePath());
+}
+
+/**
+ * Reads and parses chromato's config.json ONCE (DD-4), returning the persisted
+ * settings as a Partial<PersistedConfig>. Both palette resolution and the timing
+ * precedence chain consume this single parse.
+ * - File absent → {} (silent fallthrough to flags/env/defaults).
+ * - File present but invalid JSON → throws (CLI surfaces as exit 1).
+ *
+ * Values are returned as-read (palette as a string, timing in MINUTES); callers
+ * apply their own validation and the ×60 minutes→seconds conversion.
+ */
+export function readConfigFile(): Partial<PersistedConfig> {
   const configFile = resolveConfigFilePath();
   if (!fs.existsSync(configFile)) {
-    return undefined;
+    return {};
   }
   const raw = fs.readFileSync(configFile, 'utf8');
   let parsed: unknown;
@@ -87,11 +109,10 @@ function readConfigFilePalette(): string | undefined {
       `Failed to parse chromato config file as JSON: ${configFile}`,
     );
   }
-  if (parsed && typeof parsed === 'object' && 'palette' in parsed) {
-    const value = (parsed as Record<string, unknown>)['palette'];
-    return typeof value === 'string' ? value : undefined;
+  if (parsed && typeof parsed === 'object') {
+    return parsed as Partial<PersistedConfig>;
   }
-  return undefined;
+  return {};
 }
 
 /**
@@ -99,11 +120,12 @@ function readConfigFilePalette(): string | undefined {
  *   --palette flag → CHROMATO_PALETTE env → config.json "palette" → default ocean.
  * Throws UnknownPaletteError if the selected name is not a known palette.
  */
-function resolvePalette(flags: StartFlags): Palette {
+function resolvePalette(flags: StartFlags, fileConfig: Partial<PersistedConfig>): Palette {
+  const filePalette = typeof fileConfig.palette === 'string' ? fileConfig.palette : undefined;
   const rawName =
     flags.palette ??
     process.env['CHROMATO_PALETTE'] ??
-    readConfigFilePalette() ??
+    filePalette ??
     DEFAULT_PALETTE_NAME;
 
   const name = resolvePaletteName(rawName);
@@ -111,6 +133,19 @@ function resolvePalette(flags: StartFlags): Palette {
     throw new UnknownPaletteError(rawName);
   }
   return getPalette(name);
+}
+
+/**
+ * Picks a positive numeric minutes value from the parsed config.json, if present,
+ * and converts it to domain seconds (×60). Returns undefined when absent/invalid
+ * so the caller falls through to the default. Guards the config layer against
+ * a hand-edited non-numeric value silently zeroing a duration.
+ */
+function configMinutesToSeconds(value: number | undefined): number | undefined {
+  if (typeof value !== 'number' || !isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  return value * 60;
 }
 
 /**
@@ -133,17 +168,31 @@ export function loadConfig(flags: StartFlags): ConfigResult {
   const autoDetected = !explicitAscii && detectNonUnicode();
   const useAscii = explicitAscii || autoDetected;
 
+  // Parse config.json ONCE (DD-4) — shared by palette + timing resolution.
+  const fileConfig = readConfigFile();
+
+  // Precedence (D-OPEN-4 — DO NOT REORDER): config.json is inserted BETWEEN the
+  // flag and the default. For work/break the env-first quirk is preserved:
+  //   env (raw seconds) > flag (×60) > config.json (×60) > default.
+  // longBreak/cycles have NO env var: flag > config.json > default.
   const config: SessionConfig = {
     workDurationSeconds:
       parseEnvSeconds('CHROMATO_WORK_SECONDS') ??
-      (flags.work != null ? flags.work * 60 : DEFAULT_CONFIG.workDurationSeconds),
+      (flags.work != null
+        ? flags.work * 60
+        : configMinutesToSeconds(fileConfig.work) ?? DEFAULT_CONFIG.workDurationSeconds),
     breakDurationSeconds:
       parseEnvSeconds('CHROMATO_BREAK_SECONDS') ??
-      (flags.breakDuration != null ? flags.breakDuration * 60 : DEFAULT_CONFIG.breakDurationSeconds),
+      (flags.breakDuration != null
+        ? flags.breakDuration * 60
+        : configMinutesToSeconds(fileConfig.break) ?? DEFAULT_CONFIG.breakDurationSeconds),
     longBreakDurationSeconds: flags.longBreak != null
       ? flags.longBreak * 60
-      : DEFAULT_CONFIG.longBreakDurationSeconds,
-    cycleCount: flags.cycles ?? DEFAULT_CONFIG.cycleCount,
+      : configMinutesToSeconds(fileConfig.longBreak) ?? DEFAULT_CONFIG.longBreakDurationSeconds,
+    cycleCount: flags.cycles ??
+      (typeof fileConfig.cycles === 'number' && fileConfig.cycles > 0
+        ? fileConfig.cycles
+        : DEFAULT_CONFIG.cycleCount),
     useAscii,
     useColor: !noColor,
   };
@@ -156,7 +205,11 @@ export function loadConfig(flags: StartFlags): ConfigResult {
   // never throws.
   const resolvedPalette = noColor
     ? getPalette(DEFAULT_PALETTE_NAME)
-    : resolvePalette(flags);
+    : resolvePalette(flags, fileConfig);
 
-  return { config, autoDetectedAscii: autoDetected, resolvedPalette };
+  // Notifications (ADR-014 / DD-1): composition-root concern, not a SessionConfig
+  // field. Default true; only an explicit `false` in config.json turns it off.
+  const notifications = fileConfig.notifications !== false;
+
+  return { config, autoDetectedAscii: autoDetected, resolvedPalette, notifications };
 }

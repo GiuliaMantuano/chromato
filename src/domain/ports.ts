@@ -7,6 +7,11 @@
 
 import type { SessionSnapshot } from './types.js';
 import type { PomodoroPhase } from './phase.js';
+import type { PersistedConfig } from '../configTypes.js';
+
+export interface ConfigWritePort {
+  write(config: PersistedConfig): void;
+}
 
 export interface RenderPort {
   render(snapshot: SessionSnapshot): void;
