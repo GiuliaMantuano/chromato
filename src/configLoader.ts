@@ -16,6 +16,7 @@ import {
   DEFAULT_PALETTE_NAME,
   VALID_PALETTE_NAMES,
   type Palette,
+  type PaletteName,
 } from './domain/palette.js';
 import { detectNonUnicode } from './utils/unicodeDetect.js';
 
@@ -44,6 +45,14 @@ export interface ConfigResult {
    * ocean palette — adapters ignore it because config.useColor is false.
    */
   resolvedPalette: Palette;
+  /**
+   * Resolved palette NAME (DD-4 single-read): the typed name behind
+   * resolvedPalette, computed during the single config parse. Surfaced so the
+   * composition root (reconfigureSeed) and adapters (paletteNameOf reverse
+   * lookup) need NOT re-read config.json or reverse-map the Palette object.
+   * In NO_COLOR mode this is the default ocean name (matching resolvedPalette).
+   */
+  paletteName: PaletteName;
   /**
    * Whether desktop notifications are enabled (config.json "notifications",
    * default true). NOT a domain SessionConfig field (ADR-014 / DD-1): it is a
@@ -86,6 +95,15 @@ export function configFileExists(): boolean {
 }
 
 /**
+ * The resolved chromato config file path (for display — e.g. the home screen
+ * footer note, AC-RH-02.5 / OQ-2). Mirrors the configFileExists() accessor
+ * precedent so the composition root does not re-implement XDG path resolution.
+ */
+export function configFilePath(): string {
+  return resolveConfigFilePath();
+}
+
+/**
  * Reads and parses chromato's config.json ONCE (DD-4), returning the persisted
  * settings as a Partial<PersistedConfig>. Both palette resolution and the timing
  * precedence chain consume this single parse.
@@ -116,11 +134,13 @@ export function readConfigFile(): Partial<PersistedConfig> {
 }
 
 /**
- * Resolves the palette through the precedence chain:
+ * Resolves the palette NAME through the precedence chain:
  *   --palette flag → CHROMATO_PALETTE env → config.json "palette" → default ocean.
  * Throws UnknownPaletteError if the selected name is not a known palette.
+ * Returns the typed name; loadConfig derives both the Palette object and the
+ * ConfigResult.paletteName from this single resolution (DD-4 single-read).
  */
-function resolvePalette(flags: StartFlags, fileConfig: Partial<PersistedConfig>): Palette {
+function resolvePaletteNameFor(flags: StartFlags, fileConfig: Partial<PersistedConfig>): PaletteName {
   const filePalette = typeof fileConfig.palette === 'string' ? fileConfig.palette : undefined;
   const rawName =
     flags.palette ??
@@ -132,7 +152,7 @@ function resolvePalette(flags: StartFlags, fileConfig: Partial<PersistedConfig>)
   if (name === null) {
     throw new UnknownPaletteError(rawName);
   }
-  return getPalette(name);
+  return name;
 }
 
 /**
@@ -203,13 +223,14 @@ export function loadConfig(flags: StartFlags): ConfigResult {
   // it because config.useColor is false. This is evaluated BEFORE any flag/env/
   // config palette resolution, so an invalid CHROMATO_PALETTE under NO_COLOR
   // never throws.
-  const resolvedPalette = noColor
-    ? getPalette(DEFAULT_PALETTE_NAME)
-    : resolvePalette(flags, fileConfig);
+  const paletteName = noColor
+    ? DEFAULT_PALETTE_NAME
+    : resolvePaletteNameFor(flags, fileConfig);
+  const resolvedPalette = getPalette(paletteName);
 
   // Notifications (ADR-014 / DD-1): composition-root concern, not a SessionConfig
   // field. Default true; only an explicit `false` in config.json turns it off.
   const notifications = fileConfig.notifications !== false;
 
-  return { config, autoDetectedAscii: autoDetected, resolvedPalette, notifications };
+  return { config, autoDetectedAscii: autoDetected, resolvedPalette, paletteName, notifications };
 }

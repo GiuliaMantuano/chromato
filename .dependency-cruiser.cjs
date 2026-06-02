@@ -110,12 +110,23 @@ module.exports = {
       to: { dependencyTypes: ['npm'], path: '^react$' },
     },
 
-    // Rule 4: adapters must not import each other
+    // Rule 4 (amended, ADR-015): adapters must not import each other — EXCEPT the
+    // shared presentational src/adapters/tui/ module (an allowed import target). The
+    // tui/ helpers are pure presentation primitives, not adapter behaviour.
     {
       name: 'adapters-no-cross-import',
       severity: 'error',
-      from: { path: '^src/adapters/' },
-      to: { path: '^src/adapters/' },
+      from: { path: '^src/adapters/', pathNot: '^src/adapters/tui/' },
+      to: { path: '^src/adapters/', pathNot: '^src/adapters/tui/' },
+    },
+
+    // Rule 4b (ADR-015): the shared tui/ module must not import sibling (non-tui)
+    // adapters — it stays a leaf so the carve-out cannot reintroduce adapter coupling.
+    {
+      name: 'tui-no-sibling-adapters',
+      severity: 'error',
+      from: { path: '^src/adapters/tui/' },
+      to: { path: '^src/adapters/', pathNot: '^src/adapters/tui/' },
     },
 
     // Rule 5: firstRun guard must stay pure — no ink, react, or adapter imports
@@ -125,6 +136,19 @@ module.exports = {
       name: 'firstRun-no-external',
       severity: 'error',
       from: { path: '^src/firstRun\\.' },
+      to: {
+        path: ['^src/adapters/', '^ink$', '^react$'],
+        dependencyTypes: ['npm', 'local'],
+      },
+    },
+
+    // Rule 6: homeGuard must stay pure — no ink, react, or adapter imports
+    // (DESIGN D-RH-1, K5). The returning-home guard runs on the bare-chromato
+    // cold path, so it must never pull in the heavy Ink/React TUI stack.
+    {
+      name: 'homeGuard-no-external',
+      severity: 'error',
+      from: { path: '^src/homeGuard\\.' },
       to: {
         path: ['^src/adapters/', '^ink$', '^react$'],
         dependencyTypes: ['npm', 'local'],

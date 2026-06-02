@@ -10,6 +10,7 @@ export default {
   paths: [
     'tests/acceptance/pomodoro-timer-cli/**/*.feature',
     'tests/acceptance/first-run-setup-wizard/**/*.feature',
+    'tests/acceptance/returning-home/**/*.feature',
   ],
   // Register tsx's ESM hook FIRST, then load step files. Order matters:
   // the register file must precede any *.ts entries. requireModule was the
@@ -19,6 +20,7 @@ export default {
     './cucumber.tsx-register.mjs',
     'tests/acceptance/pomodoro-timer-cli/steps/**/*.ts',
     'tests/acceptance/first-run-setup-wizard/steps/**/*.ts',
+    'tests/acceptance/returning-home/steps/**/*.ts',
   ],
   format: [
     'progress-bar',

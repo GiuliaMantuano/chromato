@@ -20,7 +20,7 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 
 **Paradigm**: Object-Oriented Programming (OOP)
 
-**Language**: TypeScript 5.x on Node.js 20 LTS with class-based design throughout. The architecture uses a **ports-and-adapters (hexagonal) pattern** with strict dependency inversion:
+**Language**: TypeScript 6.x on Node.js 20 LTS with class-based design throughout. The architecture uses a **ports-and-adapters (hexagonal) pattern** with strict dependency inversion:
 
 - `src/domain/` -- Pure TypeScript classes and interfaces. Zero external imports. Contains all business rules. Domain types are expressed as TypeScript interfaces and discriminated unions.
 - `src/application/` -- Orchestration classes. Imports domain only. No adapters.
@@ -60,12 +60,12 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 | Package | Version | Role |
 |---------|---------|------|
 | Node.js | 20 LTS | Runtime |
-| TypeScript | ^5.0 | Language |
+| TypeScript | ^6.0.3 | Language |
 | ink | ^4.0 | Full TUI rendering (start command path only) |
 | react | ^18.0 | Ink peer dependency |
 | chalk | ^5.0 | ANSI color (status + minimal paths) |
-| commander | ^12.0 | CLI framework |
-| better-sqlite3 | ^12.8.0 | Session history SQLite (synchronous) |
+| commander | ^14.0.3 | CLI framework |
+| better-sqlite3 | ^12.10.0 | Session history SQLite (synchronous) |
 | node-notifier | ^10.0 | OS desktop notifications |
 
 **Dev dependencies**: vitest, @vitest/coverage-v8, ink-testing-library, tsx, esbuild, dependency-cruiser, TypeScript type packages

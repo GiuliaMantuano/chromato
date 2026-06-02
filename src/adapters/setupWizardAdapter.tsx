@@ -27,9 +27,13 @@ import {
   DEFAULT_PALETTE_NAME,
   type PaletteName,
 } from '../domain/palette.js';
-import { LOGO, TAGLINE, DESCRIPTOR, WELCOME_BODY } from '../domain/brand.js';
+import { TAGLINE, DESCRIPTOR, WELCOME_BODY } from '../domain/brand.js';
 import type { WizardResult } from '../configTypes.js';
 import type { ConfigWritePort } from '../domain/ports.js';
+// Shared presentational TUI helpers (ADR-015): imported from the shared tui/ module
+// so the home adapter can reuse the same logo/swatch/footer/label rendering without
+// importing this adapter (dependency-cruiser Rule 4 + tui/ carve-out).
+import { LogoBlock, Footer, swatch, colorize, PALETTE_META } from './tui/components.js';
 
 // Recommended ("Default") timing, also the seed for Custom edits. Matches the
 // prototype rTiming "25 · 5 × 4 (recommended)" option.
@@ -92,25 +96,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-interface PaletteMeta {
-  /** Capitalised display name, e.g. 'Ocean'. */
-  readonly label: string;
-  /** One-line option description, e.g. 'cool blue · the default'. */
-  readonly description: string;
-}
-
-/**
- * Per-palette display copy for the wizard's theme option cards. Presentation
- * concern (UI labels/descriptions), so it lives with its sole consumer — the
- * wizard adapter — not in the domain. Copy mirrors the approved prototype.
- */
-const PALETTE_META: Record<PaletteName, PaletteMeta> = {
-  ocean: { label: 'Ocean', description: 'cool blue · the default' },
-  lavender: { label: 'Lavender', description: 'soft violet · catppuccin mood' },
-  berry: { label: 'Berry', description: 'warm rose · wine + gold' },
-  forest: { label: 'Forest', description: 'sage green · earthy terminal' },
-};
-
 // Preview chrome constants — faithful to the approved prototype (splash-onboarding-
 // prototype.html: bar() L153, rTheme preview L187). Named here so the prototype
 // origin is traceable and a later step can parameterise the countdown.
@@ -123,11 +108,6 @@ const PREVIEW_TIME_LABEL = '15:24'; // illustrative remaining-time label
 // instead of beside them, so the 72-col logo never overflows. The side-by-side
 // layout needs ~35 (option column) + 3 (gap) + 72 (logo) + padding ≈ 112 cols.
 const SIDE_BY_SIDE_MIN_COLS = 112;
-// Footer key-hint "buttons": a filled key-cap plus a readable (not dimmed) label,
-// so the call-to-action reads as actionable rather than disabled (prototype kbd style).
-const KEYCAP_BG = '#28384a';
-const KEYCAP_FG = '#dfe7ef';
-const HINT_LABEL_FG = '#aeb9c6';
 // Breadcrumb chrome — faithful to the prototype crumbs() (L155-161): the three
 // wizard steps, the active step highlighted, completed steps marked done (✓).
 const WIZARD_STEP_LABELS = ['Theme', 'Timing', 'Setup'] as const;
@@ -136,26 +116,9 @@ const CRUMB_ACTIVE_FG = '#dfe7ef'; // active step label — bright
 const CRUMB_DONE_FG = '#7a8696'; // completed step — muted
 const CRUMB_UPCOMING_FG = '#4a5663'; // not-yet-reached step — dim
 
-/** Renders a string in the given hex truecolor, honouring the process chalk level. */
-function colorize(hex: string, content: string): string {
-  return chalk.hex(hex)(content);
-}
-
 /** A filled "chip": a label on a coloured background (prototype phase chips). */
 function chip(bgHex: string, label: string): string {
   return chalk.bgHex(bgHex).hex(CHIP_TEXT_FG).bold(` ${label} `);
-}
-
-/** A footer key hint as a filled key-cap "button" followed by a readable label. */
-function keyHint(keyName: string, label: string): string {
-  return chalk.bgHex(KEYCAP_BG).hex(KEYCAP_FG).bold(` ${keyName} `) + chalk.hex(HINT_LABEL_FG)(` ${label}`);
-}
-
-/** A 6-stop colour swatch (one block per gradient stop) for a theme option card. */
-function swatch(paletteName: PaletteName): string {
-  return getPalette(paletteName)
-    .gradient.map((hex) => colorize(hex, '█'))
-    .join('');
 }
 
 /** WORK progress bar: `width` cells, `frac` filled in the palette WORK colour. */
@@ -175,25 +138,6 @@ export interface SetupWizardProps {
   /** Called when the user quits (Q) without finishing. */
   readonly onQuit: () => void;
 }
-
-// ---------------------------------------------------------------------------
-// Logo — the full 6-line ASCII logo rendered in a palette's gradient (one
-// gradient stop per line). Same shape as the start-up banner, but sourced from
-// the domain brand module so the wizard need not import another adapter.
-// ---------------------------------------------------------------------------
-
-export const LogoBlock: React.FC<{ paletteName: PaletteName }> = ({ paletteName }) => {
-  const { gradient } = getPalette(paletteName);
-  return (
-    <Box flexDirection="column">
-      {LOGO.map((line, i) => (
-        // LOGO and every palette gradient are both exactly 6 entries (palette.ts),
-        // so the indices align one-stop-per-line.
-        <Text key={i}>{colorize(gradient[i], line)}</Text>
-      ))}
-    </Box>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Theme preview — live panel from the REAL palette registry: the full logo in
@@ -265,25 +209,6 @@ export const TimingTimeline: React.FC<{ paletteName: PaletteName; timing: Timing
     </Box>
   );
 };
-
-// ---------------------------------------------------------------------------
-// Footer keybar — a contextual row of key hints rendered via keyHint(), matching
-// the prototype footer() (L162). Reusable: every wizard screen passes its own
-// ordered hint list. Generalises the inline footers added in step 01-04.
-// ---------------------------------------------------------------------------
-
-export interface KeyHint {
-  /** Key cap text, e.g. 'Enter' or '↑↓'. */
-  readonly key: string;
-  /** Readable action label, e.g. 'get started'. */
-  readonly label: string;
-}
-
-export const Footer: React.FC<{ hints: readonly KeyHint[] }> = ({ hints }) => (
-  <Box marginTop={1}>
-    <Text>{`  ${hints.map((hint) => keyHint(hint.key, hint.label)).join('   ')}`}</Text>
-  </Box>
-);
 
 // ---------------------------------------------------------------------------
 // Breadcrumbs — the three wizard steps (Theme · Timing · Setup) with the active

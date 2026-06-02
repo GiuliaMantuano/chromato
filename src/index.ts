@@ -84,16 +84,36 @@ const startModulesP = isStartCommand && !isMinimalStart
 
 // Full commander-based CLI for start, help, version, and future commands.
 // Loaded lazily: status path above exits before reaching this point.
-const [{ Command }, { loadConfig, configFileExists }, { shouldRunWizard }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
+const [{ Command }, { loadConfig, configFileExists, configFilePath }, { shouldRunWizard }, { shouldShowHome, normalizeGuardEnv }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
   import('commander'),
   import('./configLoader.js'),
   import('./firstRun.js'),
+  import('./homeGuard.js'),
   import('./adapters/bannerAdapter.js'),
   import('./adapters/helpAdapter.js'),
   import('./utils/unicodeDetect.js'),
   import('./domain/palette.js'),
   import('chalk'),
 ] as const);
+
+/**
+ * Selects the NotificationPort for a session (ADR-014 / DD-1). The wizard's
+ * notifications=false is a composition-root injection, not a domain field: when
+ * off, the no-op NullNotificationAdapter is wired so a work→break transition fires
+ * no desktop notification and no bell; otherwise the real NotificationAdapter is
+ * used. Either way a NotificationPort is returned and SessionService is untouched.
+ * Shared by every session launch path (start action, wizard launch, home Start).
+ */
+async function buildNotificationPort(
+  notifications: boolean,
+): Promise<import('./domain/ports.js').NotificationPort> {
+  if (!notifications) {
+    const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
+    return new NullNotificationAdapter();
+  }
+  const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
+  return new NotificationAdapter();
+}
 
 const program = new Command();
 
@@ -193,20 +213,6 @@ program
     }
     const { config, autoDetectedAscii, resolvedPalette, notifications } = configResult;
 
-    // Notifications off (ADR-014 / DD-1): the wizard's notifications=false is a
-    // composition-root injection, not a domain field. Select the no-op
-    // NullNotificationAdapter so a work→break transition fires no desktop
-    // notification and no bell; otherwise use the real NotificationAdapter.
-    // Returns a NotificationPort either way; SessionService is untouched.
-    const buildNotificationPort = async (): Promise<import('./domain/ports.js').NotificationPort> => {
-      if (!notifications) {
-        const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
-        return new NullNotificationAdapter();
-      }
-      const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
-      return new NotificationAdapter();
-    };
-
     // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
     // Color suppression implies the caller wants plain text output with no ANSI sequences.
     const useMinimalAdapter = opts.minimal || !config.useColor;
@@ -226,7 +232,7 @@ program
       printBanner(resolvedPalette, program.opts().color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
-      const notificationAdapter = await buildNotificationPort();
+      const notificationAdapter = await buildNotificationPort(notifications);
       const service = new SessionService(renderAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
       process.on('SIGTERM', () => { service.interrupt(); });
@@ -254,7 +260,7 @@ program
 
     const tuiAdapter = new TuiAdapter(resolvedPalette);
     const persistenceAdapter = new PersistenceAdapter();
-    const notificationAdapter = await buildNotificationPort();
+    const notificationAdapter = await buildNotificationPort(notifications);
     const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
     process.on('SIGTERM', () => {
@@ -278,13 +284,26 @@ async function launchSessionFromWizard(
   result: import('./configTypes.js').WizardResult,
 ): Promise<void> {
   const { loadConfig } = await import('./configLoader.js');
-  const { config, resolvedPalette, notifications } = loadConfig({
+  const configResult = loadConfig({
     work: result.work,
     breakDuration: result.break,
     longBreak: result.longBreak,
     cycles: result.cycles,
     palette: result.palette,
   });
+  await launchSessionFromConfigResult(configResult);
+}
+
+/**
+ * Start a real TUI session from an already-loaded ConfigResult. The home screen's
+ * "Start" choice reuses this with the config it ALREADY loaded for the recap — no
+ * second loadConfig call (AC-RH-04.2 / K8). launchSessionFromWizard funnels here too
+ * so the wizard and home start paths share one launch implementation (SC-06).
+ */
+async function launchSessionFromConfigResult(
+  configResult: import('./configLoader.js').ConfigResult,
+): Promise<void> {
+  const { config, resolvedPalette, notifications } = configResult;
 
   const [{ TuiAdapter }, { SessionService }, { PersistenceAdapter }] = await Promise.all([
     import('./adapters/tuiAdapter.js'),
@@ -292,53 +311,78 @@ async function launchSessionFromWizard(
     import('./adapters/persistenceAdapter.js'),
   ] as const);
 
-  const buildNotificationPort = async (): Promise<import('./domain/ports.js').NotificationPort> => {
-    if (!notifications) {
-      const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
-      return new NullNotificationAdapter();
-    }
-    const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
-    return new NotificationAdapter();
-  };
-
   const tuiAdapter = new TuiAdapter(resolvedPalette);
   const persistenceAdapter = new PersistenceAdapter();
-  const notificationAdapter = await buildNotificationPort();
+  const notificationAdapter = await buildNotificationPort(notifications);
   const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
   process.on('SIGTERM', () => { service.interrupt(); });
   await service.run(config);
 }
 
+/**
+ * Run the setup wizard and (on Summary confirm) launch a session in the chosen
+ * theme. Shared by the `setup` command and the home screen's "Reconfigure" choice
+ * (SC-05, AC-RH-05.3) so there is one wizard launch path, not two. `initial`
+ * pre-seeds the wizard with the saved settings on a Reconfigure re-run (R2 / OQ-1).
+ */
+async function runSetupWizard(
+  initial?: import('./configTypes.js').WizardResult,
+): Promise<void> {
+  // Non-TTY refusal (US-06 AC-06.4, ADR-012): the wizard needs raw-mode stdin.
+  // Refuse with guidance BEFORE the dynamic import() below, so ink/react stay
+  // off the refusal path and Ink's setRawMode is never reached on a non-TTY.
+  if (!process.stdin.isTTY) {
+    process.stderr.write(
+      'chromato setup needs an interactive terminal (a TTY). Run it directly in your terminal.\n'
+    );
+    process.exit(1);
+  }
+
+  // Dynamic import keeps ink/react off the --help and non-interactive paths
+  // (ADR-012, AC-HSS-07): the wizard adapter is loaded only when `setup` runs.
+  const [{ SetupWizardAdapter }, { ConfigFileWriterAdapter }] = await Promise.all([
+    import('./adapters/setupWizardAdapter.js'),
+    import('./adapters/configWriterAdapter.js'),
+  ] as const);
+
+  const adapter = new SetupWizardAdapter(new ConfigFileWriterAdapter());
+  const tmuxDetected = process.env['TMUX'] !== undefined;
+  const result = await adapter.run({ tmuxDetected, ...(initial ? { initial } : {}) });
+  // Launch handoff (04-01): on Summary confirm, hand off to a real session in the
+  // chosen theme; Q/Ctrl+C resolves null → no session, clean exit.
+  if (result) {
+    await launchSessionFromWizard(result);
+  }
+}
+
+/**
+ * Build the wizard pre-seed (R2 / OQ-1) from the config ALREADY loaded for the home
+ * recap, so Reconfigure reopens the wizard showing the user's current settings. The
+ * palette NAME comes straight off the single-read ConfigResult.paletteName (DD-4) —
+ * no second config.json read; timings convert domain seconds → wizard minutes. This
+ * is the pre-seed only — not a second loadConfig of the session config (K8 honoured).
+ */
+function reconfigureSeed(
+  configResult: import('./configLoader.js').ConfigResult,
+): import('./configTypes.js').WizardResult {
+  const { config, paletteName, notifications } = configResult;
+  const toMinutes = (seconds: number): number => Math.round(seconds / 60);
+  return {
+    palette: paletteName,
+    work: toMinutes(config.workDurationSeconds),
+    break: toMinutes(config.breakDurationSeconds),
+    longBreak: toMinutes(config.longBreakDurationSeconds),
+    cycles: config.cycleCount,
+    notifications,
+  };
+}
+
 program
   .command('setup')
   .description('Run the first-run setup wizard (choose a colour theme)')
   .action(async () => {
-    // Non-TTY refusal (US-06 AC-06.4, ADR-012): the wizard needs raw-mode stdin.
-    // Refuse with guidance BEFORE the dynamic import() below, so ink/react stay
-    // off the refusal path and Ink's setRawMode is never reached on a non-TTY.
-    if (!process.stdin.isTTY) {
-      process.stderr.write(
-        'chromato setup needs an interactive terminal (a TTY). Run it directly in your terminal.\n'
-      );
-      process.exit(1);
-    }
-
-    // Dynamic import keeps ink/react off the --help and non-interactive paths
-    // (ADR-012, AC-HSS-07): the wizard adapter is loaded only when `setup` runs.
-    const [{ SetupWizardAdapter }, { ConfigFileWriterAdapter }] = await Promise.all([
-      import('./adapters/setupWizardAdapter.js'),
-      import('./adapters/configWriterAdapter.js'),
-    ] as const);
-
-    const adapter = new SetupWizardAdapter(new ConfigFileWriterAdapter());
-    const tmuxDetected = process.env['TMUX'] !== undefined;
-    const result = await adapter.run({ tmuxDetected });
-    // Launch handoff (04-01): on Summary confirm, hand off to a real session in the
-    // chosen theme; Q/Ctrl+C resolves null → no session, clean exit.
-    if (result) {
-      await launchSessionFromWizard(result);
-    }
+    await runSetupWizard();
     process.exit(0);
   });
 
@@ -350,26 +394,76 @@ program
 // paths (ADR-012, AC-HSS-07). Only the bare `chromato` invocation auto-launches
 // (DD-3); the `start` action and other subcommands are untouched.
 program.action(async () => {
+  const configExists = configFileExists();
+
+  // Returning-home guard (D-RH-1/D-RH-8): a returning user (config present) in an
+  // interactive colour terminal is greeted by the branded home screen. The guard's
+  // isTTY input is "interactive colour stdout": a real terminal sets stdout.isTTY
+  // AND chalk detects colour; piped/redirected output (chalk.level 0) falls through
+  // to help. This is ADDITIVE — evaluated BEFORE the wizard/help fallback below;
+  // --help/start/status/setup never reach here (Commander routes those first).
+  // Normalise the env the guard sees (normalizeGuardEnv): a literal CI="false"/"0"/""
+  // is the conventional "NOT in CI" signal (and our test harness sets CI="false" to
+  // keep Ink off its CI-buffered path), so those map to not-in-CI. The isTTY input is
+  // the colour-interactive surrogate `stdout.isTTY || chalk.level > 0` (see HomeGuardInput).
+  const showHome = shouldShowHome({
+    isTTY: Boolean(process.stdout.isTTY) || chalk.default.level > 0,
+    env: normalizeGuardEnv(process.env),
+    argv: process.argv,
+    configExists,
+  });
+
+  if (showHome) {
+    // D-RH-8 step 2: the existence-only guard passed, but the file may be corrupt.
+    // Wrap loadConfig() ONLY in try/catch — a parse throw degrades gracefully to
+    // plain Commander help (exit 0), with NO Ink mount (AC-RH-07.4 / C2).
+    let configResult: import('./configLoader.js').ConfigResult;
+    try {
+      configResult = loadConfig({ noColor: program.opts().color === false });
+    } catch {
+      // outputHelp writes the listing to stdout WITHOUT calling process.exit
+      // internally (unlike program.help(), which exits with process.exitCode ?? 0).
+      // Exit 0 explicitly (AC-RH-07.4 / C2): a corrupt config degrades to plain help.
+      program.outputHelp();
+      process.exit(0);
+    }
+
+    // D-RH-8 step 3: guard true AND config loaded → dynamic-import the home adapter
+    // (Ink stays off every other path, ADR-012 / K5), render, and delegate on the
+    // resolved HomeChoice. The composition root owns delegation (D-RH-5).
+    const { HomeAdapter } = await import('./adapters/homeAdapter.js');
+    const tmuxDetected = process.env['TMUX'] !== undefined;
+    const choice = await new HomeAdapter().run({
+      config: configResult,
+      tmuxDetected,
+      configPath: configFilePath(),
+    });
+
+    if (choice.kind === 'start') {
+      // Start reuses the config ALREADY loaded for the recap — no second loadConfig
+      // (AC-RH-04.2 / K8) — funnelling through the shared launch path (SC-06).
+      await launchSessionFromConfigResult(configResult);
+      process.exit(0);
+    }
+    if (choice.kind === 'reconfigure') {
+      // Reconfigure reopens the setup wizard pre-seeded with the saved settings
+      // (R2 / OQ-1), reusing the shared wizard launch path (SC-05, AC-RH-05.3).
+      await runSetupWizard(reconfigureSeed(configResult));
+      process.exit(0);
+    }
+    process.exit(0); // quit — the home wrote nothing (AC-RH-06.1)
+  }
+
   const launchWizard = shouldRunWizard({
     isTTY: Boolean(process.stdin.isTTY),
     env: process.env,
-    configExists: configFileExists(),
+    configExists,
   });
 
   if (launchWizard) {
-    const [{ SetupWizardAdapter }, { ConfigFileWriterAdapter }] = await Promise.all([
-      import('./adapters/setupWizardAdapter.js'),
-      import('./adapters/configWriterAdapter.js'),
-    ] as const);
-
-    const adapter = new SetupWizardAdapter(new ConfigFileWriterAdapter());
-    const tmuxDetected = process.env['TMUX'] !== undefined;
-    const result = await adapter.run({ tmuxDetected });
-    // Launch handoff (04-01): the first-run wizard flows straight into the user's
-    // first session in the chosen theme when they confirm the Summary.
-    if (result) {
-      await launchSessionFromWizard(result);
-    }
+    // First-run wizard (04-01): a brand-new user (no config) flows straight into
+    // their first session in the chosen theme when they confirm the Summary.
+    await runSetupWizard();
     process.exit(0);
   }
 
