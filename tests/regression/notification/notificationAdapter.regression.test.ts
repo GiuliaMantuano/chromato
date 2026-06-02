@@ -34,7 +34,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NotificationAdapter } from '../../../src/adapters/notificationAdapter.js';
+import {
+  NotificationAdapter,
+  type CommandRunner,
+} from '../../../src/adapters/notificationAdapter.js';
+import type { NotificationCopyNumbers } from '../../../src/domain/notificationCopy.js';
 
 // ---------------------------------------------------------------------------
 // FakeCommandRunner (same seam contract as unit tests)
@@ -58,6 +62,22 @@ class FakeCommandRunner {
     }
     return { exitCode: this.nextExitCode };
   }
+}
+
+// Resolved copy numbers — the PRECONDITION (input state). The 1-arg ctor (runner?)
+// is RETIRED (design/upstream-changes.md (e)); the adapter now takes numbers first,
+// runner second. These regression scenarios assert the BELL fallback only (never the
+// copy text), so only the ctor arity changes — the regression intent (no silent
+// failure) is unchanged.
+const NUMBERS: NotificationCopyNumbers = {
+  workMinutes: 25,
+  breakMinutes: 5,
+  longBreakMinutes: 15,
+  cycleCount: 4,
+};
+
+function makeAdapter(runner: CommandRunner): NotificationAdapter {
+  return new NotificationAdapter(NUMBERS as never, runner as never);
 }
 
 // ---------------------------------------------------------------------------
@@ -97,14 +117,14 @@ describe('Regression: bell fires when notification command fails (R1, R2) [pendi
       return true;
     });
 
-    // DELIVER: NotificationAdapter must accept optional runner parameter
-    const adapter = new NotificationAdapter(runner as never);
+    // DELIVER: NotificationAdapter takes (numbers, runner?) per upstream-changes (e)
+    const adapter = makeAdapter(runner);
     adapter.notifyPhaseChange('WORK', 'BREAK');
 
     // Allow async runner to settle
     await new Promise((r) => setTimeout(r, 10));
 
-    const hasBell = stderrWrites.some((s) => s.includes(''));
+    const hasBell = stderrWrites.some((s) => s.includes('\x07'));
     expect(hasBell).toBe(true);
     spy.mockRestore();
   });
@@ -120,12 +140,12 @@ describe('Regression: bell fires when notification command fails (R1, R2) [pendi
       return true;
     });
 
-    const adapter = new NotificationAdapter(runner as never);
+    const adapter = makeAdapter(runner);
     adapter.notifyOverdue();
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const hasBell = stderrWrites.some((s) => s.includes(''));
+    const hasBell = stderrWrites.some((s) => s.includes('\x07'));
     expect(hasBell).toBe(true);
     spy.mockRestore();
   });

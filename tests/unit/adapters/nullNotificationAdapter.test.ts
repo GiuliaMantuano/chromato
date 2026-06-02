@@ -30,6 +30,7 @@ import {
   NotificationAdapter,
   type CommandRunner,
 } from '../../../src/adapters/notificationAdapter.js';
+import type { NotificationCopyNumbers } from '../../../src/domain/notificationCopy.js';
 import { SessionService } from '../../../src/application/sessionService.js';
 import type { RenderPort, StatePort, HistoryPort } from '../../../src/domain/ports.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
@@ -71,6 +72,16 @@ class RecordingCommandRunner implements CommandRunner {
     return Promise.resolve({ exitCode: 0 });
   }
 }
+
+// Resolved copy numbers fixture — the real adapter now takes (numbers, runner?)
+// per upstream-changes (e). Mechanical 2-arg ctor update; behaviour identical
+// (this guard exercises the headless bell path, which ignores both args).
+const NUMBERS: NotificationCopyNumbers = {
+  workMinutes: 25,
+  breakMinutes: 5,
+  longBreakMinutes: 15,
+  cycleCount: 4,
+};
 
 function makeConfig(): SessionConfig {
   return {
@@ -120,12 +131,26 @@ describe('Notifications off (NullNotificationAdapter wiring)', () => {
     expect(bellWrites).toHaveLength(0);
   });
 
+  it('Notifications off suppresses the session-complete notification (US-NB-04 / AC-NB-04.3)', () => {
+    // The Null adapter's new notifySessionComplete is a deliberate no-op: when
+    // notifications are off, completing a session spawns no command and rings no
+    // bell. Directly exercise the off-switch adapter at the new port method.
+    const runner = new RecordingCommandRunner();
+    const nullNotifier = new NullNotificationAdapter();
+
+    nullNotifier.notifySessionComplete(100);
+
+    const bellWrites = bellSpy.mock.calls.filter((c) => String(c[0]).includes('\x07'));
+    expect(bellWrites).toHaveLength(0);
+    expect(runner.calls).toHaveLength(0);
+  });
+
   it('falsifiability guard: the REAL adapter DOES fire a bell on the same transition', () => {
     // Same WORK→BREAK transition, but wired with the real NotificationAdapter.
     // In NODE_ENV=test the real adapter rings the terminal bell — proving the
     // zero-bell assertion above is a genuine signal, not a vacuous pass.
     const runner = new RecordingCommandRunner();
-    const realNotifier = new NotificationAdapter(runner);
+    const realNotifier = new NotificationAdapter(NUMBERS, runner);
     const service = new SessionService(
       new NoopRenderPort(),
       new NoopStatePort(),

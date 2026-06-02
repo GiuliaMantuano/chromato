@@ -26,6 +26,7 @@ export class SessionService {
   private session: Session | null = null;
   private overdueSecondNotified = false;
   private lastSnapshot: SessionSnapshot | null = null;
+  private completedThisSession = 0;
 
   constructor(
     renderPort: RenderPort,
@@ -51,6 +52,7 @@ export class SessionService {
       try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }
       try { streak = this.historyPort?.readStreak() ?? 0; } catch { streak = 0; }
       this.session = new Session(config, completedToday, streak);
+      this.completedThisSession = 0;
     }
 
     if (this.session.isInterrupted()) {
@@ -65,7 +67,7 @@ export class SessionService {
     this.renderPort.render(snapshot);
     this.statePort?.writeState(snapshot);
 
-    this.processEvents();
+    this.processEvents(config);
     this.processOverdueMilestones(snapshot);
   }
 
@@ -83,6 +85,7 @@ export class SessionService {
     try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }
     try { streak = this.historyPort?.readStreak() ?? 0; } catch { streak = 0; }
     this.session = new Session(config, completedToday, streak);
+    this.completedThisSession = 0;
     const session = this.session;
 
     process.on('SIGINT', () => {
@@ -94,7 +97,7 @@ export class SessionService {
     const firstSnapshot = session.getSnapshot();
     this.renderPort.render(firstSnapshot);
     this.statePort?.writeState(firstSnapshot);
-    this.processEvents();
+    this.processEvents(config);
 
     return new Promise<void>((resolve) => {
       let lastTime = process.hrtime.bigint();
@@ -120,7 +123,7 @@ export class SessionService {
         this.renderPort.render(snapshot);
         this.statePort?.writeState(snapshot);
 
-        this.processEvents();
+        this.processEvents(config);
         this.processOverdueMilestones(snapshot);
 
         setTimeout(tick, TICK_INTERVAL_MS);
@@ -154,7 +157,7 @@ export class SessionService {
     }
   }
 
-  private processEvents(): void {
+  private processEvents(config: SessionConfig): void {
     if (this.session === null) {
       return;
     }
@@ -170,8 +173,20 @@ export class SessionService {
       if (event.type === 'OVERDUE_ACTIVATED' && this.notificationPort) {
         this.notificationPort.notifyOverdue();
       }
-      if (event.type === 'SESSION_COMPLETED' && this.historyPort) {
-        try { this.historyPort.recordSession(event.completedPomodoros); } catch { /* sqlite unavailable */ }
+      if (event.type === 'SESSION_COMPLETED') {
+        // History receives the DAILY total (event.completedPomodoros). It stays
+        // first inside its own try/catch (sqlite may be unavailable).
+        if (this.historyPort) {
+          try { this.historyPort.recordSession(event.completedPomodoros); } catch { /* sqlite unavailable */ }
+        }
+        // Notification reports SESSION-SCOPED focus (CRIT-2 fix): a fresh
+        // per-session counter, reset at each new Session(...), so a 2nd same-day
+        // session does NOT over-count. notify is fire-and-forget at the adapter.
+        this.completedThisSession += 1;
+        if (this.notificationPort) {
+          const focusedMinutes = this.completedThisSession * (config.workDurationSeconds / 60);
+          this.notificationPort.notifySessionComplete(focusedMinutes);
+        }
       }
     }
   }

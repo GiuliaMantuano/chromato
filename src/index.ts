@@ -106,13 +106,26 @@ const [{ Command }, { loadConfig, configFileExists, configFilePath }, { shouldRu
  */
 async function buildNotificationPort(
   notifications: boolean,
+  config: import('./domain/config.js').SessionConfig,
 ): Promise<import('./domain/ports.js').NotificationPort> {
   if (!notifications) {
     const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
     return new NullNotificationAdapter();
   }
+  // Derive the resolved copy NUMBERS from the SAME ConfigResult.config the session
+  // uses (SC-07: single-sourced, no second loadConfig) — seconds ÷ 60 → minutes,
+  // mirroring reconfigureSeed's toMinutes and the TuiAdapter(resolvedPalette)
+  // precedent. `numbers` is a REQUIRED ctor arg (no default) — omitting it is a
+  // compile error, so the copy can never silently say "Take 5" when the user's
+  // break is 10 (decision 7 / D-NB-7).
+  const numbers: import('./domain/notificationCopy.js').NotificationCopyNumbers = {
+    workMinutes: Math.round(config.workDurationSeconds / 60),
+    breakMinutes: Math.round(config.breakDurationSeconds / 60),
+    longBreakMinutes: Math.round(config.longBreakDurationSeconds / 60),
+    cycleCount: config.cycleCount,
+  };
   const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
-  return new NotificationAdapter();
+  return new NotificationAdapter(numbers);
 }
 
 const program = new Command();
@@ -232,7 +245,7 @@ program
       printBanner(resolvedPalette, program.opts().color === false);
       const renderAdapter = new MinimalAdapter();
       const persistenceAdapter = new PersistenceAdapter();
-      const notificationAdapter = await buildNotificationPort(notifications);
+      const notificationAdapter = await buildNotificationPort(notifications, config);
       const service = new SessionService(renderAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
       process.on('SIGTERM', () => { service.interrupt(); });
@@ -260,7 +273,7 @@ program
 
     const tuiAdapter = new TuiAdapter(resolvedPalette);
     const persistenceAdapter = new PersistenceAdapter();
-    const notificationAdapter = await buildNotificationPort(notifications);
+    const notificationAdapter = await buildNotificationPort(notifications, config);
     const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
     process.on('SIGTERM', () => {
@@ -313,7 +326,7 @@ async function launchSessionFromConfigResult(
 
   const tuiAdapter = new TuiAdapter(resolvedPalette);
   const persistenceAdapter = new PersistenceAdapter();
-  const notificationAdapter = await buildNotificationPort(notifications);
+  const notificationAdapter = await buildNotificationPort(notifications, config);
   const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
   process.on('SIGTERM', () => { service.interrupt(); });

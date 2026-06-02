@@ -25,4 +25,10 @@ export class NullNotificationAdapter implements NotificationPort {
   notifyOverdue(): void {
     // no-op: notifications are turned off
   }
+
+  // NEW (US-NB-04 / D-NB-6 / AC-NB-04.3): keep the port total. Off-switch
+  // suppresses the session-complete notification too — a deliberate no-op.
+  notifySessionComplete(_focusedMinutes: number): void {
+    // no-op: notifications are turned off
+  }
 }

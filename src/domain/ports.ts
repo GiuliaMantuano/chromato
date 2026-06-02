@@ -28,6 +28,10 @@ export interface StatePort {
 export interface NotificationPort {
   notifyPhaseChange(from: PomodoroPhase, to: PomodoroPhase): void;
   notifyOverdue(): void;
+  // NEW (US-NB-04 / D-NB-6): fired on SESSION_COMPLETED with session-scoped
+  // focused minutes. Implemented in NotificationAdapter (branded copy + icon
+  // where platform allows) and NullNotificationAdapter (no-op).
+  notifySessionComplete(focusedMinutes: number): void;
 }
 
 export interface HistoryPort {

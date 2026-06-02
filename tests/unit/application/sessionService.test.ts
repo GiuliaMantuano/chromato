@@ -71,6 +71,9 @@ class InMemoryNotificationPort implements NotificationPort {
   readonly phaseChanges: Array<{ from: PomodoroPhase; to: PomodoroPhase }> = [];
   overdueNotified = false;
   overdueCallCount = 0;
+  // NEW (notification-branding US-NB-04): records session-complete calls so the
+  // SessionService wiring scenario can assert the session-scoped focused minutes.
+  readonly sessionCompleteCalls: number[] = [];
 
   notifyPhaseChange(from: PomodoroPhase, to: PomodoroPhase): void {
     this.phaseChanges.push({ from, to });
@@ -79,6 +82,10 @@ class InMemoryNotificationPort implements NotificationPort {
   notifyOverdue(): void {
     this.overdueNotified = true;
     this.overdueCallCount += 1;
+  }
+
+  notifySessionComplete(focusedMinutes: number): void {
+    this.sessionCompleteCalls.push(focusedMinutes);
   }
 }
 
