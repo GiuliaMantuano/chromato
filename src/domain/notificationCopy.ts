@@ -6,10 +6,11 @@
  * and is consumed by NotificationAdapter via the legal adapter→domain direction
  * (dependency-cruiser Rule 4 satisfied — no adapter→adapter import).
  *
- * D3 copy matrix (authoritative per D11 — NOT the prototype EVENTS array):
- *   WORK → short BREAK   title "Pomodoro complete 🍅"        body "Nice focus. Take {brk}."
- *   short BREAK → WORK    title "Break’s over" (U+2019)        body "Back to focus for {work}."
- *   WORK → LONG_BREAK     title "{cycles} pomodoros done 🎉"   body "Take a proper {long}."
+ * D3 copy matrix (authoritative — unit-bearing hyphenated-adjective form, grammatical
+ * at ANY duration; restores time units omitted by D11, NOT the prototype EVENTS array):
+ *   WORK → short BREAK   title "Pomodoro complete 🍅"        body "Time for a {brk}-minute break."
+ *   short BREAK → WORK    title "Break’s over" (U+2019)        body "Back to focus for a {work}-minute block."
+ *   WORK → LONG_BREAK     title "{cycles} pomodoros done 🎉"   body "Take a proper {long}-minute break."
  *   OVERDUE               title "Break ran over"               body "Ready to focus again?"
  *   SESSION_COMPLETED     title "Session complete"             body "{minutes} min focused. Well done."
  */
@@ -73,17 +74,17 @@ function resolvePhaseChangeCopy(
   if (to === 'WORK') {
     return {
       title: 'Break’s over',
-      body: `Back to focus for ${numbers.workMinutes}.`,
+      body: `Back to focus for a ${numbers.workMinutes}-minute block.`,
     };
   }
   if (to === 'LONG_BREAK') {
     return {
       title: `${numbers.cycleCount} pomodoros done 🎉`,
-      body: `Take a proper ${numbers.longBreakMinutes}.`,
+      body: `Take a proper ${numbers.longBreakMinutes}-minute break.`,
     };
   }
   return {
     title: 'Pomodoro complete 🍅',
-    body: `Nice focus. Take ${numbers.breakMinutes}.`,
+    body: `Time for a ${numbers.breakMinutes}-minute break.`,
   };
 }

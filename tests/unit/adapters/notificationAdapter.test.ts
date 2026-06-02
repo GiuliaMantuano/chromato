@@ -209,7 +209,7 @@ describe('NotificationAdapter — macOS native notification (B3, B4) [pending ru
     expect(scriptArg).toContain('display notification');
     // Warm D3 copy (WORK → short BREAK), replacing the retired terse phaseLabel copy
     expect(scriptArg).toContain('Pomodoro complete');
-    expect(scriptArg).toContain('Nice focus. Take 5.');
+    expect(scriptArg).toContain('Time for a 5-minute break.');
   });
 
   // B4: macOS overdue → osascript requested with the warm D3 overdue copy
@@ -278,7 +278,7 @@ describe('NotificationAdapter — Linux native notification (B5, B6) [pending ru
     // this path per AC-NB-03.1a) — assert presence, not fixed indices.
     const args = runner.calls[0]!.args;
     expect(args).toContain('Pomodoro complete 🍅');
-    expect(args).toContain('Nice focus. Take 5.');
+    expect(args).toContain('Time for a 5-minute break.');
   });
 
   // B6: Linux overdue → notify-send requested with the warm D3 overdue copy
@@ -426,10 +426,10 @@ describe('NotificationAdapter — phase label correctness in notification messag
   // LONG_BREAK→WORK is break-agnostic — it shares the "Break’s over" copy with
   // short BREAK→WORK (matching notificationCopy.test.ts).
   it.each([
-    ['WORK', 'BREAK', 'Pomodoro complete 🍅', 'Nice focus. Take 5.'],
-    ['WORK', 'LONG_BREAK', '4 pomodoros done 🎉', 'Take a proper 15.'],
-    ['BREAK', 'WORK', 'Break’s over', 'Back to focus for 25.'],
-    ['LONG_BREAK', 'WORK', 'Break’s over', 'Back to focus for 25.'],
+    ['WORK', 'BREAK', 'Pomodoro complete 🍅', 'Time for a 5-minute break.'],
+    ['WORK', 'LONG_BREAK', '4 pomodoros done 🎉', 'Take a proper 15-minute break.'],
+    ['BREAK', 'WORK', 'Break’s over', 'Back to focus for a 25-minute block.'],
+    ['LONG_BREAK', 'WORK', 'Break’s over', 'Back to focus for a 25-minute block.'],
   ] as const)(
     'B10: notifyPhaseChange(%s → %s) message contains the warm D3 copy "%s" / "%s"',
     async (from, to, title, body) => {

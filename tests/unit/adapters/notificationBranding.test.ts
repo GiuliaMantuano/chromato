@@ -129,7 +129,7 @@ describe('NotificationAdapter — Linux notify-send branded delivery (US-NB-01 /
     // detail; assert presence as separate, unescaped args — notify-send uses
     // execFile args[], so NO shell escaping is applied here, per C-NB-3 / HIGH-3).
     expect(args).toContain('Pomodoro complete 🍅');
-    expect(args).toContain('Nice focus. Take 5.');
+    expect(args).toContain('Time for a 5-minute break.');
   });
 
   // AC-NB-03.2 — one static icon across moments (Scenario-Outline shape over the icon path)
@@ -183,7 +183,7 @@ describe('NotificationAdapter — macOS osascript branded copy, no icon (US-NB-0
     const joined = runner.calls[0]!.args.join(' ');
     expect(joined).toContain('display notification');
     expect(joined).toContain('Pomodoro complete'); // branded title present
-    expect(joined).toContain('Nice focus. Take 5.'); // branded body present
+    expect(joined).toContain('Time for a 5-minute break.'); // branded body present
     // osascript cannot set a custom app icon — no icon flag/path on this path
     expect(joined).not.toContain('-i');
     expect(joined).not.toMatch(/icon-timer-ring\.png/);

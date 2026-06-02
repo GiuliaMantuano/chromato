@@ -43,28 +43,28 @@ function numbers(overrides: Partial<NotificationCopyNumbers> = {}): Notification
 
 describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
   // AC-NB-02.1 — WORK → short BREAK
-  it('WORK to short BREAK reads "Pomodoro complete 🍅" / "Nice focus. Take 5."', () => {
+  it('WORK to short BREAK reads "Pomodoro complete 🍅" / "Time for a 5-minute break."', () => {
     const copy = resolveCopy(
       { kind: 'PHASE_CHANGE', from: 'WORK', to: 'BREAK' },
       numbers({ breakMinutes: 5 }),
     );
     expect(copy.title).toBe('Pomodoro complete 🍅');
-    expect(copy.body).toBe('Nice focus. Take 5.');
+    expect(copy.body).toBe('Time for a 5-minute break.');
   });
 
   // AC-NB-02.2 — short BREAK → WORK (typographic apostrophe U+2019 in the title)
-  it('short BREAK to WORK reads "Break’s over" / "Back to focus for 25." (U+2019 apostrophe)', () => {
+  it('short BREAK to WORK reads "Break’s over" / "Back to focus for a 25-minute block." (U+2019 apostrophe)', () => {
     const copy = resolveCopy(
       { kind: 'PHASE_CHANGE', from: 'BREAK', to: 'WORK' },
       numbers({ workMinutes: 25 }),
     );
     expect(copy.title).toBe('Break’s over');
     expect(copy.title).not.toContain("'"); // must NOT be the ASCII apostrophe U+0027
-    expect(copy.body).toBe('Back to focus for 25.');
+    expect(copy.body).toBe('Back to focus for a 25-minute block.');
   });
 
   // AC-NB-02.3 — WORK → LONG_BREAK, distinct from short-break copy
-  it('WORK to LONG_BREAK reads "4 pomodoros done 🎉" / "Take a proper 15." and differs from short-break copy', () => {
+  it('WORK to LONG_BREAK reads "4 pomodoros done 🎉" / "Take a proper 15-minute break." and differs from short-break copy', () => {
     const longCopy = resolveCopy(
       { kind: 'PHASE_CHANGE', from: 'WORK', to: 'LONG_BREAK' },
       numbers({ cycleCount: 4, longBreakMinutes: 15 }),
@@ -74,7 +74,7 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
       numbers(),
     );
     expect(longCopy.title).toBe('4 pomodoros done 🎉');
-    expect(longCopy.body).toBe('Take a proper 15.');
+    expect(longCopy.body).toBe('Take a proper 15-minute break.');
     expect(longCopy.title).not.toBe(shortCopy.title);
   });
 
@@ -85,13 +85,13 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
     expect(copy.body).toBe('Ready to focus again?');
   });
 
-  // AC-NB-02.5 — numbers are dynamic (work duration of 50 → "Back to focus for 50.")
+  // AC-NB-02.5 — numbers are dynamic (work duration of 50 → "Back to focus for a 50-minute block.")
   it('short BREAK to WORK reflects a custom 50-minute work duration', () => {
     const copy = resolveCopy(
       { kind: 'PHASE_CHANGE', from: 'BREAK', to: 'WORK' },
       numbers({ workMinutes: 50 }),
     );
-    expect(copy.body).toBe('Back to focus for 50.');
+    expect(copy.body).toBe('Back to focus for a 50-minute block.');
   });
 
   // AC-NB-02.5 (edge) — break minutes are dynamic on the short-break body too
@@ -100,7 +100,7 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
       { kind: 'PHASE_CHANGE', from: 'WORK', to: 'BREAK' },
       numbers({ breakMinutes: 10 }),
     );
-    expect(copy.body).toBe('Nice focus. Take 10.');
+    expect(copy.body).toBe('Time for a 10-minute break.');
   });
 
   // AC-NB-02.3 (edge) — long-break cycle count + minutes are dynamic
@@ -110,7 +110,37 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
       numbers({ cycleCount: 6, longBreakMinutes: 20 }),
     );
     expect(copy.title).toBe('6 pomodoros done 🎉');
-    expect(copy.body).toBe('Take a proper 20.');
+    expect(copy.body).toBe('Take a proper 20-minute break.');
+  });
+
+  // REGRESSION GUARD (the primary bugfix deliverable) — at breakMinutes = 1 the
+  // work→break body MUST read "Time for a 1-minute break." (NOT the ambiguous
+  // "Take 1."). The hyphenated-adjective form is grammatical at any duration —
+  // it never produces "1 minutes". This case FAILS against the old terse copy
+  // and PASSES after the fix, pinning the bug against recurrence.
+  it('WORK to short BREAK at 1 minute reads "Time for a 1-minute break." (no "1 minutes" plural bug)', () => {
+    const copy = resolveCopy(
+      { kind: 'PHASE_CHANGE', from: 'WORK', to: 'BREAK' },
+      numbers({ breakMinutes: 1 }),
+    );
+    expect(copy.body).toBe('Time for a 1-minute break.');
+  });
+
+  // REGRESSION GUARD (siblings) — a 1-minute long break and a 1-minute work block
+  // also read grammatically via the hyphenated form ("1-minute", never "1 minutes").
+  it('reads "1-minute" (never "1 minutes") for a 1-minute long break and a 1-minute work block', () => {
+    const longCopy = resolveCopy(
+      { kind: 'PHASE_CHANGE', from: 'WORK', to: 'LONG_BREAK' },
+      numbers({ longBreakMinutes: 1 }),
+    );
+    const workCopy = resolveCopy(
+      { kind: 'PHASE_CHANGE', from: 'BREAK', to: 'WORK' },
+      numbers({ workMinutes: 1 }),
+    );
+    expect(longCopy.body).toBe('Take a proper 1-minute break.');
+    expect(workCopy.body).toBe('Back to focus for a 1-minute block.');
+    expect(longCopy.body).not.toContain('1 minutes');
+    expect(workCopy.body).not.toContain('1 minutes');
   });
 
   // AC-NB-02.2 (break-agnostic) — the D3 "Break → Work" moment covers BOTH break
@@ -128,7 +158,7 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
       numbers({ workMinutes: 25 }),
     );
     expect(fromLong.title).toBe('Break’s over');
-    expect(fromLong.body).toBe('Back to focus for 25.');
+    expect(fromLong.body).toBe('Back to focus for a 25-minute block.');
     // break-agnostic: long-break and short-break endings produce identical copy
     expect(fromLong.title).toBe(fromShort.title);
     expect(fromLong.body).toBe(fromShort.body);
