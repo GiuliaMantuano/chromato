@@ -18,6 +18,32 @@ export interface RenderPort {
   stop(): void;
 }
 
+/**
+ * Driving (primary) control port for in-session keypress controls (ADR-017).
+ *
+ * The running TUI calls this to request a phase skip or a clean quit. Implemented
+ * by SessionService and late-injected into TuiAdapter at the composition root.
+ */
+export interface SessionControlPort {
+  /** Leave the current rest phase and start a fresh WORK session. No-op during WORK/IDLE. */
+  skip(): void;
+  /** Stop the session cleanly (parity with Ctrl+C). */
+  quit(): void;
+}
+
+/**
+ * Public read surface for the live session (DN-3). A sibling to SessionControlPort
+ * so adapters/tests read the active session through a port instead of reaching the
+ * private `session` field. Returns null when no session is bound yet.
+ *
+ * SessionService implements this alongside SessionControlPort (wired at the
+ * application layer in a later slice step); the TUI receives it as a read port.
+ */
+export interface SessionReadPort {
+  /** Snapshot of the live session, or null when none is bound. */
+  getSnapshot(): SessionSnapshot | null;
+}
+
 export interface StatePort {
   writeState(snapshot: SessionSnapshot): void;
   writeIdle(): void;

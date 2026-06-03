@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { render, Text, Box, useApp, useStdout, useInput, useStdin } from 'ink';
-import type { RenderPort } from '../domain/ports.js';
+import type { RenderPort, SessionControlPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
 import type { PomodoroPhase } from '../domain/phase.js';
 import { getPalette, type Palette } from '../domain/palette.js';
@@ -42,6 +42,36 @@ function isOverdueDimPulse(overdueElapsedSeconds: number): boolean {
   return Math.floor(overdueElapsedSeconds / 2) % 2 === 1;
 }
 
+/**
+ * Phase-aware footer hint (HARD #3, design §6). Pure function of the phase.
+ *   BREAK / LONG_BREAK -> skip-break hint + quit + Ctrl+C stop
+ *   OVERDUE            -> start-work hint + quit + Ctrl+C stop
+ *   WORK / IDLE        -> quit + Ctrl+C stop only (skip hint SUPPRESSED)
+ *
+ * Plain ASCII, NO_COLOR-safe (NFR-05.1). The standard footer uses the full
+ * wording; the compact variant (<40 col, Q-OPEN-1) uses tighter separators and
+ * an abbreviated stop hint so no line exceeds the compact column budget, while
+ * keeping the same per-phase KEY rules ([s] for rest phases, [q] always).
+ */
+export function footerHint(phase: PomodoroPhase, compact = false): string {
+  if (compact) {
+    if (phase === 'BREAK' || phase === 'LONG_BREAK') {
+      return '[s] skip [q] quit ^C';
+    }
+    if (phase === 'OVERDUE') {
+      return '[s] start [q] quit ^C';
+    }
+    return '[q] quit ^C';
+  }
+  if (phase === 'BREAK' || phase === 'LONG_BREAK') {
+    return '[s] skip break   [q] quit   Ctrl+C stop';
+  }
+  if (phase === 'OVERDUE') {
+    return '[s] start work   [q] quit   Ctrl+C stop';
+  }
+  return '[q] quit   Ctrl+C stop';
+}
+
 function barWidth(columns: number): number {
   return Math.max(8, columns - 20);
 }
@@ -62,6 +92,12 @@ export interface FrameProps {
   onUnmount?: (() => void) | undefined;
   /** Terminal column count. When omitted, reads from useStdout() hook. */
   columns?: number | undefined;
+  /**
+   * Driving control port (ADR-017). When present, the `s` key requests skip()
+   * and `q`/`Q` request quit(). When absent the keypress handler is a no-op
+   * (raw mode stays active so Ink keeps consuming keys). NEW for Slice 01.
+   */
+  control?: SessionControlPort | undefined;
 }
 
 const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
@@ -72,7 +108,7 @@ const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
   IDLE:       'IDLE',
 };
 
-export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount, columns: columnsProp }) => {
+export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount, columns: columnsProp, control }) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
   // Forward Ctrl+C to SIGINT: in raw mode, Ctrl+C arrives as byte 0x03
@@ -98,9 +134,19 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
       }
     });
   }
-  // Keep raw mode active so Ink consumes all keypresses (prevents bleed-through
-  // to the shell). Guard ensures no-op when raw mode is unsupported.
-  useInput((_input, _key) => { /* raw mode activation side effect */ }, {
+  // In-session controls (Slice 01, ADR-017 / DN-1): route `s` -> control.skip()
+  // and `q`/`Q` -> control.quit(). Ctrl+C is INTENTIONALLY NOT handled here — it
+  // is owned exclusively by the raw stdin 0x03 listener above (DN-1, HARD #1),
+  // which avoids the double-interrupt + async-useEffect race.
+  useInput((input, _key) => {
+    if (input === 's') {
+      control?.skip();
+      return;
+    }
+    if (input === 'q' || input === 'Q') {
+      control?.quit();
+    }
+  }, {
     isActive: isRawModeSupported ?? false,
   });
   const stdoutColumns = (stdout as { columns?: number }).columns;
@@ -155,7 +201,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
           <Text dimColor>{todayLabel}</Text>
         </Box>
         <Box>
-          <Text dimColor>Press Ctrl+C to stop</Text>
+          <Text dimColor>{footerHint(phase, true)}</Text>
         </Box>
       </Box>
     );
@@ -185,7 +231,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
         <Text bold>{countdown}</Text>
       </Box>
       <Box>
-        <Text dimColor>Press Ctrl+C to stop</Text>
+        <Text dimColor>{footerHint(phase)}</Text>
       </Box>
     </Box>
   );
@@ -195,10 +241,21 @@ export class TuiAdapter implements RenderPort {
   private inkInstance: ReturnType<typeof render> | null = null;
   private testMode: boolean;
   private palette: Palette;
+  private control: SessionControlPort | undefined = undefined;
 
   constructor(palette: Palette = getPalette('ocean')) {
     this.palette = palette;
     this.testMode = process.env['NODE_ENV'] === 'test';
+  }
+
+  /**
+   * Late-inject the driving control port (ADR-017 §8). The composition root calls
+   * this after constructing both the TuiAdapter and the SessionService, before
+   * run(), resolving the circular RenderPort<->SessionControlPort dependency.
+   * NEW for in-session-controls Slice 01.
+   */
+  attachControl(control: SessionControlPort): void {
+    this.control = control;
   }
 
   render(snapshot: SessionSnapshot): void {
@@ -213,6 +270,7 @@ export class TuiAdapter implements RenderPort {
         snapshot,
         palette: this.palette,
         onUnmount: this.testMode ? () => undefined : undefined,
+        control: this.control,
       });
       this.inkInstance = render(element, { debug: this.testMode, exitOnCtrlC: false });
 
@@ -224,7 +282,7 @@ export class TuiAdapter implements RenderPort {
       }
     } else {
       this.inkInstance.rerender(
-        React.createElement(TimerFrame, { snapshot, palette: this.palette })
+        React.createElement(TimerFrame, { snapshot, palette: this.palette, control: this.control })
       );
     }
   }

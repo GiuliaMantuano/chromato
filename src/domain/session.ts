@@ -107,6 +107,30 @@ export class Session {
     return drained;
   }
 
+  /**
+   * Skip the current rest phase (BREAK / LONG_BREAK / OVERDUE) into a fresh WORK
+   * session: set the phase to WORK, reset elapsed to 0, clear the private overdue
+   * counter, leave completedToday untouched (a skipped break is not a completed
+   * pomodoro), and enqueue exactly one PHASE_CHANGED. No-op while interrupted or
+   * during WORK / IDLE. Order matters (ADR-017 / DESIGN §5).
+   */
+  skipToWork(): void {
+    if (this.interrupted) {
+      return;
+    }
+
+    const from = this.stateMachine.currentPhase();
+    if (from !== 'BREAK' && from !== 'LONG_BREAK' && from !== 'OVERDUE') {
+      return;
+    }
+
+    this.stateMachine.completeBreak(); // phase FIRST: current -> WORK
+    this.elapsedSeconds = 0;
+    this.overdueElapsedSeconds = 0; // HARD #2: clear the overdue count-up
+    // completedToday left UNTOUCHED.
+    this.events.push({ type: 'PHASE_CHANGED', from, to: 'WORK' });
+  }
+
   interrupt(): void {
     this.interrupted = true;
     this.stateMachine.reset();

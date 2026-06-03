@@ -12,18 +12,26 @@
 
 import { Session } from '../domain/session.js';
 import type { SessionConfig } from '../domain/config.js';
-import type { RenderPort, StatePort, NotificationPort, HistoryPort } from '../domain/ports.js';
+import type {
+  RenderPort,
+  StatePort,
+  NotificationPort,
+  HistoryPort,
+  SessionControlPort,
+  SessionReadPort,
+} from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
 
 const TICK_INTERVAL_MS = 1000;
 const OVERDUE_SECOND_NOTIFICATION_SECONDS = 60;
 
-export class SessionService {
+export class SessionService implements SessionControlPort, SessionReadPort {
   private readonly renderPort: RenderPort;
   private readonly statePort: StatePort | null;
   private readonly notificationPort: NotificationPort | null;
   private readonly historyPort: HistoryPort | null;
   private session: Session | null = null;
+  private config: SessionConfig | null = null;
   private overdueSecondNotified = false;
   private lastSnapshot: SessionSnapshot | null = null;
   private completedThisSession = 0;
@@ -46,6 +54,7 @@ export class SessionService {
    * Exposed for testing (Option A: tickOnce for tests).
    */
   tickOnce(config: SessionConfig, deltaSeconds: number): void {
+    this.config = config;
     if (this.session === null) {
       let completedToday = 0;
       let streak = 0;
@@ -79,7 +88,49 @@ export class SessionService {
     this.session?.interrupt();
   }
 
+  /**
+   * SessionControlPort.skip(): leave the current rest phase into a fresh WORK
+   * session, observable synchronously on the keypress frame (immediate render +
+   * state write + processEvents flush). No-op when there is no active session.
+   *
+   * The domain Session.skipToWork() no-ops during WORK/IDLE, so an in-WORK skip
+   * produces no PHASE_CHANGED event and leaves the snapshot unchanged.
+   */
+  skip(): void {
+    if (this.session === null) {
+      return;
+    }
+    this.session.skipToWork();
+    const snapshot = this.session.getSnapshot();
+    this.lastSnapshot = snapshot;
+    this.renderPort.render(snapshot);
+    this.statePort?.writeState(snapshot);
+    this.processEvents(this.config ?? snapshot.config);
+  }
+
+  /**
+   * SessionControlPort.quit(): request a clean stop (parity with Ctrl+C) by
+   * setting interrupt on the active session; the next tick tears down (stop +
+   * writeIdle). No-op when there is no active session.
+   */
+  quit(): void {
+    if (this.session === null) {
+      return;
+    }
+    this.session.interrupt();
+  }
+
+  /**
+   * SessionReadPort.getSnapshot(): the live session snapshot (DN-3 read surface),
+   * or null when no session is bound yet. Adapters/tests read the active session
+   * through this port instead of reaching the private `session` field.
+   */
+  getSnapshot(): SessionSnapshot | null {
+    return this.session?.getSnapshot() ?? null;
+  }
+
   async run(config: SessionConfig): Promise<void> {
+    this.config = config;
     let completedToday = 0;
     let streak = 0;
     try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }

@@ -276,6 +276,11 @@ program
     const notificationAdapter = await buildNotificationPort(notifications, config);
     const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
 
+    // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
+    // service exists, closing the RenderPort↔SessionControlPort cycle without a static
+    // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
+    tuiAdapter.attachControl(service);
+
     process.on('SIGTERM', () => {
       service.interrupt();
     });
@@ -328,6 +333,11 @@ async function launchSessionFromConfigResult(
   const persistenceAdapter = new PersistenceAdapter();
   const notificationAdapter = await buildNotificationPort(notifications, config);
   const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
+
+  // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
+  // service exists, closing the RenderPort↔SessionControlPort cycle without a static
+  // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
+  tuiAdapter.attachControl(service);
 
   process.on('SIGTERM', () => { service.interrupt(); });
   await service.run(config);
