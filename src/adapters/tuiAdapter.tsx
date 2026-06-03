@@ -17,6 +17,7 @@ import type { RenderPort, SessionControlPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
 import type { PomodoroPhase } from '../domain/phase.js';
 import { getPalette, type Palette } from '../domain/palette.js';
+import { Footer, type KeyHint } from './tui/components.js';
 
 const COMPACT_THRESHOLD = 40;
 const BLOCK_FULL  = '█';
@@ -43,34 +44,50 @@ function isOverdueDimPulse(overdueElapsedSeconds: number): boolean {
 }
 
 /**
- * Phase-aware footer hint (HARD #3, design §6). Pure function of the phase.
- *   BREAK / LONG_BREAK -> skip-break hint + quit + Ctrl+C stop
- *   OVERDUE            -> start-work hint + quit + Ctrl+C stop
- *   WORK / IDLE        -> quit + Ctrl+C stop only (skip hint SUPPRESSED)
+ * Phase-aware footer hints (HARD #3, design §6). Pure phase -> KeyHint[] mapper,
+ * rendered by the SHARED <Footer> key-cap component (tui/components) — the same
+ * one the wizard + home screens use. Uppercase key-caps match the home R/Q
+ * convention.
+ *   BREAK / LONG_BREAK -> [ S skip break, Q quit ]
+ *   OVERDUE            -> [ S start work, Q quit ]
+ *   WORK / IDLE        -> [ Q quit ]   (skip hint SUPPRESSED)
  *
- * Plain ASCII, NO_COLOR-safe (NFR-05.1). The standard footer uses the full
- * wording; the compact variant (<40 col, Q-OPEN-1) uses tighter separators and
- * an abbreviated stop hint so no line exceeds the compact column budget, while
- * keeping the same per-phase KEY rules ([s] for rest phases, [q] always).
+ * The footer advertises only the action keys + quit — NEVER Ctrl+C. Ctrl+C still
+ * quits silently (the raw stdin 0x03 listener stays functional), exactly like the
+ * wizard/home, which also leave Ctrl+C unadvertised.
+ *
+ * The compact variant (<40 col, Q-OPEN-1) uses tighter labels so the key-caps fit
+ * within the compact column budget, while keeping the same per-phase KEY rules
+ * (S for rest phases, Q always) and key-cap style.
  */
-export function footerHint(phase: PomodoroPhase, compact = false): string {
-  if (compact) {
-    if (phase === 'BREAK' || phase === 'LONG_BREAK') {
-      return '[s] skip [q] quit ^C';
-    }
-    if (phase === 'OVERDUE') {
-      return '[s] start [q] quit ^C';
-    }
-    return '[q] quit ^C';
-  }
+export function footerHint(phase: PomodoroPhase, compact = false): KeyHint[] {
+  const quit: KeyHint = { key: 'Q', label: 'quit' };
   if (phase === 'BREAK' || phase === 'LONG_BREAK') {
-    return '[s] skip break   [q] quit   Ctrl+C stop';
+    return [{ key: 'S', label: compact ? 'skip' : 'skip break' }, quit];
   }
   if (phase === 'OVERDUE') {
-    return '[s] start work   [q] quit   Ctrl+C stop';
+    return [{ key: 'S', label: compact ? 'start' : 'start work' }, quit];
   }
-  return '[q] quit   Ctrl+C stop';
+  return [quit];
 }
+
+/**
+ * Footer keybar honouring useColor (NFR-05.1 / AC-P3). When colour is on, delegates
+ * to the SHARED <Footer> key-cap component (wizard/home parity, chalk truecolor caps).
+ * When colour is suppressed (--no-color / NO_COLOR), renders the same ` KEY  label`
+ * key-cap text with NO ANSI colour sequences, so the accessibility contract holds.
+ */
+const FooterHints: React.FC<{ hints: readonly KeyHint[]; useColor: boolean }> = ({ hints, useColor }) => {
+  if (useColor) {
+    return <Footer hints={hints} />;
+  }
+  const plain = `  ${hints.map((hint) => ` ${hint.key}  ${hint.label}`).join('   ')}`;
+  return (
+    <Box marginTop={1}>
+      <Text>{plain}</Text>
+    </Box>
+  );
+};
 
 function barWidth(columns: number): number {
   return Math.max(8, columns - 20);
@@ -139,7 +156,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
   // is owned exclusively by the raw stdin 0x03 listener above (DN-1, HARD #1),
   // which avoids the double-interrupt + async-useEffect race.
   useInput((input, _key) => {
-    if (input === 's') {
+    if (input === 's' || input === 'S') {
       control?.skip();
       return;
     }
@@ -200,9 +217,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
         <Box>
           <Text dimColor>{todayLabel}</Text>
         </Box>
-        <Box>
-          <Text dimColor>{footerHint(phase, true)}</Text>
-        </Box>
+        <FooterHints hints={footerHint(phase, true)} useColor={useColor} />
       </Box>
     );
   }
@@ -230,9 +245,7 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
         <Text>{'  '}</Text>
         <Text bold>{countdown}</Text>
       </Box>
-      <Box>
-        <Text dimColor>{footerHint(phase)}</Text>
-      </Box>
+      <FooterHints hints={footerHint(phase)} useColor={useColor} />
     </Box>
   );
 };

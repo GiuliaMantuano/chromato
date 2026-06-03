@@ -431,43 +431,51 @@ describe('US-01 — skip the current rest period and start work', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('US-01/US-02 — phase-aware footer hints', () => {
+  // footerHint(phase) now returns a KeyHint[] (the shared tui/components type) so
+  // the running footer renders through the SAME <Footer> key-cap component the
+  // wizard + home use. The footer advertises action keys + quit ONLY — never
+  // Ctrl+C (matches wizard/home, where Ctrl+C also works unadvertised).
+
   // ── Scenario: The skip key is advertised in the footer during a break ─────
-  // @US-01 — footer shows skip-break hint AND still shows Ctrl+C stop.
-  it('footer advertises the skip-break hint and the Ctrl+C stop hint during a break', () => {
-    const breakHint = footerHint('BREAK');
-    expect(breakHint.toLowerCase()).toContain('skip');
-    expect(breakHint).toContain('[q]'); // [q] quit advertised (pins interactive-key format, anti-vacuous)
-    expect(breakHint).toContain('Ctrl+C'); // stop hint still present
+  // @US-01 — break footer carries an uppercase S skip-break hint AND a Q quit hint,
+  // and NO Ctrl+C entry (the hint is dropped; the 0x03 handler stays functional).
+  it('footer advertises the S skip-break hint and the Q quit hint (no Ctrl+C) during a break', () => {
+    const breakHints = footerHint('BREAK');
+    expect(breakHints).toContainEqual({ key: 'S', label: 'skip break' });
+    expect(breakHints).toContainEqual({ key: 'Q', label: 'quit' });
+    // No Ctrl+C hint anywhere in the key-caps or labels.
+    const flattened = breakHints.map((h) => `${h.key} ${h.label}`).join(' ').toLowerCase();
+    expect(flattened).not.toContain('ctrl');
+    expect(flattened).not.toContain('^c');
   });
 
   // ── Scenario: OVERDUE footer says "start work", not "skip break" ──────────
   // @US-01 — phase-aware wording (US-01 OVERDUE scenario).
   it('footer says "start work" (not "skip break") during OVERDUE', () => {
-    const overdueHint = footerHint('OVERDUE').toLowerCase();
-    expect(overdueHint).toContain('start work');
-    expect(overdueHint).not.toContain('skip break');
+    const overdueHints = footerHint('OVERDUE');
+    expect(overdueHints).toContainEqual({ key: 'S', label: 'start work' });
+    expect(overdueHints).toContainEqual({ key: 'Q', label: 'quit' });
+    expect(overdueHints.some((h) => h.label === 'skip break')).toBe(false);
   });
 
   // ── Scenario: skip hint is SUPPRESSED during WORK (HARD #3 / US-01 ex.3) ──
-  // @US-01 — SAD/boundary (Mandate 11): no skip hint while working.
-  it('footer suppresses the skip hint during WORK but still advertises quit', () => {
-    const workHint = footerHint('WORK').toLowerCase();
-    expect(workHint).not.toContain('skip');
-    expect(workHint).not.toContain('start work');
-    expect(workHint).toContain('[q]'); // interactive-key format pinned (D1)
+  // @US-01 — SAD/boundary (Mandate 11): no skip hint while working, only quit.
+  it('footer suppresses the skip hint during WORK and advertises only the Q quit key', () => {
+    const workHints = footerHint('WORK');
+    expect(workHints).toEqual([{ key: 'Q', label: 'quit' }]);
+    expect(workHints.some((h) => h.label.includes('skip') || h.label.includes('start work'))).toBe(false);
   });
 
   // ── Scenario: the quit key is advertised in the footer (US-02) ────────────
-  // @US-02 — footer shows a hint to quit with q.
-  it('footer advertises the q quit key during WORK', () => {
-    const workHint = footerHint('WORK');
-    expect(workHint).toContain('[q]');
-    expect(workHint.toLowerCase()).toContain('quit');
+  // @US-02 — footer shows a hint to quit with Q (uppercase key-cap, home convention).
+  it('footer advertises the Q quit key during WORK', () => {
+    const workHints = footerHint('WORK');
+    expect(workHints).toContainEqual({ key: 'Q', label: 'quit' });
   });
 
   // ── Scenario: compact (<40 col) footer fits and keeps the per-phase keys ──
-  // @US-01 @US-02 — HARD #3: phase-aware hint in the compact branch, no overflow.
-  it('compact (<40 col) footer fits the column budget and shows the break skip + quit keys', () => {
+  // @US-01 @US-02 — HARD #3: phase-aware key-cap hint in the compact branch, no overflow.
+  it('compact (<40 col) footer fits the column budget and shows the break skip + quit key-caps', () => {
     const snapshot = snapshotFor('BREAK');
     const { lastFrame } = render(
       React.createElement(TimerFrame, { snapshot, columns: 30 }),
@@ -476,21 +484,24 @@ describe('US-01/US-02 — phase-aware footer hints', () => {
     const lines = plain.split('\n').filter((l) => l.trim().length > 0);
     // No line overflows the 30-column compact budget.
     expect(lines.filter((l) => l.length > 30)).toHaveLength(0);
-    // The footer still advertises skip + quit in compact mode.
+    // The footer still advertises skip + quit key-caps in compact mode, never Ctrl+C.
     expect(plain.toLowerCase()).toContain('skip');
-    expect(plain).toContain('[q]');
+    expect(plain).toContain('Q');
+    expect(plain).not.toContain('Ctrl+C');
   });
 
   // ── Scenario: standard-layout footer renders the phase-aware hint ─────────
-  // @US-01 @US-02 — HARD #3: phase-aware hint in the standard branch.
-  it('standard-layout footer renders the OVERDUE start-work hint', () => {
+  // @US-01 @US-02 — HARD #3: phase-aware key-cap hint in the standard branch, no Ctrl+C.
+  it('standard-layout footer renders the OVERDUE start-work key-cap hint without Ctrl+C', () => {
     const snapshot = snapshotFor('OVERDUE');
     const { lastFrame } = render(
       React.createElement(TimerFrame, { snapshot, columns: 80 }),
     );
-    const plain = stripAnsi(lastFrame() ?? '').toLowerCase();
-    expect(plain).toContain('start work');
-    expect(plain).toContain('ctrl+c');
+    const plain = stripAnsi(lastFrame() ?? '');
+    expect(plain.toLowerCase()).toContain('start work');
+    expect(plain).toContain('S'); // uppercase key-cap
+    expect(plain).toContain('Q'); // quit key-cap
+    expect(plain).not.toContain('Ctrl+C');
   });
 });
 
