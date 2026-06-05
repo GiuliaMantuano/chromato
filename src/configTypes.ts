@@ -3,7 +3,7 @@
  *
  * Pure types only — no I/O, no external imports. Importable by any layer
  * (domain, application, adapters, configLoader, firstRun) without violating
- * dependency-cruiser rules. See ADR-013 + docs/feature/first-run-setup-wizard/design/data-models.md.
+ * dependency-cruiser rules. See ADR-013 (docs/adrs/ADR-013-config-write-port-and-schema.md).
  */
 
 import type { PaletteName } from './domain/palette.js';
