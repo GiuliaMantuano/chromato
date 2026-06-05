@@ -17,6 +17,33 @@ env:
   NODE_VERSION: '20'
 
 jobs:
+  # Detect whether the change touches anything beyond documentation. Doc-only
+  # changes (docs/** and *.md) still run the cheap Commit Stage (which includes
+  # the doc-consistency unit tests), but skip the expensive cross-OS Acceptance
+  # matrix and Performance Benchmarks to save Actions minutes. Fails safe: any
+  # non-doc file present in the diff sets code=true and runs the full pipeline.
+  changes:
+    name: Detect change scope
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Filter paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+
   commit:
     name: Commit Stage
     runs-on: ubuntu-22.04
@@ -93,7 +120,8 @@ jobs:
 
   acceptance-tests:
     name: Acceptance Tests (${{ matrix.os }})
-    needs: commit
+    needs: [changes, commit]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
 
@@ -133,7 +161,8 @@ jobs:
 
   benchmarks:
     name: Performance Benchmarks
-    needs: commit
+    needs: [changes, commit]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 15
 
@@ -225,10 +254,20 @@ jobs:
           # docs/troubleshooting/2026-04-27-rca-remaining-ci-reds.md): GHAS is
           # unavailable on free private personal repos; re-add in a dedicated
           # PR if/when this repo goes public.
-          if [ "${{ needs.commit.result }}" != "success" ] || \
-             [ "${{ needs.acceptance-tests.result }}" != "success" ] || \
-             [ "${{ needs.benchmarks.result }}" != "success" ]; then
-            echo "One or more CI jobs failed"
-            exit 1
+          #
+          # Commit Stage must always succeed. Acceptance + Benchmarks are
+          # allowed to be "skipped" (doc-only changes — see the `changes` job);
+          # any other result for them is a failure.
+          commit="${{ needs.commit.result }}"
+          acceptance="${{ needs.acceptance-tests.result }}"
+          benchmarks="${{ needs.benchmarks.result }}"
+          echo "commit=$commit acceptance=$acceptance benchmarks=$benchmarks"
+          if [ "$commit" != "success" ]; then
+            echo "Commit Stage did not pass"; exit 1
           fi
+          for r in "$acceptance" "$benchmarks"; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "A required CI job failed"; exit 1
+            fi
+          done
           echo "All CI checks passed"
