@@ -75,6 +75,8 @@ Three mid-flight corrections, each surfaced by a crafter/reviewer refusing to pr
 
 ## Artifacts
 
-`docs/feature/notification-branding/{discuss,design,distill,deliver}/` — full wave record incl. roadmap.json,
-execution-log.json (DES traces), ADR-016, per-wave decisions/reviews, and the DELIVER back-propagation in
-`distill/upstream-issues.md`. Prototype: `docs/design/notifications-prototype.html`.
+The full wave record (`discuss/`, `design/`, `distill/`, `deliver/` — roadmap.json, execution-log.json DES traces,
+per-wave decisions/reviews, and the DELIVER back-propagation in `distill/upstream-issues.md`) lived under
+`docs/feature/notification-branding/` and is preserved in the git history (workspace archived + removed).
+ADR-016 was migrated to `docs/adrs/ADR-016-notification-delivery-mechanism.md`.
+Prototype: `docs/design/notifications-prototype.html`.

@@ -64,6 +64,7 @@ and `chromato start` are unchanged and Ink-free.
 
 ## Artifacts
 
-`docs/feature/returning-home/{discuss,design,distill,deliver}/` — full wave record incl. roadmap.json,
-execution-log.json (DES traces), ADR-015, and per-wave decisions/reviews. Prototype:
-`docs/design/returning-home-prototype.html`.
+The full wave record (`discuss/`, `design/`, `distill/`, `deliver/` — roadmap.json, execution-log.json DES traces,
+per-wave decisions/reviews) lived under `docs/feature/returning-home/` and is preserved in the git history
+(workspace archived + removed). ADR-015 was migrated to `docs/adrs/ADR-015-shared-tui-module.md`.
+Prototype: `docs/design/returning-home-prototype.html`.

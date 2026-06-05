@@ -71,6 +71,8 @@ assertions. A clean DELIVER (no mid-flight escalations) — the upstream gates h
 
 ## Artifacts
 
-`docs/feature/in-session-controls/{discuss,design,distill,deliver,slices}/` — full wave record incl. roadmap.json,
-execution-log.json (20 DES events), ADR-017, per-wave decisions/reviews. Tests: `tests/unit/adapters/inSessionControls.interaction.test.ts`
-+ the `skipToWork()` block in `tests/unit/domain/session.test.ts`.
+The full wave record (`discuss/`, `design/`, `distill/`, `deliver/`, `slices/` — roadmap.json,
+execution-log.json with 20 DES events, per-wave decisions/reviews) lived under
+`docs/feature/in-session-controls/` and is preserved in the git history (workspace archived + removed).
+ADR-017 was migrated to `docs/adrs/ADR-017-driving-control-port.md`. Tests:
+`tests/unit/adapters/inSessionControls.interaction.test.ts` + the `skipToWork()` block in `tests/unit/domain/session.test.ts`.

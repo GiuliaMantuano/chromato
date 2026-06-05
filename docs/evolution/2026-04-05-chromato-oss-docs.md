@@ -94,7 +94,6 @@ Test files created:
 
 - `tests/unit/doc-consistency/` (14 files, 85 tests)
 
-Delivery tracking preserved at:
-
-- `docs/feature/chromato-oss-docs/deliver/roadmap.json`
-- `docs/feature/chromato-oss-docs/deliver/execution-log.json`
+Delivery tracking (`roadmap.json`, `execution-log.json`) lived under
+`docs/feature/chromato-oss-docs/deliver/` and is preserved in the git history — the
+feature workspace was archived and removed once this evolution file was written.
