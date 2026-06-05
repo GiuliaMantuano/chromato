@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Interactive first-run setup wizard (`chromato setup`) — a guided Ink TUI to choose your colour theme, timing, and notifications
+- Welcome-back home screen — running bare `chromato` with a saved config shows a recap plus a Start / Reconfigure / Quit menu (instead of the help dump)
+- Configurable colour palettes — `ocean` (default), `lavender`, `berry`, `forest` — via the wizard, the `--palette` flag, or `CHROMATO_PALETTE`
+- In-session keyboard controls — `s` skips a break or overdue straight to the next focus block; `q` quits cleanly
+- Session-complete desktop notification reporting focused minutes
+- Persisted configuration in `config.json` (written by the wizard) supplying your defaults for bare `chromato` and `chromato start`
+- Redesigned launch banner with the "Focus in full colour" tagline
+
+### Changed
+
+- Desktop notifications now use native `osascript` (macOS) / `notify-send` (Linux) with a terminal-bell fallback, adding **no runtime dependencies** (previously node-notifier)
+- Notification copy is warmer and unit-aware (e.g. "Take a proper 15-minute break")
+- Timer footer uses key-cap hints consistent with the wizard and home screens
+
+### Fixed
+
+- macOS desktop notifications no longer fail silently
+- Overdue counter no longer displays fractional seconds
+- Pomodoro counter no longer overflows after completing a full cycle
+- `q` now quits the setup wizard from any screen (previously only the Welcome screen)
+- First-frame startup tolerance re-baselined to a realistic wall-clock budget
+- `chromato --help` shows the examples block before the usage output
+
 ## [1.0.0] - 2026-04-05
 
 ### Added

@@ -36,13 +36,30 @@
    chromato --version
    ```
 
-   **✅ Success**: Output displays the version number (e.g., `0.1.0`)
+   **✅ Success**: Output displays the version number (e.g., `1.0.0`)
 
    **Command not found?** Your npm global bin directory is not in your shell PATH. Add it to `~/.bashrc`, `~/.zshrc`, or equivalent:
    ```bash
    export PATH="$(npm config get prefix)/bin:$PATH"
    ```
    Then reload your shell: `source ~/.bashrc` or `source ~/.zshrc`.
+
+## Configure with the setup wizard
+
+**Goal**: Set your theme, timing, and notifications once, interactively.
+
+1. The **first time** you run bare `chromato` (with no saved config), it launches the setup wizard automatically. You can also run it any time:
+   ```bash
+   chromato setup
+   ```
+
+2. The wizard walks you through: **Welcome → Theme** (with a live colour preview) **→ Timing** (the 25 · 5 × 4 default, or custom) **→ Notifications** (on/off; plus a tmux hint when run inside tmux) **→ Summary**. It then saves your choices and starts a session.
+
+3. Your choices are written to `config.json` (default `~/.config/chromato/config.json`, or `$XDG_CONFIG_HOME/chromato/config.json`) and become the defaults for bare `chromato` and `chromato start`.
+
+   **✅ Success**: After setup, running bare `chromato` shows a **home screen** — a recap of your theme, timing, and notifications, with a **Start / Reconfigure / Quit** menu. Choose **Reconfigure** (or run `chromato setup`) to change anything later.
+
+   **Note**: The wizard and home screen require an interactive colour terminal. In a non-interactive context (piped, `NO_COLOR`, CI) bare `chromato` prints the standard help text instead.
 
 ## Run your first session
 
@@ -119,6 +136,37 @@
    - 6 Pomodoros per cycle
 
    **✅ Success**: All phases respect your specified durations throughout the session.
+
+## Choose a colour palette
+
+**Goal**: Change the TUI colour theme.
+
+1. Pick one for a single run:
+   ```bash
+   chromato start --palette lavender
+   ```
+   Valid names: `ocean` (default), `lavender`, `berry`, `forest`.
+
+2. To set it permanently, choose it in `chromato setup`, or set the environment variable:
+   ```bash
+   export CHROMATO_PALETTE=forest
+   ```
+
+   **✅ Success**: The progress bar and accents render in the chosen palette. Precedence is `--palette` > `CHROMATO_PALETTE` > `config.json` > default (`ocean`).
+
+## Control a running session
+
+**Goal**: Skip or quit from inside the running timer.
+
+While a session is running in the TUI, the footer shows the keys for the current phase:
+
+- During a **break** or **long break**: press `s` to skip straight to the next focus block.
+- When **overdue** (a break ran long): press `s` to start work now.
+- Any time: press `q` (or `Ctrl+C`) to quit cleanly.
+
+During a WORK phase, skip is intentionally disabled — only `q` is offered.
+
+**✅ Success**: `s` resets the countdown to a fresh WORK phase and advances the Pomodoro badge; `q` exits with code 0.
 
 ## Integrate with tmux
 

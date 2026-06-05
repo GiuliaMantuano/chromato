@@ -36,11 +36,16 @@ Press `Ctrl+C` to stop cleanly (exit code 0).
 
 That's it. You're timing.
 
+> **First run?** Bare `chromato` launches a quick setup wizard (theme, timing, notifications). Re-run it any time with `chromato setup`, or change settings from the home screen's **Reconfigure** option.
+
 ## Features
 
+- **Guided setup wizard** — `chromato setup` (auto-runs on first launch) to pick your theme, timing, and notifications; a welcome-back home screen on later runs
+- **Colour palettes** — `ocean`, `lavender`, `berry`, `forest` via `--palette`, `CHROMATO_PALETTE`, or the wizard
 - **Animated progress bar** — Renders within 100ms, updates every second, adapts to terminal width
 - **Color-coded phases** — Green (WORK) → Blue (BREAK) → Purple (LONG BREAK) → Red (OVERDUE)
-- **Desktop notifications** — fires within 1 second of phase transition; terminal bell fallback
+- **In-session controls** — `s` skips a break/overdue to the next focus block, `q` quits cleanly
+- **Desktop notifications** — native, dependency-free; warm unit-aware copy + a session-complete summary; terminal bell fallback
 - **Configurable durations** — Work (25m default), short break (5m), long break (15m), cycle count (4 pomodoros)
 - **Minimal mode** — `--minimal` for plain-text output; no TUI, no color, no bloat
 - **NO_COLOR compliant** — respects `NO_COLOR` environment variable
@@ -86,15 +91,19 @@ Flags for `chromato start`:
 | `--break <minutes>` | `-b` | 5 | Short break duration in minutes |
 | `--long-break <minutes>` | `-l` | 15 | Long break duration in minutes |
 | `--count <n>` | `-c` | 4 | Pomodoros per cycle before long break |
+| `--palette <name>` | `-p` | ocean | Colour palette: `ocean`, `lavender`, `berry`, `forest` |
 | `--minimal` | | off | Plain-text output, no TUI, no ANSI |
-| `--no-color` | | off | Suppress all ANSI color |
+| `--no-color` | `-C` | off | Suppress all ANSI color (works on every command) |
 | `--ascii` | | off | ASCII progress bar (`=` and `-`) |
+
+Persist your defaults (palette, durations, notifications) with `chromato setup`, which writes `~/.config/chromato/config.json`.
 
 Environment variables:
 
 | Variable | Effect |
 |----------|--------|
 | `NO_COLOR` | Suppress all ANSI color (respects [no-color.org](https://no-color.org)) |
+| `CHROMATO_PALETTE` | Override the colour palette (`ocean`, `lavender`, `berry`, `forest`) |
 | `CHROMATO_WORK_SECONDS` | Override work duration in seconds (testing shortcut) |
 | `CHROMATO_BREAK_SECONDS` | Override break duration in seconds (testing shortcut) |
 
