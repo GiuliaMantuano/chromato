@@ -66,7 +66,8 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 | chalk | ^5.0 | ANSI color (status + minimal paths) |
 | commander | ^14.0.3 | CLI framework |
 | better-sqlite3 | ^12.10.0 | Session history SQLite (synchronous) |
-| node-notifier | ^10.0 | OS desktop notifications |
+
+OS desktop notifications are implemented **natively** (shelling out to `osascript` on macOS / `notify-send` on Linux, with a terminal-bell fallback) — no runtime package. The former `node-notifier` dependency was removed per ADR-016.
 
 **Dev dependencies**: vitest, @vitest/coverage-v8, ink-testing-library, tsx, esbuild, dependency-cruiser, TypeScript type packages
 

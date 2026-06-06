@@ -26,7 +26,7 @@ Start a 25-minute work session with one command:
 $ chromato start
 ```
 
-Check what's running (completes in <200ms wall-clock (<5ms in-process)):
+Check what's running (completes in <200ms wall-clock, <5ms in-process):
 
 ```bash
 $ chromato status
@@ -43,13 +43,13 @@ That's it. You're timing.
 - **Guided setup wizard** — `chromato setup` (auto-runs on first launch) to pick your theme, timing, and notifications; a welcome-back home screen on later runs
 - **Colour palettes** — `ocean`, `lavender`, `berry`, `forest` via `--palette`, `CHROMATO_PALETTE`, or the wizard
 - **Animated progress bar** — Renders within 100ms, updates every second, adapts to terminal width
-- **Color-coded phases** — Green (WORK) → Blue (BREAK) → Purple (LONG BREAK) → Red (OVERDUE)
+- **Color-coded phases** — WORK, BREAK, and LONG BREAK each render in a distinct colour drawn from your palette (OVERDUE is always a warning red), and the phase name is always shown as text alongside the colour
 - **In-session controls** — `s` skips a break/overdue to the next focus block, `q` quits cleanly
 - **Desktop notifications** — native, dependency-free; warm unit-aware copy + a session-complete summary; terminal bell fallback
 - **Configurable durations** — Work (25m default), short break (5m), long break (15m), cycle count (4 pomodoros)
 - **Minimal mode** — `--minimal` for plain-text output; no TUI, no color, no bloat
 - **NO_COLOR compliant** — respects `NO_COLOR` environment variable
-- **Exit code 0 always** — Ctrl+C exits cleanly; no zombie processes
+- **Clean shutdown** — Ctrl+C exits with code 0; no zombie processes
 - **< 1% CPU steady-state** — designed for always-on terminal sessions
 - **ASCII fallback** — automatic when Unicode block chars unavailable
 
@@ -61,7 +61,7 @@ Add this to your `~/.tmux.conf` to show session status in the status bar:
 set -g status-right "#(chromato status --format tmux)"
 ```
 
-The `tmux` format is optimized for narrow spaces (<200ms wall-clock (<5ms in-process), no TUI overhead).
+The `tmux` format is optimized for narrow spaces — <200ms wall-clock, <5ms in-process, no TUI overhead.
 
 ## Shell Prompt Integration
 
