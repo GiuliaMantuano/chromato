@@ -8,20 +8,20 @@
 
 ## Context
 
-The DEVOPS wave forwarded two local-quality-tooling open items to the BUILD wave, both marked **Blocking** in `docs/feature/pomodoro-timer-cli/devops/wave-decisions.md`:
+Two local-quality-tooling open items were forwarded into implementation, both originally marked **Blocking** in the project planning record:
 
 | Item | Description | Priority (as written) |
 |------|-------------|----------------------|
-| OI-DV-04 (`:199`) | Configure husky + commitlint + lint-staged in package.json | Blocking (local quality gates) |
-| OI-DV-05 (`:200`) | Configure ESLint + Prettier for TypeScript | Blocking |
+| OI-DV-04 | Configure husky + commitlint + lint-staged in package.json | Blocking (local quality gates) |
+| OI-DV-05 | Configure ESLint + Prettier for TypeScript | Blocking |
 
-The originally-designed Commit Stage (`devops/wave-decisions.md:78`) likewise listed `lint, format` as pipeline steps.
+The originally-designed Commit Stage likewise listed `lint, format` as pipeline steps.
 
-**Neither was ever executed.** PR #20 *removed* the `Lint` and `Format check` CI steps "because ESLint and Prettier were never installed" (`docs/troubleshooting/2026-04-25-ci-state-and-followups.md:11`). The April note states plainly: *"Historically planned in DESIGN/DEVOPS, never executed in BUILD."*
+**Neither was ever executed.** PR #20 *removed* the `Lint` and `Format check` CI steps because ESLint and Prettier were never installed. These steps had been historically planned but never executed during implementation.
 
-Meanwhile, the DEVOPS wave passed its own exit gates: the "Quality Gates Status" table (`devops/wave-decisions.md:206-224`) is **all PASS** — but it gates on *design completeness* ("CI/CD pipeline designed", "Local quality gates mirror CI commit stage"), not on the tools being installed. And v1.0 passed both independent reviews — `deliver/review-architecture.md` (APPROVED) and `deliver/review-implementation.md` (APPROVED) — with zero findings related to missing lint/format tooling.
+Meanwhile, the project passed its own exit gates: the planning "Quality Gates Status" was **all PASS** — but it gated on *design completeness* ("CI/CD pipeline designed", "Local quality gates mirror CI commit stage"), not on the tools being installed. And v1.0 passed both independent reviews (architecture and implementation, both APPROVED) with zero findings related to missing lint/format tooling.
 
-The result is **SSOT drift**: the wave-decision record still says these items are "Blocking," while the lived reality is that the feature shipped through DELIVER and was reviewer-approved without them. Left unresolved, every future `/nw-continue` and buddy read will keep re-surfacing OI-DV-04/05 as unfinished blocking work.
+The result is a **decision-record drift**: the original planning record still says these items are "Blocking," while the lived reality is that the feature shipped and was review-approved without them. Left unresolved, every future review will keep re-surfacing OI-DV-04/05 as unfinished blocking work.
 
 This ADR resolves the contradiction by changing the SSOT, not by silently ignoring it.
 
@@ -72,7 +72,7 @@ Install Prettier alone (no ESLint, no hooks) — a `format` script + a Prettier 
 
 Do nothing — leave OI-DV-04/05 marked Blocking and informally treat them as ignorable.
 
-**Rejected**: this is the SSOT-drift status quo. It leaves the wave-decision record contradicting reality, so every future buddy/`/nw-continue` re-flags the items as unfinished blocking work, and the project carries a permanent phantom "not done" signal. The nWave discipline — established by ADR-007 (falsified DV-05) and ADR-008 (rebaselined the RSS NFR) — is to **change the SSOT explicitly** when reality diverges from a prior decision, never to contradict it silently.
+**Rejected**: this is the decision-record-drift status quo. It leaves the planning record contradicting reality, so every future review re-flags the items as unfinished blocking work, and the project carries a permanent phantom "not done" signal. The discipline — established by ADR-007 (falsified DV-05) and ADR-008 (rebaselined the RSS NFR) — is to **change the decision record explicitly** when reality diverges from a prior decision, never to contradict it silently.
 
 ---
 
@@ -81,7 +81,7 @@ Do nothing — leave OI-DV-04/05 marked Blocking and informally treat them as ig
 ### Positive
 
 - v1.0 scope is closed honestly: no phantom "Blocking" work blocks the release.
-- The SSOT (`devops/wave-decisions.md`) stops contradicting the as-shipped reality; future waves and buddy reads will not re-surface OI-DV-04/05 as unfinished.
+- The planning record stops contradicting the as-shipped reality; future reviews will not re-surface OI-DV-04/05 as unfinished.
 - The cheapest high-value step (Prettier-only, Alternative B) is documented and preserved as the first move when the toolchain is revisited.
 
 ### Negative
@@ -98,15 +98,12 @@ The first wave of external contributor PRs may surface formatting inconsistency 
 ## Files Affected
 
 - `docs/adrs/ADR-009-quality-tooling-descope.md` (this file)
-- `docs/feature/pomodoro-timer-cli/devops/wave-decisions.md` (OI-DV-04 and OI-DV-05 priority: Blocking → Deferred, with back-link to this ADR)
-- `docs/troubleshooting/2026-05-30-consolidation-roadmap-toc.md` (P1 note: lint/format portion superseded by ADR-009)
+- Project planning record (OI-DV-04 and OI-DV-05 priority: Blocking → Deferred, with back-link to this ADR)
 
 ---
 
 ## References
 
-- SSOT-change precedent: `docs/adrs/ADR-007-tmux-version-matrix-falsification.md` (falsified a DEVOPS wave decision), `docs/adrs/ADR-008-rss-nfr-rebaseline.md` (rebaselined an NFR after evidence)
-- v1.0 approvals without the tooling: `docs/feature/pomodoro-timer-cli/deliver/review-architecture.md`, `docs/feature/pomodoro-timer-cli/deliver/review-implementation.md`
-- Origin of the open items: `docs/feature/pomodoro-timer-cli/devops/wave-decisions.md:199-200`
-- Tooling removal: PR #20 (`4b86e3c`), recorded in `docs/troubleshooting/2026-04-25-ci-state-and-followups.md:11`
-- Consolidation roadmap (P1): `docs/troubleshooting/2026-05-30-consolidation-roadmap-toc.md`
+- Decision-change precedent: `docs/adrs/ADR-007-tmux-version-matrix-falsification.md` (falsified an earlier decision), `docs/adrs/ADR-008-rss-nfr-rebaseline.md` (rebaselined an NFR after evidence)
+- v1.0 approvals without the tooling: the architecture and implementation reviews, both APPROVED
+- Tooling removal: PR #20 (`4b86e3c`)

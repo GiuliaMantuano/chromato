@@ -3,7 +3,7 @@
 **Status**: Accepted (revised 2026-03-28; updated for TypeScript/Node.js ecosystem)
 **Date**: 2026-03-28
 **Feature**: pomodoro-timer-cli
-**Deciders**: Morgan (solution-architect)
+**Deciders**: the solution architect
 
 ---
 
@@ -23,7 +23,7 @@ chromato requires two distinct persistence behaviors:
 - Persistent across process restarts -- BR-05
 - Lightweight (no server process required) -- NFR-04.1
 
-The language is TypeScript 5.x on Node.js 20 LTS. The evaluation focuses on Node.js persistence options.
+The language is TypeScript 6.x on Node.js 20 LTS. The evaluation focuses on Node.js persistence options.
 
 ---
 

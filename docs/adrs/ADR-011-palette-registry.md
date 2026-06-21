@@ -3,7 +3,7 @@
 **Status**: Proposed
 **Date**: 2026-05-31
 **Feature**: palette-themes
-**Deciders**: Morgan (solution-architect), maintainer (pending confirmation)
+**Deciders**: the solution architect, maintainer (pending confirmation)
 
 ---
 

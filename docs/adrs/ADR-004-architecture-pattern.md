@@ -3,7 +3,7 @@
 **Status**: Accepted (revised 2026-03-28; technology references updated for TypeScript; pattern unchanged)
 **Date**: 2026-03-28
 **Feature**: pomodoro-timer-cli
-**Deciders**: Morgan (solution-architect)
+**Deciders**: the solution architect
 
 ---
 
@@ -19,7 +19,7 @@ The architecture must:
 
 Conway's Law check: one developer, one repo, one deployable unit. No organizational reason for service boundaries.
 
-The implementation language is TypeScript 5.x (Node.js 20 LTS). The ES module system (`import`/`export`) is used throughout. TypeScript interfaces and discriminated unions enforce port contracts at compile time.
+The implementation language is TypeScript 6.x (Node.js 20 LTS). The ES module system (`import`/`export`) is used throughout. TypeScript interfaces and discriminated unions enforce port contracts at compile time.
 
 ---
 

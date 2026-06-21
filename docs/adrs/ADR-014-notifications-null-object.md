@@ -3,7 +3,7 @@
 **Status**: Proposed
 **Date**: 2026-05-31
 **Feature**: first-run-setup-wizard
-**Deciders**: Morgan (solution-architect), maintainer (confirmed DD-1 via Propose mode 2026-05-31)
+**Deciders**: the solution architect, maintainer (confirmed DD-1 via Propose mode 2026-05-31)
 
 ---
 

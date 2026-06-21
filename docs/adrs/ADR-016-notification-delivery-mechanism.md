@@ -3,7 +3,7 @@
 **Status**: Accepted
 **Date**: 2026-06-02
 **Feature**: notification-branding
-**Deciders**: Morgan (solution-architect), maintainer (confirmed Option C via Propose mode 2026-06-02)
+**Deciders**: the solution architect, maintainer (confirmed Option C via Propose mode 2026-06-02)
 
 ---
 

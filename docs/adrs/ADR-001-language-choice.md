@@ -3,7 +3,7 @@
 **Status**: Accepted (supersedes Python decision; revised 2026-03-28 per user feedback). Startup-budget references in this document (line 13 "sub-100ms startup", line 63 "within the 100ms target") are partially superseded by [ADR-006](ADR-006-startup-budget-alignment.md) -- the 100ms target was always defined in `acceptance-criteria.md` as the post-MVP compiled-binary target; the Node.js MVP budget is 700ms.
 **Date**: 2026-03-28
 **Feature**: pomodoro-timer-cli
-**Deciders**: Morgan (solution-architect)
+**Deciders**: the solution architect
 
 ---
 
@@ -16,13 +16,13 @@ chromato is a greenfield CLI/TUI Pomodoro timer targeting terminal-native develo
 - Support a test suite that is comprehensible to the demo audience
 - Demonstrate clean architecture through a strong static type system
 
-The language choice was revised from Python 3.11+ to TypeScript 5.x (Node.js 20 LTS) per user direction. This ADR documents the full evaluation against quality attributes.
+The language choice was revised from Python 3.11+ to TypeScript 6.x (Node.js 20 LTS) per user direction. This ADR documents the full evaluation against quality attributes.
 
 ---
 
 ## Decision
 
-**TypeScript 5.x on Node.js 20 LTS** is chosen as the implementation language.
+**TypeScript 6.x on Node.js 20 LTS** is chosen as the implementation language.
 
 TypeScript's discriminated unions and interfaces are a first-class advantage for modelling domain types (`PomodoroPhase`, `SessionState`, `TimerEvent`) in a ports-and-adapters architecture. The type system enforces port contracts at compile time, complementing the runtime boundary enforcement provided by `dependency-cruiser`.
 
@@ -95,4 +95,4 @@ TypeScript's discriminated unions and interfaces are a first-class advantage for
 - Node.js baseline RSS: ~30MB (Node.js 20 + V8 heap minimum). This exceeds the original <20MB NFR-01.4. The NFR must be revised to <35MB RSS for steady-state operation, which is still well within acceptable developer workstation resource use. The status subcommand is a fast-exit process and does not accumulate RSS.
 - TypeScript compilation adds a build step. `tsx` (MIT, https://github.com/privatenumber/tsx) eliminates this for development; production uses `esbuild` to produce a bundled `.js` entry point. This is standard Node.js toolchain practice.
 
-**Y-Statement**: In the context of a solo-developer demo CLI tool, facing the need to balance type safety, demo accessibility, and time-to-market, we chose TypeScript 5.x (Node.js 20 LTS) over Python, Go, and Rust to achieve compile-time domain model correctness and a broad audience reach, accepting a slightly higher RSS baseline and a build step in the development workflow.
+**Y-Statement**: In the context of a solo-developer demo CLI tool, facing the need to balance type safety, demo accessibility, and time-to-market, we chose TypeScript 6.x (Node.js 20 LTS) over Python, Go, and Rust to achieve compile-time domain model correctness and a broad audience reach, accepting a slightly higher RSS baseline and a build step in the development workflow.

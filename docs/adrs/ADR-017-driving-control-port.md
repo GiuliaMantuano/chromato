@@ -3,7 +3,7 @@
 **Status**: Accepted
 **Date**: 2026-06-03
 **Wave**: DESIGN (in-session-controls, Slice 01)
-**Author**: Morgan (solution-architect)
+**Author**: the solution architect
 **Related**: ADR-004 (ports-and-adapters), CLAUDE.md Critical Architecture Rules R1-R4, `.dependency-cruiser.cjs`
 
 ---

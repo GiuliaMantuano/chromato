@@ -3,7 +3,7 @@
 **Status**: Proposed
 **Date**: 2026-06-02
 **Feature**: returning-home
-**Deciders**: Morgan (solution-architect), maintainer (confirmed Decision A → A1, Propose mode 2026-06-02)
+**Deciders**: the solution architect, maintainer (confirmed Decision A → A1, Propose mode 2026-06-02)
 **Relates to**: ADR-004 (ports-and-adapters), ADR-002 (Ink TUI), ADR-011 (palette registry placement). Dynamic-import discipline is governed by **ADR-012** — referenced, not restated here.
 
 ---

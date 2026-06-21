@@ -3,7 +3,7 @@
 **Status**: Accepted (revised 2026-03-28; updated for TypeScript ecosystem). Startup-budget reference at line 109 ("the 100ms startup budget accommodates [Ink's React reconciler]") is partially superseded by [ADR-006](ADR-006-startup-budget-alignment.md) -- the start-path MVP budget is 700ms; the 100ms target moves to the post-MVP compiled binary.
 **Date**: 2026-03-28
 **Feature**: pomodoro-timer-cli
-**Deciders**: Morgan (solution-architect)
+**Deciders**: the solution architect
 
 ---
 
@@ -19,7 +19,7 @@ The key constraint is that the same binary handles two very different render mod
 - **Full TUI mode** (`chromato start`): full-screen live rendering, ~1fps refresh, animated progress bar with color gradient transitions
 - **Status mode** (`chromato status`): single-shot string format, called externally every 1-15 seconds; must not import heavy rendering dependencies
 
-The language is TypeScript 5.x on Node.js 20 LTS, so the evaluation focuses on the Node.js TUI ecosystem.
+The language is TypeScript 6.x on Node.js 20 LTS, so the evaluation focuses on the Node.js TUI ecosystem.
 
 ---
 
