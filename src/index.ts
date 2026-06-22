@@ -48,8 +48,17 @@ if (argv[2] === 'status') {
   const format: 'tmux' | 'plain' | 'prompt' =
     formatValue === 'tmux' ? 'tmux' : formatValue === 'prompt' ? 'prompt' : 'plain';
 
+  // Documented fallback width for the tmux status line (matches StatusAdapter's default).
+  const DEFAULT_STATUS_WIDTH = 20;
   const widthIdx = argv.indexOf('--width');
-  const maxWidth = widthIdx !== -1 ? parseInt(argv[widthIdx + 1] ?? '20', 10) : undefined;
+  let maxWidth: number | undefined;
+  if (widthIdx !== -1) {
+    // Guard against non-numeric / zero / negative widths (e.g. `--width abc`),
+    // which would otherwise yield NaN and silently produce empty status output.
+    const parsedWidth = parseInt(argv[widthIdx + 1] ?? String(DEFAULT_STATUS_WIDTH), 10);
+    maxWidth =
+      Number.isInteger(parsedWidth) && parsedWidth > 0 ? parsedWidth : DEFAULT_STATUS_WIDTH;
+  }
 
   const persistenceAdapter = new PersistenceAdapter();
   const statusAdapter = new StatusAdapter();
