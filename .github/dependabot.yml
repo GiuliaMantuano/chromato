@@ -11,3 +11,11 @@ updates:
       # See PR #68 (reverted) and #57 (closed) for prior failed bumps.
       - dependency-name: "@cucumber/cucumber"
         update-types: ["version-update:semver-major"]
+      # commander 15 declares engines.node ">=22.12.0" (its CommonJS require(esm)
+      # interop needs Node 22.12+). chromato imports it as ESM, so it actually
+      # runs on Node 20 — but we hold within the dependency's *declared* support
+      # and will adopt commander 15 together with the eventual Node 22 runtime
+      # bump. Avoids the `npm warn EBADENGINE` users would see on Node 20.
+      # See closed PR #3 (passed CI on Node 20, held by choice, not broken).
+      - dependency-name: "commander"
+        update-types: ["version-update:semver-major"]
