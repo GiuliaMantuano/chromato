@@ -9,11 +9,11 @@
    node --version
    ```
 
-2. Confirm version is 20.0.0 or later.
+2. Confirm version is 22.12.0 or later.
 
-   **✅ Success**: Output shows v20.x.x or higher (e.g., `v20.13.0`)
+   **✅ Success**: Output shows v22.x.x or higher (e.g., `v22.12.0`)
 
-   **If your version is older**: Download Node.js 20 LTS from [nodejs.org](https://nodejs.org/) or use [nvm](https://github.com/nvm-sh/nvm) to install it.
+   **If your version is older**: Download Node.js 22 LTS from [nodejs.org](https://nodejs.org/) or use [nvm](https://github.com/nvm-sh/nvm) to install it.
 
 3. Verify your npm version:
    ```bash

@@ -20,7 +20,7 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 
 **Paradigm**: Object-Oriented Programming (OOP)
 
-**Language**: TypeScript 6.x on Node.js 20 LTS with class-based design throughout. The architecture uses a **ports-and-adapters (hexagonal) pattern** with strict dependency inversion:
+**Language**: TypeScript 6.x on Node.js 22 LTS with class-based design throughout. The architecture uses a **ports-and-adapters (hexagonal) pattern** with strict dependency inversion:
 
 - `src/domain/` -- Pure TypeScript classes and interfaces. Zero external imports. Contains all business rules. Domain types are expressed as TypeScript interfaces and discriminated unions.
 - `src/application/` -- Orchestration classes. Imports domain only. No adapters.
@@ -59,12 +59,12 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 
 | Package | Version | Role |
 |---------|---------|------|
-| Node.js | 20 LTS | Runtime |
+| Node.js | 22 LTS | Runtime |
 | TypeScript | ^6.0.3 | Language |
 | ink | ^4.0 | Full TUI rendering (start command path only) |
 | react | ^18.0 | Ink peer dependency |
 | chalk | ^5.0 | ANSI color (status + minimal paths) |
-| commander | ^14.0.3 | CLI framework |
+| commander | ^15.0.0 | CLI framework |
 | better-sqlite3 | ^12.10.0 | Session history SQLite (synchronous) |
 
 OS desktop notifications are implemented **natively** (shelling out to `osascript` on macOS / `notify-send` on Linux, with a terminal-bell fallback) — no runtime package. The former `node-notifier` dependency was removed per ADR-016.
@@ -103,7 +103,7 @@ tests/
   integration/                # Adapter tests (temp dirs, Ink test renderer)
   acceptance/                 # BDD tests (Vitest feature specs)
 package.json                  # npm manifest, bin entry, pnpm engine
-tsconfig.json                 # TypeScript strict config (ESM, node20)
+tsconfig.json                 # TypeScript strict config (ESM, node22)
 .dependency-cruiser.cjs       # Architectural boundary enforcement rules
 ```
 
@@ -131,7 +131,7 @@ These are behavioral invariants the crafter must preserve. They are tested in th
 - `state.json` is valid JSON at all times, including during concurrent writes (AC-P4)
 - Phase transitions are atomic: no intermediate render state visible (AC-02.1)
 - CPU usage stays below 1% during steady-state session (AC-NF2)
-- Memory stays below 80MB RSS during steady-state session (rebaselined from 35MB on 2026-04-28 after empirical measurement of the chosen dependency stack; see ADR-008)
+- Memory stays below 95MB RSS during steady-state session (rebaselined 35MB→80MB on 2026-04-28 for the chosen stack, then 80MB→95MB on 2026-07-03 for the Node 22 runtime floor; see ADR-008 and ADR-019)
 - `NO_COLOR` environment variable suppresses all ANSI sequences in all output modes (AC-P3)
 - `chromato stop` and Ctrl+C produce exit code 0 with no zombie processes (AC-P6)
 - Phase labels (WORK, BREAK, OVERDUE) are always visible as text alongside color coding (NFR-05.1 accessibility)

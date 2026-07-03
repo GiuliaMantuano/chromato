@@ -33,7 +33,7 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
   # AC-NF1 / CI startup benchmark (700ms MVP wall-clock; post-MVP compiled binary: 100ms — see ADR-006)
   @US-05 @AC-NF1 @infrastructure @skip
   Scenario: First TUI frame appears within 700 milliseconds on the CI runner
-    Given a clean CI environment with Node.js 20 installed
+    Given a clean CI environment with Node.js 22 installed
     When the CI runner executes "chromato start" and measures time to first stdout byte
     Then the first output byte arrives within 700 milliseconds of process start
 
@@ -57,13 +57,13 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
     When CPU usage is sampled continuously for 30 seconds
     Then the average CPU percentage over the 30-second window is below 1 percent
 
-  # AC-NF3: RSS memory below 80MB steady state (rebaselined from 35MB on 2026-04-28; see ADR-008)
+  # AC-NF3: RSS memory below 95MB steady state (rebaselined 35→80 on 2026-04-28 ADR-008; 80→95 on 2026-07-03 ADR-019 for Node 22)
   @US-05 @AC-NF3 @infrastructure @skip
-  Scenario: chromato RSS memory stays below 80 megabytes during steady-state operation
+  Scenario: chromato RSS memory stays below 95 megabytes during steady-state operation
     Given a chromato session is running with a 25-minute work duration
     And 30 seconds have elapsed for the process to reach steady state
     When the RSS memory of the chromato process is measured
-    Then the RSS memory is less than 80 megabytes
+    Then the RSS memory is less than 95 megabytes
 
   # AC-NF5: Status command latency below 50ms
   @US-03 @US-04 @AC-NF5 @infrastructure @skip
@@ -79,8 +79,8 @@ Feature: Infrastructure smoke tests validate CI pipeline gates and performance t
 
   # AC-05.9: Binary has zero undeclared runtime dependencies
   @US-05 @AC-05.9 @infrastructure @skip
-  Scenario: chromato runs on a clean Node.js 20 environment with only declared dependencies installed
-    Given a clean environment with Node.js 20 and only "pnpm install --production" packages
+  Scenario: chromato runs on a clean Node.js 22 environment with only declared dependencies installed
+    Given a clean environment with Node.js 22 and only "pnpm install --production" packages
     When the developer runs "chromato --version"
     Then the command succeeds with exit code 0
     And no "Cannot find module" or missing dependency errors appear

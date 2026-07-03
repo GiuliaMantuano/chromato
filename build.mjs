@@ -2,7 +2,7 @@
  * esbuild build script for chromato.
  *
  * Bundles src/index.ts into dist/index.js.
- * Target: Node.js 20, ESM output with shebang header for executable CLI.
+ * Target: Node.js 22, ESM output with shebang header for executable CLI.
  *
  * Uses ESM format (not CJS) because Ink 4.x uses top-level await and ESM.
  * dist/package.json marks the dist directory as ESM ("type": "module").
@@ -28,7 +28,7 @@ await build({
   entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
-  target: 'node20',
+  target: 'node22',
   format: 'esm',
   // Use outdir + splitting so dynamic import() produces a real separate chunk.
   // This keeps ink/react off the import graph for `chromato status`.

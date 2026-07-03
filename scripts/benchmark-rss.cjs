@@ -10,11 +10,11 @@
  *   3. Read RSS via /proc/{pid}/status (Linux) or `ps -o rss= -p {pid}` (macOS).
  *   4. Measure CPU average over 30 seconds via pidstat (Linux) or ps repeated samples (macOS).
  *   5. Send SIGTERM; verify child exits cleanly.
- *   6. Fail with exit code 1 if RSS > 80 MB OR CPU > 1%.
+ *   6. Fail with exit code 1 if RSS > 95 MB OR CPU > 1%.
  *   7. Write results to benchmark-results.json.
  *
  * Gates:
- *   RSS steady-state  < 80 MB  (rebaselined from 35 MB on 2026-04-28; see ADR-008)
+ *   RSS steady-state  < 95 MB  (35->80 ADR-008 2026-04-28; 80->95 ADR-019 2026-07-03, Node 22)
  *   CPU idle average  < 1 %
  */
 
@@ -28,7 +28,7 @@ const os = require('os');
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-const RSS_LIMIT_MB = 80;
+const RSS_LIMIT_MB = 95;
 const CPU_LIMIT_PCT = 1.0;
 const STEADY_STATE_WAIT_MS = 30_000;
 const CPU_SAMPLE_DURATION_S = 30;

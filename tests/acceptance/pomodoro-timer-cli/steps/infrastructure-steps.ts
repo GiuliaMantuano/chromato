@@ -46,8 +46,8 @@ Given('a clean CI environment with Node.js {int} installed', function (
   // Verify Node.js is available (already required for the test runner itself).
   const nodeVersion = process.version;
   assert.ok(
-    nodeVersion.startsWith('v20') || parseInt(nodeVersion.slice(1)) >= 20,
-    `Expected Node.js 20+ but got ${nodeVersion}`
+    nodeVersion.startsWith('v22') || parseInt(nodeVersion.slice(1)) >= 22,
+    `Expected Node.js 22+ but got ${nodeVersion}`
   );
 });
 

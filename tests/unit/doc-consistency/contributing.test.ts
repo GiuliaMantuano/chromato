@@ -15,9 +15,9 @@ describe('CONTRIBUTING.md', () => {
     expect(content).toContain('Development Setup')
   })
 
-  it('references Node.js 20', () => {
+  it('references Node.js 22', () => {
     const content = readContributing()
-    expect(content).toContain('Node.js 20')
+    expect(content).toContain('Node.js 22')
   })
 
   it('references pnpm install', () => {

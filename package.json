@@ -21,21 +21,21 @@
     "quality:gates": "pnpm check:arch && pnpm build && pnpm test && pnpm test:acceptance"
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.12.0",
     "pnpm": ">=10.0.0"
   },
   "packageManager": "pnpm@10.33.2",
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "chalk": "^5.0.0",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "ink": "^4.0.0",
     "react": "^18.0.0"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^12.9.0",
+    "@cucumber/cucumber": "^13.0.0",
     "@types/better-sqlite3": "^7.6.0",
-    "@types/node": "^25.8.0",
+    "@types/node": "^22.20.0",
     "@types/react": "^18.0.0",
     "@vitest/coverage-v8": "^4.1.8",
     "dependency-cruiser": "^17.4.3",

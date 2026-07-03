@@ -23,7 +23,7 @@ a place to begin.
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| Node.js 20 LTS | `>=20.0.0` | Use nvm: `nvm install 20 && nvm use 20` |
+| Node.js 22 LTS | `>=22.12.0` | Use nvm: `nvm install 22 && nvm use 22` |
 | pnpm | `>=9.0.0` | `npm install -g pnpm` or `corepack enable && corepack prepare pnpm@latest --activate` |
 
 ---

@@ -12,7 +12,7 @@ Today: 2
 
 ## Install
 
-Requires Node.js 20 or higher.
+Requires Node.js 22 or higher.
 
 ```bash
 npm install -g chromato
