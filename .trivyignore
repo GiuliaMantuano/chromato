@@ -1,0 +1,17 @@
+# .trivyignore — vulnerability waivers for the Trivy CI security scan.
+#
+# GOVERNANCE (ADR-021): once the scan enforces (Phase 2, exit-code 1), a
+# committed entry here is the ONLY way a vulnerability stops failing the build.
+# Every entry is a deliberate, reviewed decision to accept a specific risk —
+# treat additions as a security decision, not a config tweak.
+#
+# Each waiver MUST carry, as comments directly above the ID:
+#   - the CVE / advisory ID + the affected package and version
+#   - WHY it is accepted (unfixable upstream / not reachable / false positive …)
+#   - WHO reviewed it, and a review-by date to force re-evaluation
+#
+# Format: one advisory ID per line (e.g. CVE-2025-12345).
+# Docs: https://trivy.dev/latest/docs/configuration/filtering/#by-finding-ids
+#
+# No waivers yet — the dependency tree is expected clean. Add entries only with
+# the justification block above.

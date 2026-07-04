@@ -124,6 +124,44 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  # Vulnerability scan (Trivy `fs` — SCA of pnpm-lock.yaml). Lean job: Trivy
+  # reads the lockfile, so no `pnpm install` / node_modules needed.
+  # ENFORCING: `exit-code: '1'` fails the build on ANY vulnerability at ANY
+  # severity (UNKNOWN..CRITICAL). The ONLY way a vuln stops failing the build
+  # is a documented, reviewed entry in `.trivyignore`. Verified at adoption:
+  # the report-only run found 0 findings and confirmed Trivy parses the pnpm
+  # lockfileVersion 9. See docs/adrs/ADR-021-ci-vulnerability-scanning.md.
+  security-scan:
+    name: Vulnerability Scan (Trivy)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'   # doc-only PRs skip (budget)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # No actions/cache for the Trivy DB: v0.36.0's DB path didn't persist on
+      # the runner (the report-only run logged "no cache is being saved"), so a
+      # cache step here only adds a misleading warning. Authenticated DB pulls
+      # via GITHUB_TOKEN (below) are the reliability mechanism; a working
+      # workspace-dir DB cache is a possible future optimization.
+      - name: Trivy filesystem (dependency) scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln                                # deps only; secrets = gitleaks
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'  # fail-on-any
+          ignore-unfixed: false                         # per-CVE waivers via .trivyignore
+          trivyignores: .trivyignore
+          exit-code: '1'                                # ENFORCE: fail build on any vuln (waivers: .trivyignore)
+          format: table                                 # no GHAS/SARIF on this repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}     # authenticate DB pulls (rate limits)
+
   acceptance-tests:
     name: Acceptance Tests (${{ matrix.os }})
     needs: [changes, commit]
@@ -250,7 +288,7 @@ jobs:
 
   all-checks:
     name: All CI Checks
-    needs: [commit, acceptance-tests, benchmarks]
+    needs: [commit, security-scan, acceptance-tests, benchmarks]
     runs-on: ubuntu-22.04
     if: always()
     steps:
@@ -265,13 +303,14 @@ jobs:
           # allowed to be "skipped" (doc-only changes — see the `changes` job);
           # any other result for them is a failure.
           commit="${{ needs.commit.result }}"
+          security="${{ needs.security-scan.result }}"
           acceptance="${{ needs.acceptance-tests.result }}"
           benchmarks="${{ needs.benchmarks.result }}"
-          echo "commit=$commit acceptance=$acceptance benchmarks=$benchmarks"
+          echo "commit=$commit security=$security acceptance=$acceptance benchmarks=$benchmarks"
           if [ "$commit" != "success" ]; then
             echo "Commit Stage did not pass"; exit 1
           fi
-          for r in "$acceptance" "$benchmarks"; do
+          for r in "$security" "$acceptance" "$benchmarks"; do
             if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               echo "A required CI job failed"; exit 1
             fi
