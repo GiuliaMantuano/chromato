@@ -17,3 +17,7 @@ yarn-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 .eslintcache
+
+# nWave process artifacts — local working docs, never published (see internal/process-docs branch history)
+docs/feature/
+docs/product/
