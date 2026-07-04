@@ -52,21 +52,25 @@ export function printBanner(palette: Palette, noColor: boolean, useAscii: boolea
 
   if (useColor) {
     for (let i = 0; i < LOGO.length; i++) {
-      out.write(chalk.hex(palette.gradient[i])(LOGO[i]) + '\n');
+      out.write(`${chalk.hex(palette.gradient[i])(LOGO[i])}\n`);
     }
     // Accent underline: a smooth gradient drawn one character at a time.
     const ruleChars = Array.from(rule);
     const coloredRule = ruleChars
-      .map((ch, idx) => chalk.hex(hexAt(palette.gradient, ruleChars.length <= 1 ? 0 : idx / (ruleChars.length - 1)))(ch))
+      .map((ch, idx) =>
+        chalk.hex(
+          hexAt(palette.gradient, ruleChars.length <= 1 ? 0 : idx / (ruleChars.length - 1)),
+        )(ch),
+      )
       .join('');
     out.write(`  ${coloredRule}\n`);
-    out.write(chalk.hex(palette.gradient[2]).bold(`  ${TAGLINE}`) + '\n');
-    out.write(chalk.dim(`  ${descriptor}`) + '\n');
+    out.write(`${chalk.hex(palette.gradient[2]).bold(`  ${TAGLINE}`)}\n`);
+    out.write(`${chalk.dim(`  ${descriptor}`)}\n`);
     out.write('\n');
-    out.write(chalk.dim(`  ${HINT}`) + '\n');
+    out.write(`${chalk.dim(`  ${HINT}`)}\n`);
   } else {
     for (const line of LOGO) {
-      out.write(line + '\n');
+      out.write(`${line}\n`);
     }
     out.write(`  ${rule}\n`);
     out.write(`  ${TAGLINE}\n`);

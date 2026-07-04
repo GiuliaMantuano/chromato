@@ -48,7 +48,6 @@ import {
 // ---------------------------------------------------------------------------
 
 describe('palette registry (palette.ts)', () => {
-
   // R1 — enabled: RED anchor. The structural presence of all 4 keys is correct
   // in the scaffold (registry exists). However, the first gradient stop for ocean
   // must be #d8f0ff per palette-spec.md — the stub uses #000000, so this assertion
@@ -121,7 +120,6 @@ describe('palette registry (palette.ts)', () => {
       expect(phases['OVERDUE'].fg).not.toBe(phases['WORK'].fg);
     }
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -129,7 +127,6 @@ describe('palette registry (palette.ts)', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolvePaletteName (palette.ts)', () => {
-
   it('N1: "ocean" resolves to PaletteName "ocean"', () => {
     expect(resolvePaletteName('ocean')).toBe('ocean');
   });
@@ -163,5 +160,4 @@ describe('resolvePaletteName (palette.ts)', () => {
   it('N8: wrong-cased name "Ocean" returns null (names are lowercase)', () => {
     expect(resolvePaletteName('Ocean')).toBeNull();
   });
-
 });

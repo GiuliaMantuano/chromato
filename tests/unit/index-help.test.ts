@@ -73,7 +73,7 @@ describe('help splash sequence', () => {
     const { printHelpSplash } = await import('../../src/adapters/helpAdapter.js');
     const { getPalette } = await import('../../src/domain/palette.js');
 
-    printBanner(getPalette('ocean'), true);       // noColor=true → plain text
+    printBanner(getPalette('ocean'), true); // noColor=true → plain text
     printHelpSplash(true, false);
 
     const output = writtenChunks.join('');

@@ -13,9 +13,9 @@
  */
 
 import { build } from 'esbuild';
-import { writeFileSync, readFileSync, chmodSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync, readFileSync, chmodSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -36,18 +36,11 @@ await build({
   splitting: true,
   // Inject version at build time so no runtime package.json read is needed
   define: {
-    '__CHROMATO_VERSION__': JSON.stringify(pkg.version),
+    __CHROMATO_VERSION__: JSON.stringify(pkg.version),
   },
   // Externalize all runtime deps — they live in node_modules for npm installs.
   // This avoids CJS/ESM interop issues when bundling mixed-format packages.
-  external: [
-    'better-sqlite3',
-    'commander',
-    'chalk',
-    'ink',
-    'react',
-    'react-devtools-core',
-  ],
+  external: ['better-sqlite3', 'commander', 'chalk', 'ink', 'react', 'react-devtools-core'],
   sourcemap: true,
   logLevel: 'info',
   metafile: false,
@@ -60,7 +53,7 @@ await build({
 // Write a dist/package.json that marks the dist directory as ESM.
 writeFileSync(
   join(__dirname, 'dist', 'package.json'),
-  JSON.stringify({ type: 'module' }, null, 2) + '\n'
+  `${JSON.stringify({ type: 'module' }, null, 2)}\n`,
 );
 
 // Prepend the shebang line to make the output directly executable

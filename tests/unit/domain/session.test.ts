@@ -130,7 +130,11 @@ describe('Session aggregate root', () => {
   describe('skipToWork()', () => {
     // Drive the session to LONG_BREAK after the 4th pomodoro (cycleCount=4).
     function sessionInLongBreak() {
-      const config = makeConfig({ workDurationSeconds: 2, longBreakDurationSeconds: 100, cycleCount: 4 });
+      const config = makeConfig({
+        workDurationSeconds: 2,
+        longBreakDurationSeconds: 100,
+        cycleCount: 4,
+      });
       const session = new Session(config, 3); // 3 done today; the 4th completes -> LONG_BREAK
       session.tick(1); // IDLE -> WORK (4th pomodoro)
       session.tick(2); // WORK completes -> completedToday 4, count 4, 4%4==0 -> LONG_BREAK
@@ -140,7 +144,11 @@ describe('Session aggregate root', () => {
 
     // Drive the session to a short BREAK after the 2nd pomodoro.
     function sessionInShortBreak() {
-      const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 300, cycleCount: 4 });
+      const config = makeConfig({
+        workDurationSeconds: 2,
+        breakDurationSeconds: 300,
+        cycleCount: 4,
+      });
       const session = new Session(config, 1); // 1 done; the 2nd completes -> BREAK
       session.tick(1); // IDLE -> WORK
       session.tick(2); // WORK completes -> count 2, 2%4!=0 -> BREAK
@@ -206,8 +214,18 @@ describe('Session aggregate root', () => {
     // B7.4: no-op during WORK / IDLE (phase + countdown unchanged). Same behavior,
     // two phase inputs -> one parametrized test (Mandate 5).
     it.each([
-      ['IDLE', (_s: Session) => { /* never ticked: stays IDLE */ }],
-      ['WORK', (s: Session) => { s.tick(1); /* IDLE -> WORK */ }],
+      [
+        'IDLE',
+        (_s: Session) => {
+          /* never ticked: stays IDLE */
+        },
+      ],
+      [
+        'WORK',
+        (s: Session) => {
+          s.tick(1); /* IDLE -> WORK */
+        },
+      ],
     ])('is a no-op during %s (phase and countdown unchanged)', (_label, reach) => {
       const session = new Session(makeConfig({ workDurationSeconds: 10 }));
       reach(session);
@@ -231,7 +249,11 @@ describe('Session aggregate root', () => {
       const events = session.drainEvents();
       const phaseChanges = events.filter((e) => e.type === 'PHASE_CHANGED');
       expect(phaseChanges).toHaveLength(1);
-      expect(phaseChanges[0]).toMatchObject({ type: 'PHASE_CHANGED', from: 'LONG_BREAK', to: 'WORK' });
+      expect(phaseChanges[0]).toMatchObject({
+        type: 'PHASE_CHANGED',
+        from: 'LONG_BREAK',
+        to: 'WORK',
+      });
       expect(events.some((e) => e.type === 'SESSION_COMPLETED')).toBe(false);
     });
   });

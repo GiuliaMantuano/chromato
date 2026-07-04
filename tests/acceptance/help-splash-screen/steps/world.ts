@@ -15,12 +15,12 @@
  * (spawn 'node dist/index.js'). No imports from src/.
  */
 
-import { setWorldConstructor, World, IWorldOptions } from '@cucumber/cucumber';
-import type { ChildProcess } from 'child_process';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
-import { fileURLToPath } from 'url';
+import { setWorldConstructor, World, type IWorldOptions } from '@cucumber/cucumber';
+import type { ChildProcess } from 'node:child_process';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,7 +64,7 @@ class ChromatoHelpWorldImpl extends World implements ChromatoHelpWorld {
       this.chromatoBin = srcEntry;
     } else {
       throw new Error(
-        `chromato entry point not found. Expected ${distEntry} or ${srcEntry}. Run "pnpm build" first.`
+        `chromato entry point not found. Expected ${distEntry} or ${srcEntry}. Run "pnpm build" first.`,
       );
     }
 

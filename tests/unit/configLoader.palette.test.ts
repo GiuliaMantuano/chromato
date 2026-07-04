@@ -39,9 +39,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { loadConfig } from '../../src/configLoader.js';
 
 // Hermetic isolation: point XDG_CONFIG_HOME at a fresh EMPTY temp dir before
@@ -93,7 +93,6 @@ function withConfigJson(content: string, fn: () => void): void {
 // ---------------------------------------------------------------------------
 
 describe('loadConfig palette resolution (configLoader — Phase C)', () => {
-
   // P1 — enabled: RED anchor for Phase C.
   // Fails because loadConfig does not yet return resolvedPalette.
   it('P1: --palette lavender flag sets resolvedPalette to the lavender palette', () => {
@@ -102,7 +101,7 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     // resolvedPalette does not exist on the current ConfigResult shape — RED
     expect((result as unknown as Record<string, unknown>)['resolvedPalette']).toBeDefined();
     expect(
-      ((result as unknown as Record<string, unknown>)['resolvedPalette'] as Record<string, unknown>)
+      (result as unknown as Record<string, unknown>)['resolvedPalette'] as Record<string, unknown>,
     ).toHaveProperty('gradient');
   });
 
@@ -279,7 +278,10 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     const result = loadConfig({});
     expect(result.config.useColor).toBe(false);
     // resolvedPalette still defined (set to ocean default); lavender NOT applied
-    const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'] as Record<string, unknown>;
+    const resolved = (result as unknown as Record<string, unknown>)['resolvedPalette'] as Record<
+      string,
+      unknown
+    >;
     if (resolved) {
       const gradient = resolved['gradient'] as string[];
       // Should be ocean (default), not lavender
@@ -308,5 +310,4 @@ describe('loadConfig palette resolution (configLoader — Phase C)', () => {
     // Ocean default — proves no real on-disk config (e.g. lavender) leaked in.
     expect(gradient[0]).toBe('#d8f0ff');
   });
-
 });

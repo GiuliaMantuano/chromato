@@ -4,9 +4,9 @@
  * Resolution order: flags > env > config file > defaults
  */
 
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { SessionConfig } from './domain/config.js';
 import { DEFAULT_CONFIG, validateConfig } from './domain/config.js';
 import type { PersistedConfig } from './configTypes.js';
@@ -68,9 +68,7 @@ export interface ConfigResult {
  */
 export class UnknownPaletteError extends Error {
   constructor(rawName: string) {
-    super(
-      `Unknown palette "${rawName}". Valid palettes: ${VALID_PALETTE_NAMES.join(', ')}.`,
-    );
+    super(`Unknown palette "${rawName}". Valid palettes: ${VALID_PALETTE_NAMES.join(', ')}.`);
     this.name = 'UnknownPaletteError';
   }
 }
@@ -123,9 +121,7 @@ export function readConfigFile(): Partial<PersistedConfig> {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error(
-      `Failed to parse chromato config file as JSON: ${configFile}`,
-    );
+    throw new Error(`Failed to parse chromato config file as JSON: ${configFile}`);
   }
   if (parsed && typeof parsed === 'object') {
     return parsed as Partial<PersistedConfig>;
@@ -140,13 +136,13 @@ export function readConfigFile(): Partial<PersistedConfig> {
  * Returns the typed name; loadConfig derives both the Palette object and the
  * ConfigResult.paletteName from this single resolution (DD-4 single-read).
  */
-function resolvePaletteNameFor(flags: StartFlags, fileConfig: Partial<PersistedConfig>): PaletteName {
+function resolvePaletteNameFor(
+  flags: StartFlags,
+  fileConfig: Partial<PersistedConfig>,
+): PaletteName {
   const filePalette = typeof fileConfig.palette === 'string' ? fileConfig.palette : undefined;
   const rawName =
-    flags.palette ??
-    process.env['CHROMATO_PALETTE'] ??
-    filePalette ??
-    DEFAULT_PALETTE_NAME;
+    flags.palette ?? process.env['CHROMATO_PALETTE'] ?? filePalette ?? DEFAULT_PALETTE_NAME;
 
   const name = resolvePaletteName(rawName);
   if (name === null) {
@@ -162,7 +158,7 @@ function resolvePaletteNameFor(flags: StartFlags, fileConfig: Partial<PersistedC
  * a hand-edited non-numeric value silently zeroing a duration.
  */
 function configMinutesToSeconds(value: number | undefined): number | undefined {
-  if (typeof value !== 'number' || !isFinite(value) || value <= 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return undefined;
   }
   return value * 60;
@@ -177,7 +173,7 @@ function parseEnvSeconds(name: string): number | undefined {
   const raw = process.env[name];
   if (raw == null) return undefined;
   const value = parseFloat(raw);
-  if (isNaN(value) || value <= 0) return undefined;
+  if (Number.isNaN(value) || value <= 0) return undefined;
   return value;
 }
 
@@ -200,16 +196,18 @@ export function loadConfig(flags: StartFlags): ConfigResult {
       parseEnvSeconds('CHROMATO_WORK_SECONDS') ??
       (flags.work != null
         ? flags.work * 60
-        : configMinutesToSeconds(fileConfig.work) ?? DEFAULT_CONFIG.workDurationSeconds),
+        : (configMinutesToSeconds(fileConfig.work) ?? DEFAULT_CONFIG.workDurationSeconds)),
     breakDurationSeconds:
       parseEnvSeconds('CHROMATO_BREAK_SECONDS') ??
       (flags.breakDuration != null
         ? flags.breakDuration * 60
-        : configMinutesToSeconds(fileConfig.break) ?? DEFAULT_CONFIG.breakDurationSeconds),
-    longBreakDurationSeconds: flags.longBreak != null
-      ? flags.longBreak * 60
-      : configMinutesToSeconds(fileConfig.longBreak) ?? DEFAULT_CONFIG.longBreakDurationSeconds,
-    cycleCount: flags.cycles ??
+        : (configMinutesToSeconds(fileConfig.break) ?? DEFAULT_CONFIG.breakDurationSeconds)),
+    longBreakDurationSeconds:
+      flags.longBreak != null
+        ? flags.longBreak * 60
+        : (configMinutesToSeconds(fileConfig.longBreak) ?? DEFAULT_CONFIG.longBreakDurationSeconds),
+    cycleCount:
+      flags.cycles ??
       (typeof fileConfig.cycles === 'number' && fileConfig.cycles > 0
         ? fileConfig.cycles
         : DEFAULT_CONFIG.cycleCount),
@@ -223,9 +221,7 @@ export function loadConfig(flags: StartFlags): ConfigResult {
   // it because config.useColor is false. This is evaluated BEFORE any flag/env/
   // config palette resolution, so an invalid CHROMATO_PALETTE under NO_COLOR
   // never throws.
-  const paletteName = noColor
-    ? DEFAULT_PALETTE_NAME
-    : resolvePaletteNameFor(flags, fileConfig);
+  const paletteName = noColor ? DEFAULT_PALETTE_NAME : resolvePaletteNameFor(flags, fileConfig);
   const resolvedPalette = getPalette(paletteName);
 
   // Notifications (ADR-014 / DD-1): composition-root concern, not a SessionConfig

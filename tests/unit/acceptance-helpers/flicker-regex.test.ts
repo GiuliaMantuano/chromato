@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const TUI_ADAPTER_PATH = resolve(__dirname, '../../../src/adapters/tuiAdapter.tsx');
 const tuiAdapterSource = readFileSync(TUI_ADAPTER_PATH, 'utf-8');

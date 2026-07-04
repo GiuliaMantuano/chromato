@@ -29,14 +29,24 @@ class RenderCaptureSpy implements RenderPort {
   render(snapshot: SessionSnapshot): void {
     this.snapshots.push(snapshot);
   }
-  stop(): void { /* no-op */ }
+  stop(): void {
+    /* no-op */
+  }
 }
 
 class NullStatePort implements StatePort {
-  writeState(_snapshot: SessionSnapshot): void { /* no-op */ }
-  writeIdle(): void { /* no-op */ }
-  readState(): SessionSnapshot | null { return null; }
-  readCompletedToday(): number { return 0; }
+  writeState(_snapshot: SessionSnapshot): void {
+    /* no-op */
+  }
+  writeIdle(): void {
+    /* no-op */
+  }
+  readState(): SessionSnapshot | null {
+    return null;
+  }
+  readCompletedToday(): number {
+    return 0;
+  }
 }
 
 function makeConfig(workDurationSeconds: number): SessionConfig {
@@ -55,21 +65,18 @@ function makeConfig(workDurationSeconds: number): SessionConfig {
 // ---------------------------------------------------------------------------
 
 describe('SessionService driving port -- tick cadence (B1)', () => {
-  it.each([1, 3, 5, 10])(
-    'produces exactly %i render calls after %i tick(s)',
-    (ticks: number) => {
-      const renderSpy = new RenderCaptureSpy();
-      const config = makeConfig(300);
-      const service = new SessionService(renderSpy, new NullStatePort(), null, null);
+  it.each([1, 3, 5, 10])('produces exactly %i render calls after %i tick(s)', (ticks: number) => {
+    const renderSpy = new RenderCaptureSpy();
+    const config = makeConfig(300);
+    const service = new SessionService(renderSpy, new NullStatePort(), null, null);
 
-      // First tick transitions IDLE -> WORK; counts as one render.
-      for (let tick = 0; tick < ticks; tick++) {
-        service.tickOnce(config, 1);
-      }
-
-      expect(renderSpy.snapshots).toHaveLength(ticks);
+    // First tick transitions IDLE -> WORK; counts as one render.
+    for (let tick = 0; tick < ticks; tick++) {
+      service.tickOnce(config, 1);
     }
-  );
+
+    expect(renderSpy.snapshots).toHaveLength(ticks);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -24,10 +24,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  resolveCopy,
-  type NotificationCopyNumbers,
-} from '../../../src/domain/notificationCopy.js';
+import { resolveCopy, type NotificationCopyNumbers } from '../../../src/domain/notificationCopy.js';
 
 // Resolved numbers fixture — these are the PRECONDITION (input state), never the
 // expected output. resolveCopy substitutes them into the D3 templates.
@@ -69,10 +66,7 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
       { kind: 'PHASE_CHANGE', from: 'WORK', to: 'LONG_BREAK' },
       numbers({ cycleCount: 4, longBreakMinutes: 15 }),
     );
-    const shortCopy = resolveCopy(
-      { kind: 'PHASE_CHANGE', from: 'WORK', to: 'BREAK' },
-      numbers(),
-    );
+    const shortCopy = resolveCopy({ kind: 'PHASE_CHANGE', from: 'WORK', to: 'BREAK' }, numbers());
     expect(longCopy.title).toBe('4 pomodoros done 🎉');
     expect(longCopy.body).toBe('Take a proper 15-minute break.');
     expect(longCopy.title).not.toBe(shortCopy.title);

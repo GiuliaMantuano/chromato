@@ -179,9 +179,16 @@ function makePorts() {
  * helpers reach a phase via tickOnce so the scenarios stay headless (no setTimeout
  * loop). DELIVER wires run() to publish this.session for the live-loop path.
  */
-function serviceInWork(config: SessionConfig = makeConfig({ workDurationSeconds: 4, breakDurationSeconds: 2 })) {
+function serviceInWork(
+  config: SessionConfig = makeConfig({ workDurationSeconds: 4, breakDurationSeconds: 2 }),
+) {
   const ports = makePorts();
-  const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+  const service = new SessionService(
+    ports.renderPort,
+    ports.statePort,
+    ports.notificationPort,
+    ports.historyPort,
+  );
   service.tickOnce(config, 0); // IDLE -> WORK
   return { service, config, ...ports };
 }
@@ -190,7 +197,12 @@ function serviceInShortBreak() {
   const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 300 });
   const ports = makePorts();
   ports.statePort.initialCompletedToday = 1; // finished her 2nd pomodoro context
-  const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+  const service = new SessionService(
+    ports.renderPort,
+    ports.statePort,
+    ports.notificationPort,
+    ports.historyPort,
+  );
   service.tickOnce(config, 0); // IDLE -> WORK
   service.tickOnce(config, 2); // WORK -> BREAK
   return { service, config, ...ports };
@@ -199,7 +211,12 @@ function serviceInShortBreak() {
 function serviceInOverdue() {
   const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 2 });
   const ports = makePorts();
-  const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+  const service = new SessionService(
+    ports.renderPort,
+    ports.statePort,
+    ports.notificationPort,
+    ports.historyPort,
+  );
   service.tickOnce(config, 0); // IDLE -> WORK
   service.tickOnce(config, 2); // WORK -> BREAK
   service.tickOnce(config, 3); // BREAK timer expires -> OVERDUE (enters; counter still 0)
@@ -242,7 +259,12 @@ describe('US-01 — skip the current rest period and start work', () => {
     const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 300 });
     const ports = makePorts();
     const tui = new TuiAdapter();
-    const service = new SessionService(tui, ports.statePort, ports.notificationPort, ports.historyPort);
+    const service = new SessionService(
+      tui,
+      ports.statePort,
+      ports.notificationPort,
+      ports.historyPort,
+    );
     tui.attachControl(service); // composition-root late injection (ADR-017 §8)
 
     // Drive the session into a BREAK headlessly, then render the live frame and
@@ -251,7 +273,11 @@ describe('US-01 — skip the current rest period and start work', () => {
     service.tickOnce(config, 2); // WORK -> BREAK
 
     const { stdin } = render(
-      React.createElement(TimerFrame, { snapshot: service.getSnapshot()!, columns: 80, control: service }),
+      React.createElement(TimerFrame, {
+        snapshot: service.getSnapshot()!,
+        columns: 80,
+        control: service,
+      }),
     );
     await flush();
     stdin.write('s'); // user presses the skip key
@@ -270,7 +296,12 @@ describe('US-01 — skip the current rest period and start work', () => {
     const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 100 });
     const ports = makePorts();
     ports.statePort.initialCompletedToday = 3;
-    const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+    const service = new SessionService(
+      ports.renderPort,
+      ports.statePort,
+      ports.notificationPort,
+      ports.historyPort,
+    );
     service.tickOnce(config, 0); // IDLE -> WORK (the 4th pomodoro)
     service.tickOnce(config, 2); // WORK completes -> LONG_BREAK; completedToday -> 4
     const before = service.getSnapshot()!;
@@ -296,7 +327,12 @@ describe('US-01 — skip the current rest period and start work', () => {
     const config = makeConfig({ workDurationSeconds: 2, breakDurationSeconds: 300 });
     const ports = makePorts();
     ports.statePort.initialCompletedToday = 1;
-    const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+    const service = new SessionService(
+      ports.renderPort,
+      ports.statePort,
+      ports.notificationPort,
+      ports.historyPort,
+    );
     service.tickOnce(config, 0); // IDLE -> WORK
     service.tickOnce(config, 2); // WORK -> BREAK
     expect(service.getSnapshot()!.phase).toBe('BREAK');
@@ -370,7 +406,12 @@ describe('US-01 — skip the current rest period and start work', () => {
   it('pressing s with no active session is a safe no-op (does not throw, nothing rendered)', () => {
     // Given a SessionService that has never been ticked (this.session is null)
     const ports = makePorts();
-    const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+    const service = new SessionService(
+      ports.renderPort,
+      ports.statePort,
+      ports.notificationPort,
+      ports.historyPort,
+    );
 
     // When the skip key is pressed before any session exists
     // Then it does not throw, and nothing is rendered
@@ -385,7 +426,12 @@ describe('US-01 — skip the current rest period and start work', () => {
   it('pressing q with no active session is a safe no-op (does not throw, nothing torn down)', () => {
     // Given a SessionService that has never been ticked (this.session is null)
     const ports = makePorts();
-    const service = new SessionService(ports.renderPort, ports.statePort, ports.notificationPort, ports.historyPort);
+    const service = new SessionService(
+      ports.renderPort,
+      ports.statePort,
+      ports.notificationPort,
+      ports.historyPort,
+    );
 
     // When the quit key is pressed before any session exists
     // Then it does not throw, and no teardown is performed
@@ -443,7 +489,10 @@ describe('US-01/US-02 — phase-aware footer hints', () => {
     expect(breakHints).toContainEqual({ key: 'S', label: 'skip break' });
     expect(breakHints).toContainEqual({ key: 'Q', label: 'quit' });
     // No Ctrl+C hint anywhere in the key-caps or labels.
-    const flattened = breakHints.map((h) => `${h.key} ${h.label}`).join(' ').toLowerCase();
+    const flattened = breakHints
+      .map((h) => `${h.key} ${h.label}`)
+      .join(' ')
+      .toLowerCase();
     expect(flattened).not.toContain('ctrl');
     expect(flattened).not.toContain('^c');
   });
@@ -462,7 +511,9 @@ describe('US-01/US-02 — phase-aware footer hints', () => {
   it('footer suppresses the skip hint during WORK and advertises only the Q quit key', () => {
     const workHints = footerHint('WORK');
     expect(workHints).toEqual([{ key: 'Q', label: 'quit' }]);
-    expect(workHints.some((h) => h.label.includes('skip') || h.label.includes('start work'))).toBe(false);
+    expect(workHints.some((h) => h.label.includes('skip') || h.label.includes('start work'))).toBe(
+      false,
+    );
   });
 
   // ── Scenario: the quit key is advertised in the footer (US-02) ────────────
@@ -476,9 +527,7 @@ describe('US-01/US-02 — phase-aware footer hints', () => {
   // @US-01 @US-02 — HARD #3: phase-aware key-cap hint in the compact branch, no overflow.
   it('compact (<40 col) footer fits the column budget and shows the break skip + quit key-caps', () => {
     const snapshot = snapshotFor('BREAK');
-    const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot, columns: 30 }),
-    );
+    const { lastFrame } = render(React.createElement(TimerFrame, { snapshot, columns: 30 }));
     const plain = stripAnsi(lastFrame() ?? '');
     const lines = plain.split('\n').filter((l) => l.trim().length > 0);
     // No line overflows the 30-column compact budget.
@@ -493,9 +542,7 @@ describe('US-01/US-02 — phase-aware footer hints', () => {
   // @US-01 @US-02 — HARD #3: phase-aware key-cap hint in the standard branch, no Ctrl+C.
   it('standard-layout footer renders the OVERDUE start-work key-cap hint without Ctrl+C', () => {
     const snapshot = snapshotFor('OVERDUE');
-    const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot, columns: 80 }),
-    );
+    const { lastFrame } = render(React.createElement(TimerFrame, { snapshot, columns: 80 }));
     const plain = stripAnsi(lastFrame() ?? '');
     expect(plain.toLowerCase()).toContain('start work');
     expect(plain).toContain('S'); // uppercase key-cap
@@ -514,9 +561,7 @@ describe('US-02 — quit the running timer with q', () => {
   it('pressing q in the running timer requests a quit through the control port', async () => {
     const control = new FakeControl();
     const snapshot = snapshotFor('WORK');
-    const { stdin } = render(
-      React.createElement(TimerFrame, { snapshot, columns: 80, control }),
-    );
+    const { stdin } = render(React.createElement(TimerFrame, { snapshot, columns: 80, control }));
     await flush();
 
     stdin.write('q'); // Kai presses q
@@ -531,9 +576,7 @@ describe('US-02 — quit the running timer with q', () => {
   it('pressing uppercase Q in the running timer also requests a quit', async () => {
     const control = new FakeControl();
     const snapshot = snapshotFor('LONG_BREAK');
-    const { stdin } = render(
-      React.createElement(TimerFrame, { snapshot, columns: 80, control }),
-    );
+    const { stdin } = render(React.createElement(TimerFrame, { snapshot, columns: 80, control }));
     await flush();
 
     stdin.write('Q'); // Aiko presses Q during a long break
@@ -581,7 +624,7 @@ describe('US-02 — quit the running timer with q', () => {
     // returning `this` (Process), so vitest infers the mock return type as
     // Process rather than boolean. The return value is irrelevant here (we only
     // assert emit was called); `as never` satisfies the mis-inferred overload
-    // without a blanket any/@ts-ignore.
+    // without a blanket any/@ts-expect-error.
     const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false as never);
     const control = new FakeControl();
     try {

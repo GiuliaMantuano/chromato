@@ -22,13 +22,7 @@ import React from 'react';
 import { render as inkRender, Text, Box, useApp, useInput } from 'ink';
 import type { ConfigResult } from '../configLoader.js';
 import { TAGLINE, DESCRIPTOR } from '../domain/brand.js';
-import {
-  LogoBlock,
-  Footer,
-  swatch,
-  colorize,
-  PALETTE_META,
-} from './tui/components.js';
+import { LogoBlock, Footer, swatch, colorize, PALETTE_META } from './tui/components.js';
 
 /** Render-intent seam (D-RH-5): the home resolves the user's action to this union. */
 export type HomeChoice =
@@ -66,7 +60,7 @@ const RecapRow: React.FC<RecapRowProps> = ({ label, value, trailing }) => (
       <Text>{colorize(KEY_FG, `  ${label}`)}</Text>
     </Box>
     <Text>{colorize(VALUE_FG, value)}</Text>
-    {trailing != null ? <Text>  {trailing}</Text> : null}
+    {trailing != null ? <Text> {trailing}</Text> : null}
   </Box>
 );
 
@@ -87,7 +81,11 @@ interface MenuItem {
 function menuItems(cadence: string): readonly MenuItem[] {
   return [
     { name: 'Start a focus session', desc: `${cadence} — your saved cadence`, choice: 'start' },
-    { name: 'Reconfigure…', desc: 're-run setup to change theme / timing / notifications', choice: 'reconfigure' },
+    {
+      name: 'Reconfigure…',
+      desc: 're-run setup to change theme / timing / notifications',
+      choice: 'reconfigure',
+    },
     { name: 'Quit', desc: '', choice: 'quit' },
   ];
 }
@@ -129,7 +127,11 @@ export const HomeScreen: React.FC<
       </Box>
 
       <Box flexDirection="column" marginTop={1}>
-        <RecapRow label="Theme" value={PALETTE_META[paletteName].label} trailing={swatch(paletteName)} />
+        <RecapRow
+          label="Theme"
+          value={PALETTE_META[paletteName].label}
+          trailing={swatch(paletteName)}
+        />
         <RecapRow
           label="Timing"
           value={cadence}

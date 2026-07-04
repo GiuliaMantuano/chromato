@@ -30,15 +30,25 @@ class RenderSpy implements RenderPort {
   render(snapshot: SessionSnapshot): void {
     this.lastSnapshot = snapshot;
   }
-  stop(): void { /* no-op */ }
+  stop(): void {
+    /* no-op */
+  }
 }
 
 // Minimal null state port: no persistence side-effects in unit tests.
 class NullStatePort implements StatePort {
-  writeState(_snapshot: SessionSnapshot): void { /* no-op */ }
-  writeIdle(): void { /* no-op */ }
-  readState(): SessionSnapshot | null { return null; }
-  readCompletedToday(): number { return 0; }
+  writeState(_snapshot: SessionSnapshot): void {
+    /* no-op */
+  }
+  writeIdle(): void {
+    /* no-op */
+  }
+  readState(): SessionSnapshot | null {
+    return null;
+  }
+  readCompletedToday(): number {
+    return 0;
+  }
 }
 
 function makeConfig(workDurationSeconds: number): SessionConfig {
@@ -55,7 +65,11 @@ function makeConfig(workDurationSeconds: number): SessionConfig {
 // Helper: advance the service to a specific elapsed time within a 60s work session.
 // Session starts in IDLE; first tick(0) transitions IDLE -> WORK with 0 elapsed.
 // Subsequent ticks accumulate elapsed time.
-function tickToElapsed(service: SessionService, config: SessionConfig, elapsedSeconds: number): void {
+function tickToElapsed(
+  service: SessionService,
+  config: SessionConfig,
+  elapsedSeconds: number,
+): void {
   // First tick: IDLE -> WORK (deltaSeconds ignored during IDLE transition).
   service.tickOnce(config, 0);
   // Second tick: advance elapsed time within WORK phase.
@@ -140,9 +154,9 @@ describe('SessionService driving port -- progressFraction accuracy', () => {
   // ---------------------------------------------------------------------------
 
   it.each([
-    [0,  0.00],
+    [0, 0.0],
     [15, 0.25],
-    [30, 0.50],
+    [30, 0.5],
     [45, 0.75],
   ])('fraction at %is elapsed of 60s work is within ±2%% of %f', (elapsed, expected) => {
     const renderSpy = new RenderSpy();

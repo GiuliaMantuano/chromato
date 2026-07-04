@@ -20,7 +20,7 @@ import { getPalette, type Palette } from '../domain/palette.js';
 import { Footer, type KeyHint } from './tui/components.js';
 
 const COMPACT_THRESHOLD = 40;
-const BLOCK_FULL  = '█';
+const BLOCK_FULL = '█';
 const BLOCK_EMPTY = '░';
 
 const ALTERNATE_SCREEN_ENTER = '\x1b[?1049h\x1b[2J\x1b[H';
@@ -77,7 +77,10 @@ export function footerHint(phase: PomodoroPhase, compact = false): KeyHint[] {
  * When colour is suppressed (--no-color / NO_COLOR), renders the same ` KEY  label`
  * key-cap text with NO ANSI colour sequences, so the accessibility contract holds.
  */
-const FooterHints: React.FC<{ hints: readonly KeyHint[]; useColor: boolean }> = ({ hints, useColor }) => {
+const FooterHints: React.FC<{ hints: readonly KeyHint[]; useColor: boolean }> = ({
+  hints,
+  useColor,
+}) => {
   if (useColor) {
     return <Footer hints={hints} />;
   }
@@ -118,14 +121,20 @@ export interface FrameProps {
 }
 
 const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
-  WORK:       'WORK',
-  BREAK:      'BREAK',
+  WORK: 'WORK',
+  BREAK: 'BREAK',
   LONG_BREAK: 'LONG BREAK',
-  OVERDUE:    'OVERDUE',
-  IDLE:       'IDLE',
+  OVERDUE: 'OVERDUE',
+  IDLE: 'IDLE',
 };
 
-export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount, columns: columnsProp, control }) => {
+export const TimerFrame: React.FC<FrameProps> = ({
+  snapshot,
+  palette,
+  onUnmount,
+  columns: columnsProp,
+  control,
+}) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
   // Forward Ctrl+C to SIGINT: in raw mode, Ctrl+C arrives as byte 0x03
@@ -155,17 +164,20 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
   // and `q`/`Q` -> control.quit(). Ctrl+C is INTENTIONALLY NOT handled here — it
   // is owned exclusively by the raw stdin 0x03 listener above (DN-1, HARD #1),
   // which avoids the double-interrupt + async-useEffect race.
-  useInput((input, _key) => {
-    if (input === 's' || input === 'S') {
-      control?.skip();
-      return;
-    }
-    if (input === 'q' || input === 'Q') {
-      control?.quit();
-    }
-  }, {
-    isActive: isRawModeSupported ?? false,
-  });
+  useInput(
+    (input, _key) => {
+      if (input === 's' || input === 'S') {
+        control?.skip();
+        return;
+      }
+      if (input === 'q' || input === 'Q') {
+        control?.quit();
+      }
+    },
+    {
+      isActive: isRawModeSupported ?? false,
+    },
+  );
   const stdoutColumns = (stdout as { columns?: number }).columns;
   const envColumns = process.env['COLUMNS'] ? parseInt(process.env['COLUMNS'], 10) : undefined;
   const resolvedColumns = columnsProp ?? envColumns ?? stdoutColumns ?? 80;
@@ -203,15 +215,18 @@ export const TimerFrame: React.FC<FrameProps> = ({ snapshot, palette, onUnmount,
           <Text bold {...(useColor ? { color: colors.fg } : {})}>
             {displayLabel}
           </Text>
-          <Text>{' '}</Text>
+          <Text> </Text>
           <Text dimColor>{badge}</Text>
         </Box>
         <Box>
-          <Text {...(useColor ? { color: colors.fg } : {})} {...(dimPulse ? { dimColor: true } : {})}>
+          <Text
+            {...(useColor ? { color: colors.fg } : {})}
+            {...(dimPulse ? { dimColor: true } : {})}
+          >
             {progressBar}
           </Text>
           <Text>{` ${pct}%`}</Text>
-          <Text>{' '}</Text>
+          <Text> </Text>
           <Text bold>{countdown}</Text>
         </Box>
         <Box>
@@ -295,7 +310,7 @@ export class TuiAdapter implements RenderPort {
       }
     } else {
       this.inkInstance.rerender(
-        React.createElement(TimerFrame, { snapshot, palette: this.palette, control: this.control })
+        React.createElement(TimerFrame, { snapshot, palette: this.palette, control: this.control }),
       );
     }
   }

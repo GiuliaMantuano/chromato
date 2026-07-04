@@ -10,7 +10,7 @@
  * CM-A compliance: no imports from src/ production code.
  */
 
-import { spawnSync } from 'child_process';
+import { spawnSync } from 'node:child_process';
 import type { ChromatoHelpWorld } from './world.js';
 
 export interface RunResult {
@@ -26,7 +26,7 @@ export interface RunResult {
 export function runChromato(
   world: ChromatoHelpWorld,
   args: string[],
-  timeoutMs: number = 10_000
+  timeoutMs: number = 10_000,
 ): Promise<RunResult> {
   const result = spawnSync('node', [world.chromatoBin, ...args], {
     env: world.chromatoEnv,

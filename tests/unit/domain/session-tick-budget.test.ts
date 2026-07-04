@@ -32,15 +32,27 @@ import type { RenderPort, StatePort } from '../../../src/domain/ports.js';
 // ---------------------------------------------------------------------------
 
 class NullRenderPort implements RenderPort {
-  render(_snapshot: SessionSnapshot): void { /* no-op */ }
-  stop(): void { /* no-op */ }
+  render(_snapshot: SessionSnapshot): void {
+    /* no-op */
+  }
+  stop(): void {
+    /* no-op */
+  }
 }
 
 class NullStatePort implements StatePort {
-  writeState(_snapshot: SessionSnapshot): void { /* no-op */ }
-  writeIdle(): void { /* no-op */ }
-  readState(): SessionSnapshot | null { return null; }
-  readCompletedToday(): number { return 0; }
+  writeState(_snapshot: SessionSnapshot): void {
+    /* no-op */
+  }
+  writeIdle(): void {
+    /* no-op */
+  }
+  readState(): SessionSnapshot | null {
+    return null;
+  }
+  readCompletedToday(): number {
+    return 0;
+  }
 }
 
 function makeConfig(workSeconds = 1500): SessionConfig {
@@ -111,8 +123,12 @@ describe('Session steady-state snapshot -- bounded values after many ticks (B2)'
     // Final snapshot -- remainingSeconds must be >= 0 (timer saturates at 0 in OVERDUE)
     const renderCapture: SessionSnapshot[] = [];
     const capturingRender: RenderPort = {
-      render(s) { renderCapture.push(s); },
-      stop() { /* no-op */ },
+      render(s) {
+        renderCapture.push(s);
+      },
+      stop() {
+        /* no-op */
+      },
     };
     const verifyService = new SessionService(capturingRender, new NullStatePort(), null, null);
     verifyService.tickOnce(config, 0);
@@ -126,8 +142,12 @@ describe('Session steady-state snapshot -- bounded values after many ticks (B2)'
     const config = makeConfig(600); // 10-minute session
     const renderCapture: SessionSnapshot[] = [];
     const capturingRender: RenderPort = {
-      render(s) { renderCapture.push(s); },
-      stop() { /* no-op */ },
+      render(s) {
+        renderCapture.push(s);
+      },
+      stop() {
+        /* no-op */
+      },
     };
     const service = new SessionService(capturingRender, new NullStatePort(), null, null);
 

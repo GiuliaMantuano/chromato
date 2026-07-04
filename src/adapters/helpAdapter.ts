@@ -20,9 +20,9 @@ export function printHelpSplash(noColor: boolean, useAscii: boolean): void {
 
   out.write('\n');
   if (useColor) {
-    out.write(chalk.dim('  ' + divider) + '\n');
+    out.write(`${chalk.dim(`  ${divider}`)}\n`);
   } else {
-    out.write('  ' + divider + '\n');
+    out.write(`  ${divider}\n`);
   }
   out.write('\n');
 }

@@ -17,13 +17,11 @@ export interface TimerSnapshot {
 export function deriveTimerSnapshot(
   totalSeconds: number,
   elapsedSeconds: number,
-  overdueElapsedSeconds: number
+  overdueElapsedSeconds: number,
 ): TimerSnapshot {
   const isOverdue = elapsedSeconds >= totalSeconds;
   const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
-  const progressFraction = totalSeconds > 0
-    ? Math.min(1, elapsedSeconds / totalSeconds)
-    : 0;
+  const progressFraction = totalSeconds > 0 ? Math.min(1, elapsedSeconds / totalSeconds) : 0;
 
   return {
     totalSeconds,

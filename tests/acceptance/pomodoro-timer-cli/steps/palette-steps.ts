@@ -18,9 +18,9 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world.js';
 import { runChromato } from './helpers.js';
-import * as assert from 'assert';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Helper: write a config.json in the XDG_CONFIG_HOME temp dir
@@ -45,19 +45,19 @@ Given('no palette is set in the environment or config file', function (this: Chr
   // Config dir is fresh per scenario (Before hook); no config.json written.
 });
 
-Given('the user has written {string} to the chromato config file', function (
-  this: ChromatoWorld,
-  jsonContent: string,
-) {
-  writeConfigJson(this, jsonContent);
-});
+Given(
+  'the user has written {string} to the chromato config file',
+  function (this: ChromatoWorld, jsonContent: string) {
+    writeConfigJson(this, jsonContent);
+  },
+);
 
-Given('the CHROMATO_PALETTE environment variable is set to {string}', function (
-  this: ChromatoWorld,
-  paletteName: string,
-) {
-  this.chromatoEnv = { ...this.chromatoEnv, CHROMATO_PALETTE: paletteName };
-});
+Given(
+  'the CHROMATO_PALETTE environment variable is set to {string}',
+  function (this: ChromatoWorld, paletteName: string) {
+    this.chromatoEnv = { ...this.chromatoEnv, CHROMATO_PALETTE: paletteName };
+  },
+);
 
 Given('no CHROMATO_PALETTE environment variable is set', function (this: ChromatoWorld) {
   delete this.chromatoEnv['CHROMATO_PALETTE'];
@@ -198,19 +198,16 @@ Then('no Pomodoro session is started', function (this: ChromatoWorld) {
   );
 });
 
-Then(
-  'the error output indicates a configuration file parse error',
-  function (this: ChromatoWorld) {
-    const combined = this.capturedOutput + this.capturedStderr;
-    // The exact message format is implementation-defined; check for key signals
-    assert.ok(
-      combined.toLowerCase().includes('json') ||
-        combined.toLowerCase().includes('config') ||
-        combined.toLowerCase().includes('parse'),
-      `Expected parse error indication in output but got:\n${combined}`,
-    );
-  },
-);
+Then('the error output indicates a configuration file parse error', function (this: ChromatoWorld) {
+  const combined = this.capturedOutput + this.capturedStderr;
+  // The exact message format is implementation-defined; check for key signals
+  assert.ok(
+    combined.toLowerCase().includes('json') ||
+      combined.toLowerCase().includes('config') ||
+      combined.toLowerCase().includes('parse'),
+    `Expected parse error indication in output but got:\n${combined}`,
+  );
+});
 
 Then(
   'the session starts with the forest palette \\(flag is highest precedence)',
@@ -222,17 +219,14 @@ Then(
   },
 );
 
-Then(
-  'no ANSI color sequences appear in standard output',
-  function (this: ChromatoWorld) {
-    // eslint-disable-next-line no-control-regex
-    const ansiPattern = /\x1b\[[0-9;]*[A-Za-z]/;
-    assert.ok(
-      !ansiPattern.test(this.capturedOutput),
-      `Expected no ANSI sequences in stdout but found:\n${this.capturedOutput}`,
-    );
-  },
-);
+Then('no ANSI color sequences appear in standard output', function (this: ChromatoWorld) {
+  // eslint-disable-next-line no-control-regex
+  const ansiPattern = /\x1b\[[0-9;]*[A-Za-z]/;
+  assert.ok(
+    !ansiPattern.test(this.capturedOutput),
+    `Expected no ANSI sequences in stdout but found:\n${this.capturedOutput}`,
+  );
+});
 
 Then(
   'functional text output \\(phase label and timer) is visible in standard output',
@@ -269,12 +263,11 @@ Then(
     const output = this.capturedOutput + this.capturedStderr;
     // An example command would contain 'chromato start --palette' followed by a name
     assert.ok(
-      output.includes('--palette') && (
-        output.includes('lavender') ||
-        output.includes('ocean') ||
-        output.includes('berry') ||
-        output.includes('forest')
-      ),
+      output.includes('--palette') &&
+        (output.includes('lavender') ||
+          output.includes('ocean') ||
+          output.includes('berry') ||
+          output.includes('forest')),
       `Expected at least one palette example command in help but got:\n${output}`,
     );
   },

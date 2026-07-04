@@ -12,9 +12,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import * as os from 'os';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as os from 'node:os';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { PersistenceAdapter } from '../../../src/adapters/persistenceAdapter.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 

@@ -15,7 +15,7 @@
  * Logo + swatch GRADIENT colours come from getPalette(name).gradient (domain).
  */
 
-import React from 'react';
+import type React from 'react';
 import { Text, Box } from 'ink';
 import chalk from 'chalk';
 import { getPalette, type PaletteName } from '../../domain/palette.js';
@@ -53,7 +53,10 @@ export function colorize(hex: string, content: string): string {
 
 /** A footer key hint as a filled key-cap "button" followed by a readable label. */
 export function keyHint(keyName: string, label: string): string {
-  return chalk.bgHex(KEYCAP_BG).hex(KEYCAP_FG).bold(` ${keyName} `) + chalk.hex(HINT_LABEL_FG)(` ${label}`);
+  return (
+    chalk.bgHex(KEYCAP_BG).hex(KEYCAP_FG).bold(` ${keyName} `) +
+    chalk.hex(HINT_LABEL_FG)(` ${label}`)
+  );
 }
 
 /** A 6-stop colour swatch (one block per gradient stop) for a theme option card. */
@@ -76,6 +79,7 @@ export const LogoBlock: React.FC<{ paletteName: PaletteName }> = ({ paletteName 
       {LOGO.map((line, i) => (
         // LOGO and every palette gradient are both exactly 6 entries (palette.ts),
         // so the indices align one-stop-per-line.
+        // biome-ignore lint/suspicious/noArrayIndexKey: LOGO is a fixed, non-reordering 6-line banner; the index maps 1:1 to a gradient stop.
         <Text key={i}>{colorize(gradient[i], line)}</Text>
       ))}
     </Box>

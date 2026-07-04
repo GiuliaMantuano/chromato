@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const readmePath = join(process.cwd(), 'README.md');
 const readmeContent = readFileSync(readmePath, 'utf-8');

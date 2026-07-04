@@ -15,63 +15,67 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world.js';
-import { spawnChromato, runChromato, runChromatoUntilFirstFrame, readStateFile, waitForOutput } from './helpers.js';
-import * as assert from 'assert';
-import * as fs from 'fs';
-import * as path from 'path';
+import {
+  spawnChromato,
+  runChromato,
+  runChromatoUntilFirstFrame,
+  readStateFile,
+  waitForOutput,
+} from './helpers.js';
+import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Given: session preconditions
 // ---------------------------------------------------------------------------
 
-Given('Pedro wants a {int}-minute work session with a {int}-minute break', function (
-  this: ChromatoWorld,
-  _workMinutes: number,
-  _breakMinutes: number
-) {
-  // Context-setting step: the intention is expressed in the When step via CLI flags.
-  // No action needed here; the When step will pass --work and --break flags.
-});
+Given(
+  'Pedro wants a {int}-minute work session with a {int}-minute break',
+  function (this: ChromatoWorld, _workMinutes: number, _breakMinutes: number) {
+    // Context-setting step: the intention is expressed in the When step via CLI flags.
+    // No action needed here; the When step will pass --work and --break flags.
+  },
+);
 
-Given('a {int}-minute work session has just started', async function (
-  this: ChromatoWorld,
-  minutes: number
-) {
-  this.process = spawnChromato(this, ['start', '--work', String(minutes)]);
-  // Wait for first render frame
-  await waitForOutput(this.process, /WORK|POMODORO/, 3000);
-});
+Given(
+  'a {int}-minute work session has just started',
+  async function (this: ChromatoWorld, minutes: number) {
+    this.process = spawnChromato(this, ['start', '--work', String(minutes)]);
+    // Wait for first render frame
+    await waitForOutput(this.process, /WORK|POMODORO/, 3000);
+  },
+);
 
-Given('a work session has been running for {int} minutes of a {int}-minute session', async function (
-  this: ChromatoWorld,
-  elapsed: number,
-  total: number
-) {
-  // Inject a pre-seeded state file that reflects elapsed time.
-  // This avoids waiting real minutes in tests.
-  const remainingSeconds = (total - elapsed) * 60;
-  const elapsedSeconds = elapsed * 60;
-  const progressFraction = elapsedSeconds / (total * 60);
-  const stateDir = path.join(this.tempDir, 'chromato');
-  fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(stateDir, 'state.json'),
-    JSON.stringify({
-      schemaVersion: 1,
-      phase: 'WORK',
-      remainingSeconds,
-      elapsedSeconds,
-      progressFraction,
-      currentPomodoro: 1,
-      cycleCount: 4,
-      completedToday: 0,
-      streak: 0,
-      isOverdue: false,
-      overdueElapsedSeconds: 0,
-      lastUpdatedUtc: new Date().toISOString(),
-    })
-  );
-});
+Given(
+  'a work session has been running for {int} minutes of a {int}-minute session',
+  async function (this: ChromatoWorld, elapsed: number, total: number) {
+    // Inject a pre-seeded state file that reflects elapsed time.
+    // This avoids waiting real minutes in tests.
+    const remainingSeconds = (total - elapsed) * 60;
+    const elapsedSeconds = elapsed * 60;
+    const progressFraction = elapsedSeconds / (total * 60);
+    const stateDir = path.join(this.tempDir, 'chromato');
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(stateDir, 'state.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        phase: 'WORK',
+        remainingSeconds,
+        elapsedSeconds,
+        progressFraction,
+        currentPomodoro: 1,
+        cycleCount: 4,
+        completedToday: 0,
+        streak: 0,
+        isOverdue: false,
+        overdueElapsedSeconds: 0,
+        lastUpdatedUtc: new Date().toISOString(),
+      }),
+    );
+  },
+);
 
 Given('a work session is active', async function (this: ChromatoWorld) {
   // Write a representative active work session state file.
@@ -92,17 +96,14 @@ Given('a work session is active', async function (this: ChromatoWorld) {
       isOverdue: false,
       overdueElapsedSeconds: 0,
       lastUpdatedUtc: new Date().toISOString(),
-    })
+    }),
   );
   // Spawn the TUI so the session is truly active for scenarios that need it.
   this.process = spawnChromato(this, ['start', '--work', '25']);
   await waitForOutput(this.process, /WORK|POMODORO/, 3000);
 });
 
-Given('a work session is active as {string}', async function (
-  this: ChromatoWorld,
-  badge: string
-) {
+Given('a work session is active as {string}', async function (this: ChromatoWorld, badge: string) {
   // Parse "POMODORO N of M" to extract the session number.
   const match = badge.match(/POMODORO\s+(\d+)\s+of\s+(\d+)/i);
   const pomodoroNumber = match ? parseInt(match[1], 10) : 1;
@@ -125,7 +126,7 @@ Given('a work session is active as {string}', async function (
       isOverdue: false,
       overdueElapsedSeconds: 0,
       lastUpdatedUtc: new Date().toISOString(),
-    })
+    }),
   );
   this.process = spawnChromato(this, ['start', '--work', '25']);
   await waitForOutput(this.process, /WORK|POMODORO/, 3000);
@@ -154,66 +155,66 @@ Given('a work session timer has reached zero', async function (this: ChromatoWor
       isOverdue: true,
       overdueElapsedSeconds: 30,
       lastUpdatedUtc: new Date().toISOString(),
-    })
+    }),
   );
 });
 
-Given('{int} seconds have elapsed in overdue state with no user action', function (
-  this: ChromatoWorld,
-  _seconds: number
-) {
-  // Overdue state already set by prior Given. This step documents the time context.
-});
+Given(
+  '{int} seconds have elapsed in overdue state with no user action',
+  function (this: ChromatoWorld, _seconds: number) {
+    // Overdue state already set by prior Given. This step documents the time context.
+  },
+);
 
-Given('the developer completed {int} Pomodoros earlier today and quit chromato', function (
-  this: ChromatoWorld,
-  count: number
-) {
-  const stateDir = path.join(this.tempDir, 'chromato');
-  fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(stateDir, 'state.json'),
-    JSON.stringify({
-      schemaVersion: 1,
-      phase: 'IDLE',
-      remainingSeconds: 0,
-      elapsedSeconds: 0,
-      progressFraction: 0,
-      currentPomodoro: count + 1,
-      cycleCount: 4,
-      completedToday: count,
-      streak: 1,
-      isOverdue: false,
-      overdueElapsedSeconds: 0,
-      lastUpdatedUtc: new Date().toISOString(),
-    })
-  );
-});
+Given(
+  'the developer completed {int} Pomodoros earlier today and quit chromato',
+  function (this: ChromatoWorld, count: number) {
+    const stateDir = path.join(this.tempDir, 'chromato');
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(stateDir, 'state.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        phase: 'IDLE',
+        remainingSeconds: 0,
+        elapsedSeconds: 0,
+        progressFraction: 0,
+        currentPomodoro: count + 1,
+        cycleCount: 4,
+        completedToday: count,
+        streak: 1,
+        isOverdue: false,
+        overdueElapsedSeconds: 0,
+        lastUpdatedUtc: new Date().toISOString(),
+      }),
+    );
+  },
+);
 
-Given('Natasha completed {int} Pomodoros earlier today and quit chromato', function (
-  this: ChromatoWorld,
-  count: number
-) {
-  const stateDir = path.join(this.tempDir, 'chromato');
-  fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(stateDir, 'state.json'),
-    JSON.stringify({
-      schemaVersion: 1,
-      phase: 'IDLE',
-      remainingSeconds: 0,
-      elapsedSeconds: 0,
-      progressFraction: 0,
-      currentPomodoro: count + 1,
-      cycleCount: 4,
-      completedToday: count,
-      streak: 1,
-      isOverdue: false,
-      overdueElapsedSeconds: 0,
-      lastUpdatedUtc: new Date().toISOString(),
-    })
-  );
-});
+Given(
+  'Natasha completed {int} Pomodoros earlier today and quit chromato',
+  function (this: ChromatoWorld, count: number) {
+    const stateDir = path.join(this.tempDir, 'chromato');
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(stateDir, 'state.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        phase: 'IDLE',
+        remainingSeconds: 0,
+        elapsedSeconds: 0,
+        progressFraction: 0,
+        currentPomodoro: count + 1,
+        cycleCount: 4,
+        completedToday: count,
+        streak: 1,
+        isOverdue: false,
+        overdueElapsedSeconds: 0,
+        lastUpdatedUtc: new Date().toISOString(),
+      }),
+    );
+  },
+);
 
 Given('no chromato session is currently running', function (this: ChromatoWorld) {
   // No process to spawn; ensure state file reflects IDLE.
@@ -234,7 +235,7 @@ Given('no chromato session is currently running', function (this: ChromatoWorld)
       isOverdue: false,
       overdueElapsedSeconds: 0,
       lastUpdatedUtc: new Date().toISOString(),
-    })
+    }),
   );
 });
 
@@ -242,9 +243,7 @@ Given('the state file shows phase {string}', function (this: ChromatoWorld, phas
   const stateDir = path.join(this.tempDir, 'chromato');
   fs.mkdirSync(stateDir, { recursive: true });
   const stateFile = path.join(stateDir, 'state.json');
-  const existing = fs.existsSync(stateFile)
-    ? JSON.parse(fs.readFileSync(stateFile, 'utf8'))
-    : {};
+  const existing = fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, 'utf8')) : {};
   fs.writeFileSync(stateFile, JSON.stringify({ ...existing, phase }));
 });
 
@@ -266,7 +265,7 @@ Given('a work session state file exists with valid content', function (this: Chr
       isOverdue: false,
       overdueElapsedSeconds: 0,
       lastUpdatedUtc: new Date().toISOString(),
-    })
+    }),
   );
 });
 
@@ -284,31 +283,29 @@ When('the developer runs {string}', async function (this: ChromatoWorld, command
   this.exitCode = result.exitCode;
 });
 
-When('the developer runs {string} with a {int}-minute work duration', async function (
-  this: ChromatoWorld,
-  command: string,
-  minutes: number
-) {
-  const args = [...parseCommand(command), '--work', String(minutes)];
-  const result = await runChromatoUntilFirstFrame(this, args, 3000);
-  this.elapsedMs = result.firstFrameMs;
-  this.capturedOutput = result.stdout;
-  this.exitCode = result.exitCode;
-});
+When(
+  'the developer runs {string} with a {int}-minute work duration',
+  async function (this: ChromatoWorld, command: string, minutes: number) {
+    const args = [...parseCommand(command), '--work', String(minutes)];
+    const result = await runChromatoUntilFirstFrame(this, args, 3000);
+    this.elapsedMs = result.firstFrameMs;
+    this.capturedOutput = result.stdout;
+    this.exitCode = result.exitCode;
+  },
+);
 
-When('the developer runs {string} with a {int}-minute work session', async function (
-  this: ChromatoWorld,
-  command: string,
-  minutes: number
-) {
-  const args = [...parseCommand(command), '--work', String(minutes)];
-  const start = Date.now();
-  const result = await runChromato(this, args, 3000);
-  this.elapsedMs = Date.now() - start;
-  this.capturedOutput = result.stdout;
-  this.capturedStderr = result.stderr;
-  this.exitCode = result.exitCode;
-});
+When(
+  'the developer runs {string} with a {int}-minute work session',
+  async function (this: ChromatoWorld, command: string, minutes: number) {
+    const args = [...parseCommand(command), '--work', String(minutes)];
+    const start = Date.now();
+    const result = await runChromato(this, args, 3000);
+    this.elapsedMs = Date.now() - start;
+    this.capturedOutput = result.stdout;
+    this.capturedStderr = result.stderr;
+    this.exitCode = result.exitCode;
+  },
+);
 
 When('Natasha runs {string}', async function (this: ChromatoWorld, command: string) {
   const args = parseCommand(command);
@@ -321,7 +318,7 @@ When('Natasha runs {string}', async function (this: ChromatoWorld, command: stri
   let timedOut = false;
   try {
     await waitForOutput(proc, /25:00/, 5000);
-  } catch (err) {
+  } catch (_err) {
     timedOut = true;
     // Fall through: kill, then let the assertion in the Then step report
     // the empty/partial capturedOutput. Re-throwing here would mask the
@@ -337,17 +334,17 @@ When('Natasha runs {string}', async function (this: ChromatoWorld, command: stri
   void timedOut; // Suppress unused-var warning; the timeout is intentionally swallowed.
 });
 
-When('Natasha runs {string} with default configuration', async function (
-  this: ChromatoWorld,
-  command: string
-) {
-  const args = parseCommand(command);
-  // Measure time-to-first-frame: spawn and kill as soon as first stdout arrives.
-  const result = await runChromatoUntilFirstFrame(this, args, 3000);
-  this.elapsedMs = result.firstFrameMs;
-  this.capturedOutput = result.stdout;
-  this.exitCode = result.exitCode;
-});
+When(
+  'Natasha runs {string} with default configuration',
+  async function (this: ChromatoWorld, command: string) {
+    const args = parseCommand(command);
+    // Measure time-to-first-frame: spawn and kill as soon as first stdout arrives.
+    const result = await runChromatoUntilFirstFrame(this, args, 3000);
+    this.elapsedMs = result.firstFrameMs;
+    this.capturedOutput = result.stdout;
+    this.exitCode = result.exitCode;
+  },
+);
 
 When('she starts chromato again later the same day', async function (this: ChromatoWorld) {
   // Restart chromato -- simulates a new process launch after a previous session.
@@ -360,7 +357,7 @@ When('she starts chromato again later the same day', async function (this: Chrom
   let timedOut = false;
   try {
     await waitForOutput(proc, /25:00/, 5000);
-  } catch (err) {
+  } catch (_err) {
     timedOut = true;
   }
   await new Promise<void>((resolve) => {
@@ -425,19 +422,18 @@ When('the developer terminates the session via Ctrl+C', async function (this: Ch
   });
 });
 
-When('Yuki runs {string} with a {int}-minute work session', async function (
-  this: ChromatoWorld,
-  command: string,
-  minutes: number
-) {
-  const args = [...parseCommand(command), '--work', String(minutes)];
-  const start = Date.now();
-  const result = await runChromato(this, args, 3000);
-  this.elapsedMs = Date.now() - start;
-  this.capturedOutput = result.stdout;
-  this.capturedStderr = result.stderr;
-  this.exitCode = result.exitCode;
-});
+When(
+  'Yuki runs {string} with a {int}-minute work session',
+  async function (this: ChromatoWorld, command: string, minutes: number) {
+    const args = [...parseCommand(command), '--work', String(minutes)];
+    const start = Date.now();
+    const result = await runChromato(this, args, 3000);
+    this.elapsedMs = Date.now() - start;
+    this.capturedOutput = result.stdout;
+    this.capturedStderr = result.stderr;
+    this.exitCode = result.exitCode;
+  },
+);
 
 When(
   'Aiko has added chromato to her tmux status-right\nAnd a {int}-minute work session is {int}% complete',
@@ -448,132 +444,137 @@ When(
     this.elapsedMs = Date.now() - start;
     this.capturedOutput = result.stdout;
     this.exitCode = result.exitCode;
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
 // Then: assertions on observable CLI output and state file
 // ---------------------------------------------------------------------------
 
-Then(/^the output shows a semantic version number \(e\.g\. ".*?"\)$/, function (
-  this: ChromatoWorld
-) {
-  assert.match(
-    this.capturedOutput,
-    /\d+\.\d+\.\d+/,
-    `Expected a semantic version number in output but got: ${this.capturedOutput}`
-  );
-});
+Then(
+  /^the output shows a semantic version number \(e\.g\. ".*?"\)$/,
+  function (this: ChromatoWorld) {
+    assert.match(
+      this.capturedOutput,
+      /\d+\.\d+\.\d+/,
+      `Expected a semantic version number in output but got: ${this.capturedOutput}`,
+    );
+  },
+);
 
 Then('the process exits with code {int}', function (this: ChromatoWorld, expectedCode: number) {
   assert.strictEqual(
     this.exitCode,
     expectedCode,
-    `Expected exit code ${expectedCode} but got ${this.exitCode}`
+    `Expected exit code ${expectedCode} but got ${this.exitCode}`,
   );
 });
 
-Then('the first TUI frame appears within {int} milliseconds', function (
-  this: ChromatoWorld,
-  maxMs: number
-) {
-  // Allow 50ms test-environment tolerance (process spawn + node startup overhead).
-  const tolerance = 50;
-  assert.ok(
-    this.elapsedMs <= maxMs + tolerance,
-    `Expected first frame within ${maxMs}ms (+ ${tolerance}ms test tolerance) but took ${this.elapsedMs}ms`
-  );
-});
+Then(
+  'the first TUI frame appears within {int} milliseconds',
+  function (this: ChromatoWorld, maxMs: number) {
+    // Allow 50ms test-environment tolerance (process spawn + node startup overhead).
+    const tolerance = 50;
+    assert.ok(
+      this.elapsedMs <= maxMs + tolerance,
+      `Expected first frame within ${maxMs}ms (+ ${tolerance}ms test tolerance) but took ${this.elapsedMs}ms`,
+    );
+  },
+);
 
-Then('the first output frame appears within {int} milliseconds of process start', function (
-  this: ChromatoWorld,
-  maxMs: number
-) {
-  // Allow 50ms test-environment tolerance (process spawn + node startup overhead).
-  // Production binary latency is well within the spec; test harness adds ~40-60ms.
-  const tolerance = 50;
-  assert.ok(
-    this.elapsedMs <= maxMs + tolerance,
-    `Expected first output within ${maxMs}ms (+ ${tolerance}ms test tolerance) but took ${this.elapsedMs}ms`
-  );
-});
+Then(
+  'the first output frame appears within {int} milliseconds of process start',
+  function (this: ChromatoWorld, maxMs: number) {
+    // Allow 50ms test-environment tolerance (process spawn + node startup overhead).
+    // Production binary latency is well within the spec; test harness adds ~40-60ms.
+    const tolerance = 50;
+    assert.ok(
+      this.elapsedMs <= maxMs + tolerance,
+      `Expected first output within ${maxMs}ms (+ ${tolerance}ms test tolerance) but took ${this.elapsedMs}ms`,
+    );
+  },
+);
 
 Then('the phase label reads {string}', function (this: ChromatoWorld, label: string) {
   assert.ok(
     this.capturedOutput.includes(label),
-    `Expected phase label "${label}" in output but got:\n${this.capturedOutput}`
+    `Expected phase label "${label}" in output but got:\n${this.capturedOutput}`,
   );
 });
 
 Then('the timer countdown reads {string}', function (this: ChromatoWorld, time: string) {
   assert.ok(
     this.capturedOutput.includes(time),
-    `Expected timer "${time}" in output but got:\n${this.capturedOutput}`
+    `Expected timer "${time}" in output but got:\n${this.capturedOutput}`,
   );
 });
 
-Then('the frame shows the work phase timer at {string}', function (this: ChromatoWorld, time: string) {
-  assert.ok(
-    this.capturedOutput.includes(time),
-    `Expected work phase timer "${time}" in TUI frame but got:\n${this.capturedOutput}`
-  );
-});
+Then(
+  'the frame shows the work phase timer at {string}',
+  function (this: ChromatoWorld, time: string) {
+    assert.ok(
+      this.capturedOutput.includes(time),
+      `Expected work phase timer "${time}" in TUI frame but got:\n${this.capturedOutput}`,
+    );
+  },
+);
 
-Then('the progress bar shows {int}% fill at session start', function (
-  this: ChromatoWorld,
-  percent: number
-) {
-  // At 0% the progress bar is empty; check for a '0%' label or empty-bar indicator.
-  // The TUI renders a percentage label next to the bar.
-  assert.ok(
-    this.capturedOutput.includes(`${percent}%`),
-    `Expected progress bar at ${percent}% in output but got:\n${this.capturedOutput}`
-  );
-});
+Then(
+  'the progress bar shows {int}% fill at session start',
+  function (this: ChromatoWorld, percent: number) {
+    // At 0% the progress bar is empty; check for a '0%' label or empty-bar indicator.
+    // The TUI renders a percentage label next to the bar.
+    assert.ok(
+      this.capturedOutput.includes(`${percent}%`),
+      `Expected progress bar at ${percent}% in output but got:\n${this.capturedOutput}`,
+    );
+  },
+);
 
 Then('the session badge reads {string}', function (this: ChromatoWorld, badge: string) {
   assert.ok(
     this.capturedOutput.includes(badge) || this.capturedOutput.match(new RegExp(badge, 'i')),
-    `Expected session badge "${badge}" in output but got:\n${this.capturedOutput}`
+    `Expected session badge "${badge}" in output but got:\n${this.capturedOutput}`,
   );
 });
 
-Then('the TUI shows {string} as the initial work duration', function (
-  this: ChromatoWorld,
-  time: string
-) {
-  assert.ok(
-    this.capturedOutput.includes(time),
-    `Expected initial work duration "${time}" in output but got:\n${this.capturedOutput}`
-  );
-});
+Then(
+  'the TUI shows {string} as the initial work duration',
+  function (this: ChromatoWorld, time: string) {
+    assert.ok(
+      this.capturedOutput.includes(time),
+      `Expected initial work duration "${time}" in output but got:\n${this.capturedOutput}`,
+    );
+  },
+);
 
-Then('the TUI shows {string} as the initial work countdown', function (
-  this: ChromatoWorld,
-  time: string
-) {
-  assert.ok(
-    this.capturedOutput.includes(time),
-    `Expected work countdown "${time}" in TUI output but got:\n${this.capturedOutput}`
-  );
-});
+Then(
+  'the TUI shows {string} as the initial work countdown',
+  function (this: ChromatoWorld, time: string) {
+    assert.ok(
+      this.capturedOutput.includes(time),
+      `Expected work countdown "${time}" in TUI output but got:\n${this.capturedOutput}`,
+    );
+  },
+);
 
-Then('the output includes a message explaining that the work duration must be a positive integer', function (
-  this: ChromatoWorld
-) {
-  const combined = this.capturedOutput + this.capturedStderr;
-  const hasError = /positive integer|must be a positive/i.test(combined);
-  assert.ok(
-    hasError,
-    `Expected a message about positive integer work duration but got:\n${combined}`
-  );
-});
+Then(
+  'the output includes a message explaining that the work duration must be a positive integer',
+  function (this: ChromatoWorld) {
+    const combined = this.capturedOutput + this.capturedStderr;
+    const hasError = /positive integer|must be a positive/i.test(combined);
+    assert.ok(
+      hasError,
+      `Expected a message about positive integer work duration but got:\n${combined}`,
+    );
+  },
+);
 
 Then('no configuration wizard or setup prompt appears', function (this: ChromatoWorld) {
   const wizardPatterns = /wizard|setup|configure|Welcome to/i;
   assert.ok(
     !wizardPatterns.test(this.capturedOutput),
-    `Unexpected wizard or setup prompt in output:\n${this.capturedOutput}`
+    `Unexpected wizard or setup prompt in output:\n${this.capturedOutput}`,
   );
 });
 
@@ -582,57 +583,50 @@ Then('the output contains zero ANSI escape sequences', function (this: ChromatoW
   const ansiPattern = /\x1b\[/;
   assert.ok(
     !ansiPattern.test(this.capturedOutput),
-    `Expected zero ANSI escape sequences but found some in output:\n${this.capturedOutput}`
+    `Expected zero ANSI escape sequences but found some in output:\n${this.capturedOutput}`,
   );
 });
 
-Then('the output includes a tmux integration one-liner example', function (
-  this: ChromatoWorld
-) {
+Then('the output includes a tmux integration one-liner example', function (this: ChromatoWorld) {
   assert.ok(
     this.capturedOutput.includes('tmux') || this.capturedOutput.includes('status-right'),
-    `Expected tmux integration example in help output but got:\n${this.capturedOutput}`
+    `Expected tmux integration example in help output but got:\n${this.capturedOutput}`,
   );
 });
 
 Then('the output mentions --minimal mode', function (this: ChromatoWorld) {
   assert.ok(
     this.capturedOutput.includes('--minimal') || this.capturedOutput.includes('minimal'),
-    `Expected --minimal mode mention in output but got:\n${this.capturedOutput}`
+    `Expected --minimal mode mention in output but got:\n${this.capturedOutput}`,
   );
 });
 
-Then('the total output is {int} lines or fewer', function (
-  this: ChromatoWorld,
-  maxLines: number
-) {
+Then('the total output is {int} lines or fewer', function (this: ChromatoWorld, maxLines: number) {
   const lineCount = this.capturedOutput.split('\n').filter(Boolean).length;
   assert.ok(
     lineCount <= maxLines,
-    `Expected output of ${maxLines} lines or fewer but got ${lineCount} lines`
+    `Expected output of ${maxLines} lines or fewer but got ${lineCount} lines`,
   );
 });
 
-Then('the first {int} lines include at least {int} concrete example commands', function (
-  this: ChromatoWorld,
-  lineCount: number,
-  minExamples: number
-) {
-  const lines = this.capturedOutput.split('\n').slice(0, lineCount);
-  const firstSection = lines.join('\n');
-  // Count lines that look like chromato command examples (start with "chromato" or "$")
-  const exampleLines = lines.filter(l => /chromato\s+\w+/.test(l));
-  assert.ok(
-    exampleLines.length >= minExamples,
-    `Expected at least ${minExamples} example commands in first ${lineCount} lines, found ${exampleLines.length}.\nFirst ${lineCount} lines:\n${firstSection}`
-  );
-});
+Then(
+  'the first {int} lines include at least {int} concrete example commands',
+  function (this: ChromatoWorld, lineCount: number, minExamples: number) {
+    const lines = this.capturedOutput.split('\n').slice(0, lineCount);
+    const firstSection = lines.join('\n');
+    // Count lines that look like chromato command examples (start with "chromato" or "$")
+    const exampleLines = lines.filter((l) => /chromato\s+\w+/.test(l));
+    assert.ok(
+      exampleLines.length >= minExamples,
+      `Expected at least ${minExamples} example commands in first ${lineCount} lines, found ${exampleLines.length}.\nFirst ${lineCount} lines:\n${firstSection}`,
+    );
+  },
+);
 
 Then('chromato outputs {string}', function (this: ChromatoWorld, expectedText: string) {
   assert.ok(
-    this.capturedOutput.includes(expectedText) ||
-      this.capturedStderr.includes(expectedText),
-    `Expected output to contain "${expectedText}" but got:\nSTDOUT: ${this.capturedOutput}\nSTDERR: ${this.capturedStderr}`
+    this.capturedOutput.includes(expectedText) || this.capturedStderr.includes(expectedText),
+    `Expected output to contain "${expectedText}" but got:\nSTDOUT: ${this.capturedOutput}\nSTDERR: ${this.capturedStderr}`,
   );
 });
 
@@ -643,100 +637,93 @@ Then('no zombie chromato processes remain running', async function (this: Chroma
   assert.ok(!isRunning, 'Expected chromato process to have exited but it is still running');
 });
 
-Then('the state file shows phase {string} after exit', function (
-  this: ChromatoWorld,
-  phase: string
-) {
-  const state = readStateFile(this);
-  assert.ok(state !== null, 'State file not found or not valid JSON');
-  assert.strictEqual(
-    state.phase,
-    phase,
-    `Expected state file phase "${phase}" but got "${state.phase}"`
-  );
-});
+Then(
+  'the state file shows phase {string} after exit',
+  function (this: ChromatoWorld, phase: string) {
+    const state = readStateFile(this);
+    assert.ok(state !== null, 'State file not found or not valid JSON');
+    assert.strictEqual(
+      state.phase,
+      phase,
+      `Expected state file phase "${phase}" but got "${state.phase}"`,
+    );
+  },
+);
 
-Then('the state file still shows {string}: {int}', function (
-  this: ChromatoWorld,
-  field: string,
-  value: number
-) {
-  const state = readStateFile(this);
-  assert.ok(state !== null, 'State file not found or not valid JSON');
-  // Convert camelCase field names for JSON keys.
-  const key = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-  assert.strictEqual(
-    state[key],
-    value,
-    `Expected state.${key} = ${value} but got ${state[key]}`
-  );
-});
+Then(
+  'the state file still shows {string}: {int}',
+  function (this: ChromatoWorld, field: string, value: number) {
+    const state = readStateFile(this);
+    assert.ok(state !== null, 'State file not found or not valid JSON');
+    // Convert camelCase field names for JSON keys.
+    const key = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    assert.strictEqual(state[key], value, `Expected state.${key} = ${value} but got ${state[key]}`);
+  },
+);
 
-Then('the TUI shows {string} in the header area', function (
-  this: ChromatoWorld,
-  text: string
-) {
+Then('the TUI shows {string} in the header area', function (this: ChromatoWorld, text: string) {
   assert.ok(
     this.capturedOutput.includes(text) ||
       this.capturedOutput.match(new RegExp(text.replace(/\d+/, '\\d+'), 'i')),
-    `Expected "${text}" in TUI output but got:\n${this.capturedOutput}`
+    `Expected "${text}" in TUI output but got:\n${this.capturedOutput}`,
   );
 });
 
-Then('the streak counter reflects the correct value from the previous sessions', function (
-  this: ChromatoWorld
-) {
-  // The streak value from the state.json written in the Given step is 1.
-  // The TUI currently does not render a streak counter in the header.
-  // This step verifies the session loaded previous context (non-zero streak is acceptable).
-  // Verified indirectly: the completedToday count being correct confirms persistence was read.
-  // Streak rendering is a post-MVP display concern (the value is persisted and loaded correctly).
-  assert.ok(
-    true,
-    'Streak counter persistence is verified via completedToday display; streak display is post-MVP'
-  );
-});
-
-Then('the state file contains the fields: {string}', function (
-  this: ChromatoWorld,
-  fieldList: string
-) {
-  const state = readStateFile(this);
-  assert.ok(state !== null, 'State file not found or not valid JSON');
-  const fields = fieldList.split(',').map((f) => f.trim());
-  for (const field of fields) {
-    // Support snake_case and camelCase variants.
-    const camel = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+Then(
+  'the streak counter reflects the correct value from the previous sessions',
+  function (this: ChromatoWorld) {
+    // The streak value from the state.json written in the Given step is 1.
+    // The TUI currently does not render a streak counter in the header.
+    // This step verifies the session loaded previous context (non-zero streak is acceptable).
+    // Verified indirectly: the completedToday count being correct confirms persistence was read.
+    // Streak rendering is a post-MVP display concern (the value is persisted and loaded correctly).
     assert.ok(
-      field in state || camel in state,
-      `Expected field "${field}" in state file but it is missing. State: ${JSON.stringify(state)}`
+      true,
+      'Streak counter persistence is verified via completedToday display; streak display is post-MVP',
     );
-  }
-});
+  },
+);
 
-Then('the {string} field reads {string}', function (
-  this: ChromatoWorld,
-  field: string,
-  value: string
-) {
-  const state = readStateFile(this);
-  assert.ok(state !== null, 'State file not found or not valid JSON');
-  const camel = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-  const actualValue = state[field] ?? state[camel];
-  assert.strictEqual(
-    String(actualValue),
-    value,
-    `Expected state.${field} = "${value}" but got "${actualValue}"`
-  );
-});
+Then(
+  'the state file contains the fields: {string}',
+  function (this: ChromatoWorld, fieldList: string) {
+    const state = readStateFile(this);
+    assert.ok(state !== null, 'State file not found or not valid JSON');
+    const fields = fieldList.split(',').map((f) => f.trim());
+    for (const field of fields) {
+      // Support snake_case and camelCase variants.
+      const camel = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+      assert.ok(
+        field in state || camel in state,
+        `Expected field "${field}" in state file but it is missing. State: ${JSON.stringify(state)}`,
+      );
+    }
+  },
+);
 
-Then('the output includes a usage error message describing the problem', function (
-  this: ChromatoWorld
-) {
-  const combined = this.capturedOutput + this.capturedStderr;
-  const hasError = /error|invalid|must be|positive|Usage/i.test(combined);
-  assert.ok(hasError, `Expected usage error message but got:\n${combined}`);
-});
+Then(
+  'the {string} field reads {string}',
+  function (this: ChromatoWorld, field: string, value: string) {
+    const state = readStateFile(this);
+    assert.ok(state !== null, 'State file not found or not valid JSON');
+    const camel = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const actualValue = state[field] ?? state[camel];
+    assert.strictEqual(
+      String(actualValue),
+      value,
+      `Expected state.${field} = "${value}" but got "${actualValue}"`,
+    );
+  },
+);
+
+Then(
+  'the output includes a usage error message describing the problem',
+  function (this: ChromatoWorld) {
+    const combined = this.capturedOutput + this.capturedStderr;
+    const hasError = /error|invalid|must be|positive|Usage/i.test(combined);
+    assert.ok(hasError, `Expected usage error message but got:\n${combined}`);
+  },
+);
 
 When(
   'the developer starts a {int}-second work session with a {int}-second break and waits for overdue',
@@ -755,7 +742,7 @@ When(
     this.capturedOutput = result.stdout;
     this.capturedStderr = result.stderr;
     this.exitCode = result.exitCode;
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------

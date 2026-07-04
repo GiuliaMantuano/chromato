@@ -7,9 +7,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { ConfigFileWriterAdapter } from '../../../src/adapters/configWriterAdapter.js';
 
 let tmpDir: string;
@@ -30,11 +30,25 @@ afterEach(() => {
 describe('ConfigFileWriterAdapter', () => {
   it('writes all six keys to config.json as valid JSON (minutes for timing)', () => {
     const writer = new ConfigFileWriterAdapter();
-    writer.write({ palette: 'lavender', work: 50, break: 10, longBreak: 20, cycles: 6, notifications: true });
+    writer.write({
+      palette: 'lavender',
+      work: 50,
+      break: 10,
+      longBreak: 20,
+      cycles: 6,
+      notifications: true,
+    });
 
     const file = path.join(tmpDir, 'chromato', 'config.json');
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    expect(parsed).toMatchObject({ palette: 'lavender', work: 50, break: 10, longBreak: 20, cycles: 6, notifications: true });
+    expect(parsed).toMatchObject({
+      palette: 'lavender',
+      work: 50,
+      break: 10,
+      longBreak: 20,
+      cycles: 6,
+      notifications: true,
+    });
   });
 
   it('creates the chromato/ directory if absent', () => {

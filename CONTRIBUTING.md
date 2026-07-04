@@ -55,6 +55,9 @@ pnpm test:coverage
 | `pnpm build` | Compile TypeScript to `dist/` |
 | `pnpm test` | Run all tests with Vitest |
 | `pnpm test:coverage` | Run tests and produce a coverage report |
+| `pnpm format` | Format the code with Biome (writes changes) |
+| `pnpm lint` | Lint the code with Biome |
+| `pnpm check:biome` | CI-safe Biome check (format + lint, no writes) |
 | `pnpm check:arch` | Enforce dependency-cruiser architecture rules |
 
 ### Bumping the package manager
@@ -93,7 +96,9 @@ chromato uses TypeScript strict mode (`"strict": true` in `tsconfig.json`). A fe
   Adapters must not import each other. Enforced by `pnpm check:arch`.
 - **OOP**: class-based design with dependency injection at the composition root (`src/index.ts`).
 - **No global state**: all state flows through the `Session` aggregate root.
-- **Formatting**: an automated formatter is not yet wired up. Match the surrounding style.
+- **Formatting & linting**: [Biome](https://biomejs.dev) is wired up. Run `pnpm format` to
+  auto-format and `pnpm lint` to lint; `pnpm check:biome` runs both without writing (this is the
+  CI-safe gate, also part of `pnpm quality:gates`). Config lives in `biome.json`.
 
 ---
 
@@ -141,6 +146,7 @@ docs/contributing-guide
 - [ ] `pnpm build` succeeds with no TypeScript errors
 - [ ] `pnpm test` -- all tests green
 - [ ] `pnpm test:coverage` -- no unexpected coverage regressions
+- [ ] `pnpm check:biome` -- format and lint clean
 - [ ] `pnpm check:arch` -- no architecture boundary violations
 - [ ] Commit messages follow Conventional Commits
 - [ ] New behaviour is covered by a test in `tests/unit/`, `tests/integration/`, or `tests/acceptance/`

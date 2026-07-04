@@ -18,8 +18,11 @@
     "cucumber": "cucumber-js --config cucumber.config.mjs",
     "test:acceptance": "cucumber-js --config cucumber.config.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check:biome": "biome ci .",
     "check:arch": "dependency-cruiser src",
-    "quality:gates": "pnpm typecheck && pnpm check:arch && pnpm build && pnpm test && pnpm test:acceptance"
+    "quality:gates": "pnpm typecheck && pnpm check:biome && pnpm check:arch && pnpm build && pnpm test && pnpm test:acceptance"
   },
   "engines": {
     "node": ">=22.12.0",
@@ -34,6 +37,7 @@
     "react": "^18.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.2",
     "@cucumber/cucumber": "^13.0.0",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.20.0",

@@ -35,12 +35,7 @@ export interface Palette {
 
 export const DEFAULT_PALETTE_NAME: PaletteName = 'ocean';
 
-export const VALID_PALETTE_NAMES: readonly PaletteName[] = [
-  'ocean',
-  'lavender',
-  'berry',
-  'forest',
-];
+export const VALID_PALETTE_NAMES: readonly PaletteName[] = ['ocean', 'lavender', 'berry', 'forest'];
 
 /**
  * Palette registry. All 4 named palettes.
@@ -53,41 +48,41 @@ export const PALETTES: Record<PaletteName, Palette> = {
   ocean: {
     gradient: ['#d8f0ff', '#8fd4f0', '#4db8e8', '#2a82c0', '#185a8a', '#0c2f4a'],
     phases: {
-      WORK:       { fg: '#4db8e8', bg: '#0a1620' },
-      BREAK:      { fg: '#f0c674', bg: '#0a1620' },
+      WORK: { fg: '#4db8e8', bg: '#0a1620' },
+      BREAK: { fg: '#f0c674', bg: '#0a1620' },
       LONG_BREAK: { fg: '#2a82c0', bg: '#0a1620' },
-      OVERDUE:    { fg: '#ff6b6b', bg: '#0a1620' },
-      IDLE:       { fg: '#5a6b7a', bg: '#0a1620' },
+      OVERDUE: { fg: '#ff6b6b', bg: '#0a1620' },
+      IDLE: { fg: '#5a6b7a', bg: '#0a1620' },
     },
   },
   lavender: {
     gradient: ['#ece4ff', '#c8a9f0', '#a878dd', '#8453c4', '#5e3a93', '#2e2046'],
     phases: {
-      WORK:       { fg: '#c8a9f0', bg: '#15101c' },
-      BREAK:      { fg: '#7ec8e3', bg: '#15101c' },
+      WORK: { fg: '#c8a9f0', bg: '#15101c' },
+      BREAK: { fg: '#7ec8e3', bg: '#15101c' },
       LONG_BREAK: { fg: '#a878dd', bg: '#15101c' },
-      OVERDUE:    { fg: '#ff6b9d', bg: '#15101c' },
-      IDLE:       { fg: '#6b6480', bg: '#15101c' },
+      OVERDUE: { fg: '#ff6b9d', bg: '#15101c' },
+      IDLE: { fg: '#6b6480', bg: '#15101c' },
     },
   },
   berry: {
     gradient: ['#ffe3ef', '#f4a6c8', '#e06a9c', '#b83f6f', '#84284e', '#380f22'],
     phases: {
-      WORK:       { fg: '#f4a6c8', bg: '#1a0a10' },
-      BREAK:      { fg: '#f0c674', bg: '#1a0a10' },
+      WORK: { fg: '#f4a6c8', bg: '#1a0a10' },
+      BREAK: { fg: '#f0c674', bg: '#1a0a10' },
       LONG_BREAK: { fg: '#e06a9c', bg: '#1a0a10' },
-      OVERDUE:    { fg: '#ff5555', bg: '#1a0a10' },
-      IDLE:       { fg: '#7a5566', bg: '#1a0a10' },
+      OVERDUE: { fg: '#ff5555', bg: '#1a0a10' },
+      IDLE: { fg: '#7a5566', bg: '#1a0a10' },
     },
   },
   forest: {
     gradient: ['#dbeec6', '#a3cd7e', '#6faa4e', '#4c7d36', '#305422', '#122009'],
     phases: {
-      WORK:       { fg: '#a3cd7e', bg: '#0d130b' },
-      BREAK:      { fg: '#7ec8b0', bg: '#0d130b' },
+      WORK: { fg: '#a3cd7e', bg: '#0d130b' },
+      BREAK: { fg: '#7ec8b0', bg: '#0d130b' },
       LONG_BREAK: { fg: '#6faa4e', bg: '#0d130b' },
-      OVERDUE:    { fg: '#f08a7a', bg: '#0d130b' },
-      IDLE:       { fg: '#5a6b50', bg: '#0d130b' },
+      OVERDUE: { fg: '#f08a7a', bg: '#0d130b' },
+      IDLE: { fg: '#5a6b50', bg: '#0d130b' },
     },
   },
 };

@@ -15,11 +15,11 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawnSync } from 'child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..', '..', '..');
@@ -70,12 +70,13 @@ describe('chromato status driving port -- --width validation (F-4 regression)', 
 
   // Each invalid value must fall back to the default width and still render a
   // *valid* status string (not merely some non-empty output).
-  it.each([['abc'], ['0'], ['-5']])(
-    'renders a valid status string for invalid --width %s (was silently empty)',
-    (value) => {
-      expect(runStatus('--width', value).stdout).toMatch(STATUS_TIME);
-    }
-  );
+  it.each([
+    ['abc'],
+    ['0'],
+    ['-5'],
+  ])('renders a valid status string for invalid --width %s (was silently empty)', (value) => {
+    expect(runStatus('--width', value).stdout).toMatch(STATUS_TIME);
+  });
 
   it('honours a valid --width by bounding the output length', () => {
     expect(runStatus('--width', '15').stdout.length).toBeLessThanOrEqual(15);

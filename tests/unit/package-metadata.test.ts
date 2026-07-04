@@ -16,9 +16,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..', '..');
@@ -50,7 +50,7 @@ describe('package.json -- required publish fields (B1)', () => {
 
   it('has an author field', () => {
     expect(pkg.author).toBeDefined();
-    const authorStr = typeof pkg.author === 'string' ? pkg.author : pkg.author?.name ?? '';
+    const authorStr = typeof pkg.author === 'string' ? pkg.author : (pkg.author?.name ?? '');
     expect(authorStr.length).toBeGreaterThan(0);
   });
 });

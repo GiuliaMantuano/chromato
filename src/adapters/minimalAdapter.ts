@@ -23,7 +23,7 @@ function formatMinSec(totalSeconds: number): string {
 function renderAsciiBar(fraction: number): string {
   const filled = Math.round(Math.min(1, Math.max(0, fraction)) * BAR_WIDTH);
   const empty = BAR_WIDTH - filled;
-  return '[' + '='.repeat(filled) + '-'.repeat(empty) + ']';
+  return `[${'='.repeat(filled)}${'-'.repeat(empty)}]`;
 }
 
 export class MinimalAdapter implements RenderPort {

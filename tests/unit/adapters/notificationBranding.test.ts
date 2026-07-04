@@ -339,9 +339,8 @@ describe('NotificationAdapter — AppleScript injection safety (C-NB-3 / H3)', (
     // mock). D3 hardening — same teeth, more robust ordering.
     vi.resetModules();
     vi.doMock('../../../src/domain/notificationCopy.js', async (importOriginal) => {
-      const actual = await importOriginal<
-        typeof import('../../../src/domain/notificationCopy.js')
-      >();
+      const actual =
+        await importOriginal<typeof import('../../../src/domain/notificationCopy.js')>();
       return {
         ...actual,
         resolveCopy: () => ({ title: 'Test "x"', body: 'a "b" c' }),

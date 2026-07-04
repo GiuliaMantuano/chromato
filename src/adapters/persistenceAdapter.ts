@@ -11,9 +11,9 @@
  * No ink/react imports -- synchronous I/O only.
  */
 
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { StatePort, HistoryPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
@@ -22,7 +22,8 @@ import type { SessionSnapshot } from '../domain/types.js';
 const _require = createRequire(import.meta.url);
 
 function resolveStateDir(xdgDataHome?: string): string {
-  const base = xdgDataHome ?? process.env['XDG_DATA_HOME'] ?? path.join(os.homedir(), '.local', 'share');
+  const base =
+    xdgDataHome ?? process.env['XDG_DATA_HOME'] ?? path.join(os.homedir(), '.local', 'share');
   return path.join(base, 'chromato');
 }
 
@@ -47,7 +48,7 @@ interface StateFileContents {
 
 // Lazy reference to better-sqlite3 Database type.
 // Using unknown here to avoid top-level import of better-sqlite3.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: deliberate lazy type to avoid a top-level better-sqlite3 import, which the fast-path arch rules forbid.
 type BetterSqliteDatabase = any;
 
 export class PersistenceAdapter implements StatePort, HistoryPort {
@@ -164,16 +165,19 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
 
   recordSession(completedPomodoros: number): void {
     const db = this.openDb();
-    db.prepare(
-      'INSERT INTO sessions (completed_pomodoros, recorded_at) VALUES (?, ?)'
-    ).run(completedPomodoros, new Date().toISOString());
+    db.prepare('INSERT INTO sessions (completed_pomodoros, recorded_at) VALUES (?, ?)').run(
+      completedPomodoros,
+      new Date().toISOString(),
+    );
   }
 
   readTodayCount(): number {
     const db = this.openDb();
-    const row = db.prepare(
-      "SELECT COALESCE(SUM(completed_pomodoros), 0) AS total FROM sessions WHERE date(recorded_at) = date('now')"
-    ).get() as { total: number };
+    const row = db
+      .prepare(
+        "SELECT COALESCE(SUM(completed_pomodoros), 0) AS total FROM sessions WHERE date(recorded_at) = date('now')",
+      )
+      .get() as { total: number };
     return row.total;
   }
 
@@ -183,11 +187,13 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
     // that have at least one recorded session.
     // Strategy: fetch distinct local dates (descending), walk backward from today
     // until a gap is found.
-    const rows = db.prepare(
-      `SELECT DISTINCT date(recorded_at, 'localtime') AS local_date
+    const rows = db
+      .prepare(
+        `SELECT DISTINCT date(recorded_at, 'localtime') AS local_date
        FROM sessions
-       ORDER BY local_date DESC`
-    ).all() as { local_date: string }[];
+       ORDER BY local_date DESC`,
+      )
+      .all() as { local_date: string }[];
 
     if (rows.length === 0) {
       return 0;
@@ -196,8 +202,11 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
     const today = new Date();
     // Use local date components to match SQLite's `date(recorded_at, 'localtime')`.
     // toISOString() returns UTC which diverges from local date after midnight local time.
-    const todayStr = today.getFullYear() + '-' +
-      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    const todayStr =
+      today.getFullYear() +
+      '-' +
+      String(today.getMonth() + 1).padStart(2, '0') +
+      '-' +
       String(today.getDate()).padStart(2, '0');
 
     // Streak only counts if there is a session today (or yesterday for same-day start edge case).
@@ -209,7 +218,7 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
       if (row.local_date === cursor) {
         streak += 1;
         // Move cursor to the previous day.
-        const prev = new Date(cursor + 'T00:00:00Z');
+        const prev = new Date(`${cursor}T00:00:00Z`);
         prev.setUTCDate(prev.getUTCDate() - 1);
         cursor = prev.toISOString().slice(0, 10);
       } else {

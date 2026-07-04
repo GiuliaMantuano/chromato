@@ -21,7 +21,12 @@
 
 import { describe, it, expect } from 'vitest';
 import { SessionService } from '../../../src/application/sessionService.js';
-import type { RenderPort, StatePort, NotificationPort, HistoryPort } from '../../../src/domain/ports.js';
+import type {
+  RenderPort,
+  StatePort,
+  NotificationPort,
+  HistoryPort,
+} from '../../../src/domain/ports.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 import type { PomodoroPhase } from '../../../src/domain/phase.js';
 import type { SessionConfig } from '../../../src/domain/config.js';
@@ -156,7 +161,7 @@ describe('SessionService (driving port)', () => {
     const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
     const config = makeConfig({ workDurationSeconds: 10 });
 
-    service.tickOnce(config, 0);  // IDLE -> WORK, elapsed = 0
+    service.tickOnce(config, 0); // IDLE -> WORK, elapsed = 0
     service.tickOnce(config, 5); // advance 5s into 10s work period
 
     expect(renderPort.lastSnapshot().timer.progressFraction).toBeCloseTo(0.5, 1);
@@ -183,7 +188,7 @@ describe('SessionService (driving port)', () => {
     const config = makeConfig();
 
     service.tickOnce(config, 0); // IDLE -> WORK
-    service.interrupt();          // signal interruption
+    service.interrupt(); // signal interruption
     service.tickOnce(config, 1); // process interrupted state
 
     expect(renderPort.stopped).toBe(true);

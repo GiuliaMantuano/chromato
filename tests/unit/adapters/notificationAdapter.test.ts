@@ -430,19 +430,16 @@ describe('NotificationAdapter — phase label correctness in notification messag
     ['WORK', 'LONG_BREAK', '4 pomodoros done 🎉', 'Take a proper 15-minute break.'],
     ['BREAK', 'WORK', 'Break’s over', 'Back to focus for a 25-minute block.'],
     ['LONG_BREAK', 'WORK', 'Break’s over', 'Back to focus for a 25-minute block.'],
-  ] as const)(
-    'B10: notifyPhaseChange(%s → %s) message contains the warm D3 copy "%s" / "%s"',
-    async (from, to, title, body) => {
-      const runner = new FakeCommandRunner();
-      const adapter = makeAdapter(runner);
+  ] as const)('B10: notifyPhaseChange(%s → %s) message contains the warm D3 copy "%s" / "%s"', async (from, to, title, body) => {
+    const runner = new FakeCommandRunner();
+    const adapter = makeAdapter(runner);
 
-      adapter.notifyPhaseChange(from, to);
+    adapter.notifyPhaseChange(from, to);
 
-      await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
 
-      const scriptArg = runner.calls[0]?.args.join(' ') ?? '';
-      expect(scriptArg).toContain(title);
-      expect(scriptArg).toContain(body);
-    },
-  );
+    const scriptArg = runner.calls[0]?.args.join(' ') ?? '';
+    expect(scriptArg).toContain(title);
+    expect(scriptArg).toContain(body);
+  });
 });

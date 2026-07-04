@@ -15,10 +15,10 @@
  * 2. No global 'chromato' binary needs to be installed in the test environment
  */
 
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import type { ChromatoWorld } from './world.js';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Process spawning
@@ -28,10 +28,7 @@ import * as path from 'path';
  * Spawns chromato as a long-lived background process (for TUI tests).
  * The caller is responsible for killing the process in the After hook.
  */
-export function spawnChromato(
-  world: ChromatoWorld,
-  args: string[]
-): ChildProcess {
+export function spawnChromato(world: ChromatoWorld, args: string[]): ChildProcess {
   const nodeArgs = [world.chromatoBin, ...args];
   const proc = spawn('node', nodeArgs, {
     env: world.chromatoEnv,
@@ -86,7 +83,7 @@ export interface FirstFrameResult {
 export function runChromatoUntilFirstFrame(
   world: ChromatoWorld,
   args: string[],
-  safetyTimeoutMs: number = 3000
+  safetyTimeoutMs: number = 3000,
 ): Promise<FirstFrameResult> {
   return new Promise((resolve) => {
     const nodeArgs = [world.chromatoBin, ...args];
@@ -106,7 +103,11 @@ export function runChromatoUntilFirstFrame(
       resolved = true;
       clearTimeout(safetyTimer);
       world.process = null;
-      resolve({ firstFrameMs: firstFrameMs >= 0 ? firstFrameMs : Date.now() - start, stdout, exitCode: code });
+      resolve({
+        firstFrameMs: firstFrameMs >= 0 ? firstFrameMs : Date.now() - start,
+        stdout,
+        exitCode: code,
+      });
     };
 
     proc.stdout?.on('data', (chunk: Buffer) => {
@@ -135,7 +136,7 @@ export function runChromatoUntilFirstFrame(
 export function runChromato(
   world: ChromatoWorld,
   args: string[],
-  timeoutMs: number = 10_000
+  timeoutMs: number = 10_000,
 ): Promise<RunResult> {
   return new Promise((resolve) => {
     const nodeArgs = [world.chromatoBin, ...args];
@@ -183,7 +184,7 @@ export function runChromato(
 export function waitForOutput(
   proc: ChildProcess,
   pattern: RegExp,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let buffer = '';
@@ -202,8 +203,8 @@ export function waitForOutput(
       reject(
         new Error(
           `Timed out after ${timeoutMs}ms waiting for pattern ${pattern} in chromato output.\n` +
-            `Captured so far: ${buffer}`
-        )
+            `Captured so far: ${buffer}`,
+        ),
       );
     }, timeoutMs);
 
@@ -261,7 +262,7 @@ export interface FirstByteWorld {
 export function measureTimeToFirstByte(
   world: FirstByteWorld,
   args: string[],
-  timeoutMs: number = 5000
+  timeoutMs: number = 5000,
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const start = Date.now();

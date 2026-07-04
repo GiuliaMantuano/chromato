@@ -20,10 +20,10 @@
 
 'use strict';
 
-const { execSync, spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const { execSync, spawn } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -63,7 +63,7 @@ function readRssKb(pid) {
     // ps -o rss= returns RSS in kB on macOS
     const output = execSync(`ps -o rss= -p ${pid}`, { encoding: 'utf8' }).trim();
     const value = parseInt(output, 10);
-    if (isNaN(value)) {
+    if (Number.isNaN(value)) {
       throw new Error(`Unexpected ps output for pid ${pid}: "${output}"`);
     }
     return value;
@@ -87,8 +87,12 @@ async function measureCpuPct(pid, durationS) {
     return new Promise((resolve, reject) => {
       let output = '';
       const ps = spawn('pidstat', ['-u', '-p', String(pid), '1', String(durationS)]);
-      ps.stdout.on('data', (chunk) => { output += chunk.toString(); });
-      ps.stderr.on('data', (chunk) => { /* ignore */ });
+      ps.stdout.on('data', (chunk) => {
+        output += chunk.toString();
+      });
+      ps.stderr.on('data', (_chunk) => {
+        /* ignore */
+      });
       ps.on('error', reject);
       ps.on('close', () => {
         // Parse the "Average:" summary line produced by pidstat.
@@ -117,7 +121,7 @@ async function measureCpuPct(pid, durationS) {
         // %CPU is col 7 (0-based), usr is col 3.
         // Use %CPU (sum of all CPU) if available (column 7), else usr+sys.
         const cpuCol7 = parseFloat(cols[7]);
-        if (!isNaN(cpuCol7)) {
+        if (!Number.isNaN(cpuCol7)) {
           return resolve(cpuCol7);
         }
         const usr = parseFloat(cols[3]) || 0;
@@ -137,7 +141,7 @@ async function measureCpuPct(pid, durationS) {
         try {
           const raw = execSync(`ps -o %cpu= -p ${pid} 2>/dev/null`, { encoding: 'utf8' }).trim();
           const value = parseFloat(raw);
-          if (!isNaN(value)) {
+          if (!Number.isNaN(value)) {
             samples.push(value);
           }
         } catch (_) {
@@ -146,9 +150,7 @@ async function measureCpuPct(pid, durationS) {
         elapsed += 1;
         if (elapsed >= durationS) {
           clearInterval(interval);
-          const avg = samples.length > 0
-            ? samples.reduce((a, b) => a + b, 0) / samples.length
-            : 0;
+          const avg = samples.length > 0 ? samples.reduce((a, b) => a + b, 0) / samples.length : 0;
           resolve(avg);
         }
       }, CPU_SAMPLE_INTERVAL_MS);
@@ -177,8 +179,12 @@ async function main() {
     detached: false,
   });
 
-  child.stdout.on('data', () => { /* drain to prevent back-pressure */ });
-  child.stderr.on('data', () => { /* drain */ });
+  child.stdout.on('data', () => {
+    /* drain to prevent back-pressure */
+  });
+  child.stderr.on('data', () => {
+    /* drain */
+  });
 
   const childPid = child.pid;
   console.log(`[benchmark-rss] Child PID: ${childPid}`);
@@ -241,7 +247,9 @@ async function main() {
   });
 
   if (exitCode !== 0 && exitCode !== null) {
-    console.warn(`[benchmark-rss] WARNING: Child exited with code ${exitCode} (expected 0 or null on SIGTERM)`);
+    console.warn(
+      `[benchmark-rss] WARNING: Child exited with code ${exitCode} (expected 0 or null on SIGTERM)`,
+    );
   }
 
   // --- Evaluate gates ---
@@ -271,7 +279,7 @@ async function main() {
     },
   };
 
-  fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2) + '\n', 'utf8');
+  fs.writeFileSync(RESULTS_FILE, `${JSON.stringify(results, null, 2)}\n`, 'utf8');
   console.log(`[benchmark-rss] Results written to ${RESULTS_FILE}`);
   console.log(JSON.stringify(results, null, 2));
 
@@ -292,10 +300,14 @@ async function main() {
 
   // --- Fail the job if any gate breached ---
   if (rssFailed) {
-    console.error(`[benchmark-rss] GATE FAILED: RSS ${rssMb.toFixed(2)} MB exceeds ${RSS_LIMIT_MB} MB limit`);
+    console.error(
+      `[benchmark-rss] GATE FAILED: RSS ${rssMb.toFixed(2)} MB exceeds ${RSS_LIMIT_MB} MB limit`,
+    );
   }
   if (cpuFailed) {
-    console.error(`[benchmark-rss] GATE FAILED: CPU ${cpuPct.toFixed(3)}% exceeds ${CPU_LIMIT_PCT}% limit`);
+    console.error(
+      `[benchmark-rss] GATE FAILED: CPU ${cpuPct.toFixed(3)}% exceeds ${CPU_LIMIT_PCT}% limit`,
+    );
   }
   if (rssFailed || cpuFailed) {
     process.exit(1);

@@ -38,8 +38,8 @@
  * loop never stalls and no rejection escapes the adapter.
  */
 
-import { execFile } from 'child_process';
-import { fileURLToPath } from 'url';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import type { NotificationPort } from '../domain/ports.js';
 import type { PomodoroPhase } from '../domain/phase.js';
 import {

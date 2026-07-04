@@ -22,10 +22,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import chalk from 'chalk';
-import {
-  SetupWizardAdapter,
-  SetupWizard,
-} from '../../../src/adapters/setupWizardAdapter.js';
+import { SetupWizardAdapter, SetupWizard } from '../../../src/adapters/setupWizardAdapter.js';
 import { getPalette } from '../../../src/domain/palette.js';
 import type { ConfigWritePort } from '../../../src/domain/ports.js';
 
@@ -446,7 +443,11 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
   it('Esc leaves the Custom editor back to the Default/Custom choice (not a one-way trap)', async () => {
     const ESCAPE = '\x1b';
     let completed: { work: number } | null = null;
-    const harness = await mountAtTiming({ onComplete: (r: typeof completed) => { completed = r; } });
+    const harness = await mountAtTiming({
+      onComplete: (r: typeof completed) => {
+        completed = r;
+      },
+    });
 
     harness.stdin.write(ARROW_DOWN); // Default → Custom
     await flush();
@@ -477,7 +478,11 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
 
   it('Custom work decrements to its min (1) and never below — clamp [1,90] — then persists minutes', async () => {
     let completed: { work: number; break: number; longBreak: number; cycles: number } | null = null;
-    const harness = await mountAtTiming({ onComplete: (r: typeof completed) => { completed = r; } });
+    const harness = await mountAtTiming({
+      onComplete: (r: typeof completed) => {
+        completed = r;
+      },
+    });
 
     harness.stdin.write(ARROW_DOWN); // Default → Custom
     await flush();
@@ -559,7 +564,9 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
 
     // Default On: complete immediately without toggling.
     const onHarness = await mountAtNotifications({
-      onComplete: (r: typeof completed) => { completed = r; },
+      onComplete: (r: typeof completed) => {
+        completed = r;
+      },
     });
     let frame = onHarness.lastFrame() ?? '';
     // The On/Off toggle is shown with On highlighted by default.
@@ -576,7 +583,9 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     // Toggle Off: Left arrow flips notifications to false, then finish persists false.
     completed = null;
     const offHarness = await mountAtNotifications({
-      onComplete: (r: typeof completed) => { completed = r; },
+      onComplete: (r: typeof completed) => {
+        completed = r;
+      },
     });
     offHarness.stdin.write('\x1b[D'); // ← toggle to Off
     await flush();
@@ -643,9 +652,14 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     expect(result).not.toBeNull();
     // The persisted config carries only the six wizard keys — no tmux/file path.
     const persisted = configWriter.written as Record<string, unknown>;
-    expect(Object.keys(persisted).sort()).toEqual(
-      ['break', 'cycles', 'longBreak', 'notifications', 'palette', 'work'],
-    );
+    expect(Object.keys(persisted).sort()).toEqual([
+      'break',
+      'cycles',
+      'longBreak',
+      'notifications',
+      'palette',
+      'work',
+    ]);
     expect(JSON.stringify(persisted)).not.toContain('.tmux.conf');
   });
   // ── Summary step + S-skip + cross-step Esc-back (step 04-01) ────────────────
@@ -788,9 +802,14 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     });
     // The SAME six-key set was written atomically through the driven port.
     expect(writer.written).toEqual(result);
-    expect(Object.keys(writer.written as Record<string, unknown>).sort()).toEqual(
-      ['break', 'cycles', 'longBreak', 'notifications', 'palette', 'work'],
-    );
+    expect(Object.keys(writer.written as Record<string, unknown>).sort()).toEqual([
+      'break',
+      'cycles',
+      'longBreak',
+      'notifications',
+      'palette',
+      'work',
+    ]);
   });
 
   // DD-8 graceful-degrade: when the atomic config write THROWS, the wizard must NOT

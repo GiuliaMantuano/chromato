@@ -21,7 +21,9 @@ describe('shouldRunWizard (first-run guard)', () => {
   });
 
   it('skips when NO_COLOR is set', () => {
-    expect(shouldRunWizard({ isTTY: true, env: { NO_COLOR: '1' }, configExists: false })).toBe(false);
+    expect(shouldRunWizard({ isTTY: true, env: { NO_COLOR: '1' }, configExists: false })).toBe(
+      false,
+    );
   });
 
   it('skips when CI is set', () => {

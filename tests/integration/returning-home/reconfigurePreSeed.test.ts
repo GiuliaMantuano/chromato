@@ -46,16 +46,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { render } from 'ink-testing-library';
 import chalk from 'chalk';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import {
-  SetupWizardAdapter,
-} from '../../../src/adapters/setupWizardAdapter.js';
-import {
-  loadConfig,
-  type ConfigResult,
-} from '../../../src/configLoader.js';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { SetupWizardAdapter } from '../../../src/adapters/setupWizardAdapter.js';
+import { loadConfig, type ConfigResult } from '../../../src/configLoader.js';
 import type { ConfigWritePort } from '../../../src/domain/ports.js';
 import type { WizardResult } from '../../../src/configTypes.js';
 

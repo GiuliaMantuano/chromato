@@ -33,7 +33,7 @@ import { render } from 'ink-testing-library';
 import { render as inkRender } from 'ink';
 import * as inkModule from 'ink';
 import chalk from 'chalk';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import { TimerFrame, TuiAdapter } from '../../../src/adapters/tuiAdapter.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 
@@ -113,15 +113,19 @@ function hasColorEscapes(str: string): boolean {
 class FakeStdout extends EventEmitter {
   readonly columns = 80;
   private _lastFrame = '';
-  write(frame: string): void { this._lastFrame = frame; }
-  lastFrame(): string { return this._lastFrame; }
+  write(frame: string): void {
+    this._lastFrame = frame;
+  }
+  lastFrame(): string {
+    return this._lastFrame;
+  }
 }
 
 async function renderWithColor(element: React.ReactElement): Promise<string> {
   const stdout = new FakeStdout();
   const instance = inkRender(element, {
     // Cast required: Ink accepts any writable stream-like object
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: test double — Ink accepts any writable stream-like object.
     stdout: stdout as any,
     debug: false,
     exitOnCtrlC: false,
@@ -143,41 +147,38 @@ describe('TuiAdapter phase-matched progress bar colors (AC-01.5)', () => {
   // Since chalk is already imported, we must set the env before the describe block
   // to influence chalk's color level for subsequent renders.
   let originalChalkLevel: typeof chalk.level;
-  beforeAll(() => { originalChalkLevel = chalk.level; chalk.level = 3; });
-  afterAll(() => { chalk.level = originalChalkLevel; });
+  beforeAll(() => {
+    originalChalkLevel = chalk.level;
+    chalk.level = 3;
+  });
+  afterAll(() => {
+    chalk.level = originalChalkLevel;
+  });
 
   it('B3: WORK phase renders ANSI color codes when useColor=true', async () => {
     const snapshot = makeSnapshot('WORK', true);
     // WORK phase fg color is #00d7ff — Ink encodes as \x1b[38;2;0;215;255m
-    const frame = await renderWithColor(
-      React.createElement(TimerFrame, { snapshot, columns: 80 })
-    );
+    const frame = await renderWithColor(React.createElement(TimerFrame, { snapshot, columns: 80 }));
     expect(hasAnsiEscapes(frame)).toBe(true);
   });
 
   it('B4: BREAK phase renders ANSI color codes when useColor=true', async () => {
     const snapshot = makeSnapshot('BREAK', true);
     // BREAK phase fg color is #005fff — \x1b[38;2;0;95;255m
-    const frame = await renderWithColor(
-      React.createElement(TimerFrame, { snapshot, columns: 80 })
-    );
+    const frame = await renderWithColor(React.createElement(TimerFrame, { snapshot, columns: 80 }));
     expect(hasAnsiEscapes(frame)).toBe(true);
   });
 
   it('B5: OVERDUE phase renders ANSI color codes when useColor=true', async () => {
     const snapshot = makeSnapshot('OVERDUE', true);
     // OVERDUE phase fg color is #ff0000 — \x1b[38;2;255;0;0m
-    const frame = await renderWithColor(
-      React.createElement(TimerFrame, { snapshot, columns: 80 })
-    );
+    const frame = await renderWithColor(React.createElement(TimerFrame, { snapshot, columns: 80 }));
     expect(hasAnsiEscapes(frame)).toBe(true);
   });
 
   it('B6: useColor=false suppresses color ANSI sequences', async () => {
     const snapshot = makeSnapshot('WORK', false);
-    const frame = await renderWithColor(
-      React.createElement(TimerFrame, { snapshot, columns: 80 })
-    );
+    const frame = await renderWithColor(React.createElement(TimerFrame, { snapshot, columns: 80 }));
     // Ink emits cursor/control sequences; we check specifically for color sequences
     expect(hasColorEscapes(frame)).toBe(false);
   });
@@ -186,7 +187,7 @@ describe('TuiAdapter phase-matched progress bar colors (AC-01.5)', () => {
 describe('TuiAdapter compact layout at columns=30', () => {
   it('B1: renders no line wider than 30 columns in compact mode', () => {
     const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot: WORK_SNAPSHOT, columns: 30 })
+      React.createElement(TimerFrame, { snapshot: WORK_SNAPSHOT, columns: 30 }),
     );
 
     const frame = lastFrame() ?? '';
@@ -199,7 +200,7 @@ describe('TuiAdapter compact layout at columns=30', () => {
 
   it('B2: phase label, timer countdown, and session badge all appear in compact mode', () => {
     const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot: WORK_SNAPSHOT, columns: 30 })
+      React.createElement(TimerFrame, { snapshot: WORK_SNAPSHOT, columns: 30 }),
     );
 
     const frame = lastFrame() ?? '';
@@ -241,7 +242,7 @@ describe('TuiAdapter ASCII fallback characters (AC-01.4)', () => {
     };
 
     const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot: asciiSnapshot, columns: 40 })
+      React.createElement(TimerFrame, { snapshot: asciiSnapshot, columns: 40 }),
     );
 
     const frame = lastFrame() ?? '';
@@ -291,8 +292,13 @@ function makeOverdueSnapshot(overdueElapsedSeconds: number): SessionSnapshot {
 
 describe('TuiAdapter overdue pulse animation (AC-01.6)', () => {
   let originalChalkLevel: typeof chalk.level;
-  beforeAll(() => { originalChalkLevel = chalk.level; chalk.level = 3; });
-  afterAll(() => { chalk.level = originalChalkLevel; });
+  beforeAll(() => {
+    originalChalkLevel = chalk.level;
+    chalk.level = 3;
+  });
+  afterAll(() => {
+    chalk.level = originalChalkLevel;
+  });
 
   // Count occurrences of ANSI dim code \x1b[2m in a frame string.
   function countDimCodes(frame: string): number {
@@ -308,10 +314,10 @@ describe('TuiAdapter overdue pulse animation (AC-01.6)', () => {
     const dimSnapshot = makeOverdueSnapshot(2);
 
     const solidFrame = await renderWithColor(
-      React.createElement(TimerFrame, { snapshot: solidSnapshot, columns: 80 })
+      React.createElement(TimerFrame, { snapshot: solidSnapshot, columns: 80 }),
     );
     const dimFrame = await renderWithColor(
-      React.createElement(TimerFrame, { snapshot: dimSnapshot, columns: 80 })
+      React.createElement(TimerFrame, { snapshot: dimSnapshot, columns: 80 }),
     );
 
     // OVERDUE label must be visible in both states (accessibility NFR-05.1)
@@ -326,9 +332,7 @@ describe('TuiAdapter overdue pulse animation (AC-01.6)', () => {
   it('B10: progress bar fill is 100% when isOverdue=true', () => {
     // Regardless of pulse state, the bar fill must be full (progressFraction=1.0)
     const snapshot = makeOverdueSnapshot(0);
-    const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot, columns: 80 })
-    );
+    const { lastFrame } = render(React.createElement(TimerFrame, { snapshot, columns: 80 }));
     const plain = stripAnsi(lastFrame() ?? '');
     // 100% fill label
     expect(plain).toMatch(/100%/);
@@ -386,9 +390,7 @@ describe('TuiAdapter flicker-free updates (AC-P1)', () => {
     for (let tick = 0; tick < 10; tick++) {
       const fraction = tick / 60;
       const snapshot = makeTickSnapshot(fraction);
-      const { lastFrame } = render(
-        React.createElement(TimerFrame, { snapshot, columns: 80 })
-      );
+      const { lastFrame } = render(React.createElement(TimerFrame, { snapshot, columns: 80 }));
       frames.push(lastFrame() ?? '');
     }
 
@@ -407,9 +409,7 @@ describe('TuiAdapter flicker-free updates (AC-P1)', () => {
     for (let tick = 0; tick <= 10; tick++) {
       const fraction = tick / 60;
       const snapshot = makeTickSnapshot(fraction);
-      const { lastFrame } = render(
-        React.createElement(TimerFrame, { snapshot, columns: 80 })
-      );
+      const { lastFrame } = render(React.createElement(TimerFrame, { snapshot, columns: 80 }));
       frames.push(lastFrame() ?? '');
     }
 
@@ -470,14 +470,14 @@ describe('Regression R1: useInput fires SIGINT on Ctrl+C (Ink 4.x key interface)
     // returning `this` (Process), so vitest infers the mock return type as
     // Process rather than boolean. The return value is irrelevant here (we only
     // assert emit was called); `as never` satisfies the mis-inferred overload
-    // without a blanket any/@ts-ignore.
+    // without a blanket any/@ts-expect-error.
     const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false as never);
 
     // ink-testing-library exposes stdin.write() to simulate raw input.
     // Ctrl+C in a real terminal sends byte 0x03 (ETX). In Ink 4.x raw mode
     // useInput receives input='c' and key={ctrl:true} for this byte sequence.
     const { stdin } = render(
-      React.createElement(TimerFrame, { snapshot: REGRESSION_SNAPSHOT, columns: 80 })
+      React.createElement(TimerFrame, { snapshot: REGRESSION_SNAPSHOT, columns: 80 }),
     );
 
     // Write the Ctrl+C byte to the fake stdin — Ink decodes it as input='c', key.ctrl=true
@@ -622,9 +622,7 @@ describe('Regression R6: formatOverdueCountdown displays integer seconds for flo
   it('formatOverdueCountdown displays integer seconds for float overdueElapsedSeconds', () => {
     // overdueElapsedSeconds = 10.064662625 simulates real hrtime accumulation
     const snapshot = makeOverdueSnapshot(10.064662625);
-    const { lastFrame } = render(
-      React.createElement(TimerFrame, { snapshot, columns: 80 })
-    );
+    const { lastFrame } = render(React.createElement(TimerFrame, { snapshot, columns: 80 }));
 
     const plain = stripAnsi(lastFrame() ?? '');
 

@@ -35,7 +35,7 @@ import React from 'react';
 import { render as inkTestRender } from 'ink-testing-library';
 import { render as inkRender } from 'ink';
 import chalk from 'chalk';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import type { Palette } from '../../../src/domain/palette.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 
@@ -61,14 +61,18 @@ function hexToTruecolorSeq(hex: string): string {
 class FakeStdout extends EventEmitter {
   readonly columns = 80;
   private _lastFrame = '';
-  write(frame: string): void { this._lastFrame = frame; }
-  lastFrame(): string { return this._lastFrame; }
+  write(frame: string): void {
+    this._lastFrame = frame;
+  }
+  lastFrame(): string {
+    return this._lastFrame;
+  }
 }
 
 async function renderWithColor(element: React.ReactElement): Promise<string> {
   const stdout = new FakeStdout();
   const instance = inkRender(element, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: test double — Ink accepts any writable stream-like object.
     stdout: stdout as any,
     debug: false,
     exitOnCtrlC: false,
@@ -87,28 +91,24 @@ const LAVENDER_GRADIENT_STOP_0 = '#ece4ff'; // palette-spec.md lavender gradient
 
 // Reference palettes (lavender = non-default) for injection assertions.
 const TEST_PALETTE_LAVENDER: Palette = {
-  gradient: [
-    '#ece4ff', '#c8a9f0', '#a878dd', '#8453c4', '#5e3a93', '#2e2046',
-  ],
+  gradient: ['#ece4ff', '#c8a9f0', '#a878dd', '#8453c4', '#5e3a93', '#2e2046'],
   phases: {
-    WORK:       { fg: '#c8a9f0', bg: '#15101c' },
-    BREAK:      { fg: '#7ec8e3', bg: '#15101c' },
+    WORK: { fg: '#c8a9f0', bg: '#15101c' },
+    BREAK: { fg: '#7ec8e3', bg: '#15101c' },
     LONG_BREAK: { fg: '#a878dd', bg: '#15101c' },
-    OVERDUE:    { fg: '#ff6b9d', bg: '#15101c' },
-    IDLE:       { fg: '#6b6480', bg: '#15101c' },
+    OVERDUE: { fg: '#ff6b9d', bg: '#15101c' },
+    IDLE: { fg: '#6b6480', bg: '#15101c' },
   },
 };
 
 const TEST_PALETTE_OCEAN: Palette = {
-  gradient: [
-    '#d8f0ff', '#8fd4f0', '#4db8e8', '#2a82c0', '#185a8a', '#0c2f4a',
-  ],
+  gradient: ['#d8f0ff', '#8fd4f0', '#4db8e8', '#2a82c0', '#185a8a', '#0c2f4a'],
   phases: {
-    WORK:       { fg: '#4db8e8', bg: '#0a1620' },
-    BREAK:      { fg: '#f0c674', bg: '#0a1620' },
+    WORK: { fg: '#4db8e8', bg: '#0a1620' },
+    BREAK: { fg: '#f0c674', bg: '#0a1620' },
     LONG_BREAK: { fg: '#2a82c0', bg: '#0a1620' },
-    OVERDUE:    { fg: '#ff6b6b', bg: '#0a1620' },
-    IDLE:       { fg: '#5a6b7a', bg: '#0a1620' },
+    OVERDUE: { fg: '#ff6b6b', bg: '#0a1620' },
+    IDLE: { fg: '#5a6b7a', bg: '#0a1620' },
   },
 };
 
@@ -117,7 +117,6 @@ const TEST_PALETTE_OCEAN: Palette = {
 // ---------------------------------------------------------------------------
 
 describe('printBanner palette injection (bannerAdapter — Phase A)', () => {
-
   it('A1: printBanner accepts a Palette as first parameter (new signature)', async () => {
     // Verifies the new function signature exists and runs without throwing.
     const { printBanner } = await import('../../../src/adapters/bannerAdapter.js');
@@ -151,7 +150,6 @@ describe('printBanner palette injection (bannerAdapter — Phase A)', () => {
       vi.restoreAllMocks();
     }
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -160,8 +158,13 @@ describe('printBanner palette injection (bannerAdapter — Phase A)', () => {
 
 describe('TimerFrame palette injection (tuiAdapter — Phase A)', () => {
   let origChalkLevel: typeof chalk.level;
-  beforeAll(() => { origChalkLevel = chalk.level; chalk.level = 3; });
-  afterAll(() => { chalk.level = origChalkLevel; });
+  beforeAll(() => {
+    origChalkLevel = chalk.level;
+    chalk.level = 3;
+  });
+  afterAll(() => {
+    chalk.level = origChalkLevel;
+  });
 
   // Import snapshot factory from existing test for consistency
   function makeTestSnapshot(phase: SessionSnapshot['phase'], useColor: boolean) {
@@ -192,7 +195,11 @@ describe('TimerFrame palette injection (tuiAdapter — Phase A)', () => {
   it('A3: TimerFrame accepts a palette prop (new FrameProps shape)', async () => {
     const { TimerFrame } = await import('../../../src/adapters/tuiAdapter.js');
     const snapshot = makeTestSnapshot('WORK', true);
-    expect(() => inkTestRender(React.createElement(TimerFrame, { snapshot, palette: TEST_PALETTE_LAVENDER, columns: 80 }))).not.toThrow();
+    expect(() =>
+      inkTestRender(
+        React.createElement(TimerFrame, { snapshot, palette: TEST_PALETTE_LAVENDER, columns: 80 }),
+      ),
+    ).not.toThrow();
   });
 
   it('A4: TimerFrame WORK phase renders with injected palette WORK fg color', async () => {
@@ -221,5 +228,4 @@ describe('TimerFrame palette injection (tuiAdapter — Phase A)', () => {
     const { TuiAdapter } = await import('../../../src/adapters/tuiAdapter.js');
     expect(() => new TuiAdapter(TEST_PALETTE_OCEAN)).not.toThrow();
   });
-
 });

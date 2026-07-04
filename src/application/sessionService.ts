@@ -40,7 +40,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     renderPort: RenderPort,
     statePort: StatePort | null,
     notificationPort: NotificationPort | null,
-    historyPort: HistoryPort | null
+    historyPort: HistoryPort | null,
   ) {
     this.renderPort = renderPort;
     this.statePort = statePort;
@@ -58,8 +58,16 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     if (this.session === null) {
       let completedToday = 0;
       let streak = 0;
-      try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }
-      try { streak = this.historyPort?.readStreak() ?? 0; } catch { streak = 0; }
+      try {
+        completedToday = this.statePort?.readCompletedToday() ?? 0;
+      } catch {
+        completedToday = 0;
+      }
+      try {
+        streak = this.historyPort?.readStreak() ?? 0;
+      } catch {
+        streak = 0;
+      }
       this.session = new Session(config, completedToday, streak);
       this.completedThisSession = 0;
     }
@@ -133,8 +141,16 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     this.config = config;
     let completedToday = 0;
     let streak = 0;
-    try { completedToday = this.statePort?.readCompletedToday() ?? 0; } catch { completedToday = 0; }
-    try { streak = this.historyPort?.readStreak() ?? 0; } catch { streak = 0; }
+    try {
+      completedToday = this.statePort?.readCompletedToday() ?? 0;
+    } catch {
+      completedToday = 0;
+    }
+    try {
+      streak = this.historyPort?.readStreak() ?? 0;
+    } catch {
+      streak = 0;
+    }
     this.session = new Session(config, completedToday, streak);
     this.completedThisSession = 0;
     const session = this.session;
@@ -193,7 +209,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     const sec = Math.floor(elapsed % 60);
     const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
     process.stdout.write(
-      `Session interrupted at ${timeStr} (${pct}% complete). Partial session not counted.\n`
+      `Session interrupted at ${timeStr} (${pct}% complete). Partial session not counted.\n`,
     );
   }
 
@@ -228,7 +244,11 @@ export class SessionService implements SessionControlPort, SessionReadPort {
         // History receives the DAILY total (event.completedPomodoros). It stays
         // first inside its own try/catch (sqlite may be unavailable).
         if (this.historyPort) {
-          try { this.historyPort.recordSession(event.completedPomodoros); } catch { /* sqlite unavailable */ }
+          try {
+            this.historyPort.recordSession(event.completedPomodoros);
+          } catch {
+            /* sqlite unavailable */
+          }
         }
         // Notification reports SESSION-SCOPED focus (CRIT-2 fix): a fresh
         // per-session counter, reset at each new Session(...), so a 2nd same-day

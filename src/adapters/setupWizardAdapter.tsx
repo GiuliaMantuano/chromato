@@ -242,7 +242,12 @@ export const Breadcrumbs: React.FC<{ active: number }> = ({ active }) => (
 // Wizard component — Welcome → Theme (Slice 01).
 // ---------------------------------------------------------------------------
 
-export const SetupWizard: React.FC<SetupWizardProps> = ({ tmuxDetected, initial, onComplete, onQuit }) => {
+export const SetupWizard: React.FC<SetupWizardProps> = ({
+  tmuxDetected,
+  initial,
+  onComplete,
+  onQuit,
+}) => {
   const { exit } = useApp();
   const initialPalette = initial?.palette ?? DEFAULT_PALETTE_NAME;
   const initialIndex = Math.max(0, VALID_PALETTE_NAMES.indexOf(initialPalette));
@@ -343,7 +348,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ tmuxDetected, initial,
 
     if (step === 'theme') {
       if (key.upArrow) {
-        setPaletteIndex((index) => (index - 1 + VALID_PALETTE_NAMES.length) % VALID_PALETTE_NAMES.length);
+        setPaletteIndex(
+          (index) => (index - 1 + VALID_PALETTE_NAMES.length) % VALID_PALETTE_NAMES.length,
+        );
         return;
       }
       if (key.downArrow) {
@@ -505,7 +512,12 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ tmuxDetected, initial,
         </Box>
 
         <Box marginTop={1}>
-          <Text>{colorize(palette.phases.WORK.fg, chalk.bold(`  WORK · POMODORO 1 of ${timing.cycles}`))}</Text>
+          <Text>
+            {colorize(
+              palette.phases.WORK.fg,
+              chalk.bold(`  WORK · POMODORO 1 of ${timing.cycles}`),
+            )}
+          </Text>
         </Box>
         <Box>
           <Text>
@@ -609,7 +621,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ tmuxDetected, initial,
       <Box flexDirection="column" padding={1}>
         <Breadcrumbs active={2} />
         <Text bold>Session timing</Text>
-        <Text dimColor>How long is a focus session and a break? You can change this anytime later.</Text>
+        <Text dimColor>
+          How long is a focus session and a break? You can change this anytime later.
+        </Text>
 
         <Box marginTop={1}>
           <Text {...(defaultSelected ? { bold: true } : {})}>
@@ -708,8 +722,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ tmuxDetected, initial,
  */
 export type WizardRenderer = (element: React.ReactElement) => unknown;
 
-const defaultRenderer: WizardRenderer = (element) =>
-  inkRender(element, { exitOnCtrlC: false });
+const defaultRenderer: WizardRenderer = (element) => inkRender(element, { exitOnCtrlC: false });
 
 /**
  * Mounts the Ink wizard, persists the result via the injected ConfigWritePort,

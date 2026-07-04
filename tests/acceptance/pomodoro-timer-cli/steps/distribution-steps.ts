@@ -19,11 +19,11 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import type { ChromatoWorld } from './world.js';
-import * as assert from 'assert';
-import * as child_process from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import * as assert from 'node:assert';
+import * as child_process from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
 
 // ---------------------------------------------------------------------------
 // Helpers local to this file
@@ -35,7 +35,7 @@ import * as os from 'os';
  */
 function shell(
   command: string,
-  opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
+  opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {},
 ): { stdout: string; stderr: string; exitCode: number } {
   const result = child_process.spawnSync(command, {
     shell: true,
@@ -65,7 +65,7 @@ Given(
     assert.strictEqual(
       result.exitCode,
       0,
-      `"npm pack" failed (exit ${result.exitCode}):\n${result.stderr}`
+      `"npm pack" failed (exit ${result.exitCode}):\n${result.stderr}`,
     );
 
     // Find the produced tarball (npm pack outputs the filename on stdout).
@@ -73,7 +73,7 @@ Given(
     const tarballPath = path.join(projectRoot, tarballName);
     assert.ok(
       fs.existsSync(tarballPath),
-      `Expected npm tarball at ${tarballPath} but it was not created`
+      `Expected npm tarball at ${tarballPath} but it was not created`,
     );
 
     // Store the tarball path on the world for subsequent steps.
@@ -82,7 +82,7 @@ Given(
     // Create a fresh temp directory that will serve as the install prefix.
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chromato-global-'));
     (this as ChromatoWorld & { globalInstallDir: string }).globalInstallDir = installDir;
-  }
+  },
 );
 
 Given(
@@ -107,12 +107,12 @@ Given(
     // Install the tarball globally into the isolated prefix.
     const installResult = shell(
       `npm install -g --prefix "${world.globalInstallDir}" "${world.tarballPath}"`,
-      { cwd: os.tmpdir() }
+      { cwd: os.tmpdir() },
     );
     assert.strictEqual(
       installResult.exitCode,
       0,
-      `Global install failed (exit ${installResult.exitCode}):\n${installResult.stderr}`
+      `Global install failed (exit ${installResult.exitCode}):\n${installResult.stderr}`,
     );
 
     // Determine the path to the installed binary.
@@ -121,38 +121,34 @@ Given(
     }
     const binDir = path.join(world.globalInstallDir, 'bin');
     world.globalBinPath = path.join(binDir, 'chromato');
-  }
+  },
 );
 
-Given(
-  'the project build has completed successfully',
-  function (this: ChromatoWorld) {
-    // The built dist/index.js was already resolved by the World constructor.
-    // This step documents the precondition that the build artefact exists.
-    const projectRoot = path.resolve(__dirname, '../../../../');
-    const distEntry = path.join(projectRoot, 'dist', 'index.js');
-    assert.ok(
-      fs.existsSync(distEntry),
-      `Build artefact not found at ${distEntry}. Run "pnpm build" first.`
-    );
-    (this as ChromatoWorld & { projectRoot: string }).projectRoot = projectRoot;
-  }
-);
+Given('the project build has completed successfully', function (this: ChromatoWorld) {
+  // The built dist/index.js was already resolved by the World constructor.
+  // This step documents the precondition that the build artefact exists.
+  const projectRoot = path.resolve(__dirname, '../../../../');
+  const distEntry = path.join(projectRoot, 'dist', 'index.js');
+  assert.ok(
+    fs.existsSync(distEntry),
+    `Build artefact not found at ${distEntry}. Run "pnpm build" first.`,
+  );
+  (this as ChromatoWorld & { projectRoot: string }).projectRoot = projectRoot;
+});
 
 Given(
   'conventional commits exist in the repository since the previous release tag',
   function (this: ChromatoWorld) {
     const projectRoot = path.resolve(__dirname, '../../../../');
     // Verify that at least one commit with a conventional prefix exists in the log.
-    const result = shell(
-      'git log --oneline --grep="^feat\\|^fix\\|^perf\\|^BREAKING" -1',
-      { cwd: projectRoot }
-    );
+    const result = shell('git log --oneline --grep="^feat\\|^fix\\|^perf\\|^BREAKING" -1', {
+      cwd: projectRoot,
+    });
     // This step documents the precondition. If no matching commit exists the
     // Then step assertion will surface the gap rather than this Given step.
     (this as ChromatoWorld & { projectRoot: string }).projectRoot = projectRoot;
     this.capturedOutput = result.stdout;
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -173,7 +169,7 @@ When(
 
     const installResult = shell(
       `npm install -g --prefix "${world.globalInstallDir}" "${world.tarballPath}"`,
-      { cwd: os.tmpdir() }
+      { cwd: os.tmpdir() },
     );
     this.exitCode = installResult.exitCode;
     this.capturedOutput = installResult.stdout;
@@ -181,7 +177,7 @@ When(
 
     // Derive the installed binary path.
     world.globalBinPath = path.join(world.globalInstallDir, 'bin', 'chromato');
-  }
+  },
 );
 
 When(
@@ -198,7 +194,7 @@ When(
     this.exitCode = result.exitCode;
     this.capturedOutput = result.stdout;
     this.capturedStderr = result.stderr;
-  }
+  },
 );
 
 When(
@@ -214,7 +210,7 @@ When(
         ` --output-format JSON` +
         ` --output-file "${sbomFile}"` +
         ` --package-lock-only`,
-      { cwd: projectRoot }
+      { cwd: projectRoot },
     );
     this.exitCode = result.exitCode;
     this.capturedStderr = result.stderr;
@@ -225,7 +221,7 @@ When(
     } else {
       this.capturedOutput = '';
     }
-  }
+  },
 );
 
 When(
@@ -235,30 +231,29 @@ When(
     const projectRoot = world.projectRoot ?? path.resolve(__dirname, '../../../../');
 
     // Use the same git log strategy as the release workflow in ci.yml.
-    const prevTagResult = shell(
-      'git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo ""',
-      { cwd: projectRoot }
-    );
+    const prevTagResult = shell('git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo ""', {
+      cwd: projectRoot,
+    });
     const prevTag = prevTagResult.stdout.trim();
 
     let changelogResult: { stdout: string; stderr: string; exitCode: number };
     if (prevTag) {
       changelogResult = shell(
         `git log ${prevTag}..HEAD --pretty=format:"- %s (%h)" --grep="^feat\\|^fix\\|^perf\\|^BREAKING"`,
-        { cwd: projectRoot }
+        { cwd: projectRoot },
       );
     } else {
       // No previous tag -- list all conventional commits.
       changelogResult = shell(
         `git log --pretty=format:"- %s (%h)" --grep="^feat\\|^fix\\|^perf\\|^BREAKING"`,
-        { cwd: projectRoot }
+        { cwd: projectRoot },
       );
     }
 
     this.exitCode = changelogResult.exitCode;
     this.capturedOutput = changelogResult.stdout;
     this.capturedStderr = changelogResult.stderr;
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -279,22 +274,19 @@ Then(
       result.exitCode,
       0,
       `"chromato --version" exited with code ${result.exitCode} from outside the project.\n` +
-        `stderr: ${result.stderr}`
+        `stderr: ${result.stderr}`,
     );
-  }
+  },
 );
 
-Then(
-  'the command exits with code {int}',
-  function (this: ChromatoWorld, expectedCode: number) {
-    assert.strictEqual(
-      this.exitCode,
-      expectedCode,
-      `Expected exit code ${expectedCode} but got ${this.exitCode}.\n` +
-        `stdout: ${this.capturedOutput}\nstderr: ${this.capturedStderr}`
-    );
-  }
-);
+Then('the command exits with code {int}', function (this: ChromatoWorld, expectedCode: number) {
+  assert.strictEqual(
+    this.exitCode,
+    expectedCode,
+    `Expected exit code ${expectedCode} but got ${this.exitCode}.\n` +
+      `stdout: ${this.capturedOutput}\nstderr: ${this.capturedStderr}`,
+  );
+});
 
 Then(
   'the output contains a semver string matching the pattern {string}',
@@ -304,9 +296,9 @@ Then(
     assert.match(
       this.capturedOutput,
       semverPattern,
-      `Expected a semver string in the output but got:\n${this.capturedOutput}`
+      `Expected a semver string in the output but got:\n${this.capturedOutput}`,
     );
-  }
+  },
 );
 
 Then(
@@ -314,12 +306,9 @@ Then(
   function (this: ChromatoWorld) {
     assert.ok(
       this.exitCode === 0,
-      `SBOM generation failed (exit ${this.exitCode}):\n${this.capturedStderr}`
+      `SBOM generation failed (exit ${this.exitCode}):\n${this.capturedStderr}`,
     );
-    assert.ok(
-      this.capturedOutput.trim().length > 0,
-      'SBOM output is empty'
-    );
+    assert.ok(this.capturedOutput.trim().length > 0, 'SBOM output is empty');
     // Verify it is parseable as structured data.
     let parsed: Record<string, unknown>;
     try {
@@ -329,7 +318,7 @@ Then(
     }
     // Store for subsequent Then steps.
     (this as ChromatoWorld & { parsedSbom: Record<string, unknown> }).parsedSbom = parsed;
-  }
+  },
 );
 
 Then(
@@ -341,23 +330,23 @@ Then(
     const sbomText = JSON.stringify(world.parsedSbom);
     assert.ok(
       sbomText.includes(expectedName),
-      `Expected SBOM to identify package name "${expectedName}" but it was not found in:\n${sbomText.slice(0, 500)}`
+      `Expected SBOM to identify package name "${expectedName}" but it was not found in:\n${sbomText.slice(0, 500)}`,
     );
-  }
+  },
 );
 
 Then(
   'the SBOM lists every dependency declared in the project manifest',
   function (this: ChromatoWorld) {
-    const world = this as ChromatoWorld & { parsedSbom?: Record<string, unknown>; projectRoot?: string };
+    const world = this as ChromatoWorld & {
+      parsedSbom?: Record<string, unknown>;
+      projectRoot?: string;
+    };
     assert.ok(world.parsedSbom, 'SBOM was not parsed -- run the "well-formed" Then step first');
 
     const projectRoot = world.projectRoot ?? path.resolve(__dirname, '../../../../');
     const manifestPath = path.join(projectRoot, 'package.json');
-    assert.ok(
-      fs.existsSync(manifestPath),
-      `package.json not found at ${manifestPath}`
-    );
+    assert.ok(fs.existsSync(manifestPath), `package.json not found at ${manifestPath}`);
 
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
       dependencies?: Record<string, string>;
@@ -371,22 +360,21 @@ Then(
       missingDeps.length,
       0,
       `The following dependencies declared in package.json are absent from the SBOM:\n` +
-        missingDeps.join(', ')
+        missingDeps.join(', '),
     );
-  }
+  },
 );
 
 Then(
   'the changelog contains at least one entry with a {string} or {string} commit prefix',
   function (this: ChromatoWorld, prefixA: string, prefixB: string) {
     const hasEntry =
-      this.capturedOutput.includes(`${prefixA}:`) ||
-      this.capturedOutput.includes(`${prefixB}:`);
+      this.capturedOutput.includes(`${prefixA}:`) || this.capturedOutput.includes(`${prefixB}:`);
 
     assert.ok(
       hasEntry,
       `Expected at least one changelog entry with prefix "${prefixA}:" or "${prefixB}:" ` +
-        `but the generated changelog was:\n${this.capturedOutput || '(empty)'}`
+        `but the generated changelog was:\n${this.capturedOutput || '(empty)'}`,
     );
-  }
+  },
 );

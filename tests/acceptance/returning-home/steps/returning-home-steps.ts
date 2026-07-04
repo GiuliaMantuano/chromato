@@ -17,9 +17,9 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import { spawnSync } from 'child_process';
-import * as fs from 'fs';
-import { strict as assert } from 'assert';
+import { spawnSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import { strict as assert } from 'node:assert';
 import type { ReturningHomeWorld } from './world.js';
 
 // Strip SGR colour sequences so label+value content can be matched across the
@@ -160,15 +160,21 @@ const CONTEXT_ARGS: Record<string, string[]> = {
   'the --no-color flag': ['--no-color'],
 };
 
-When('the returning user runs {string} with no subcommand', function (this: ReturningHomeWorld, _cmd: string) {
-  run(this, []);
-});
+When(
+  'the returning user runs {string} with no subcommand',
+  function (this: ReturningHomeWorld, _cmd: string) {
+    run(this, []);
+  },
+);
 
-When('the returning user runs {string} with {string}', function (this: ReturningHomeWorld, cmd: string, context: string) {
-  const env = CONTEXT_ENV[context];
-  assert.ok(env !== undefined, `unknown context "${context}"`);
-  run(this, [...cmdToArgs(cmd), ...(CONTEXT_ARGS[context] ?? [])], env);
-});
+When(
+  'the returning user runs {string} with {string}',
+  function (this: ReturningHomeWorld, cmd: string, context: string) {
+    const env = CONTEXT_ENV[context];
+    assert.ok(env !== undefined, `unknown context "${context}"`);
+    run(this, [...cmdToArgs(cmd), ...(CONTEXT_ARGS[context] ?? [])], env);
+  },
+);
 
 When('the returning user runs {string}', function (this: ReturningHomeWorld, cmd: string) {
   run(this, cmdToArgs(cmd));
@@ -217,18 +223,30 @@ Then('the full command listing is shown', function (this: ReturningHomeWorld) {
 });
 
 Then('the recap shows the theme name {string}', function (this: ReturningHomeWorld, label: string) {
-  assert.ok(stripAnsi(this.capturedOutput).includes(label), `expected theme label "${label}" in recap`);
+  assert.ok(
+    stripAnsi(this.capturedOutput).includes(label),
+    `expected theme label "${label}" in recap`,
+  );
 });
 
 Then('the recap shows the timing {string}', function (this: ReturningHomeWorld, timing: string) {
-  assert.ok(stripAnsi(this.capturedOutput).includes(timing), `expected timing "${timing}" in recap`);
+  assert.ok(
+    stripAnsi(this.capturedOutput).includes(timing),
+    `expected timing "${timing}" in recap`,
+  );
 });
 
-Then('the recap shows the long break {string}', function (this: ReturningHomeWorld, longBreak: string) {
-  // The recap row renders "long break 15m" (prototype: `long break ${t.long}m`).
-  const re = new RegExp(`long break\\s+${longBreak.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-  assert.ok(re.test(stripAnsi(this.capturedOutput)), `expected long break "${longBreak}" in recap`);
-});
+Then(
+  'the recap shows the long break {string}',
+  function (this: ReturningHomeWorld, longBreak: string) {
+    // The recap row renders "long break 15m" (prototype: `long break ${t.long}m`).
+    const re = new RegExp(`long break\\s+${longBreak.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+    assert.ok(
+      re.test(stripAnsi(this.capturedOutput)),
+      `expected long break "${longBreak}" in recap`,
+    );
+  },
+);
 
 Then('the recap shows notifications {string}', function (this: ReturningHomeWorld, value: string) {
   // Match "Notifications  On" / "Notifications  Off" — the recap row label + value.
@@ -246,43 +264,65 @@ Then('the footer note shows the resolved config file path', function (this: Retu
   );
 });
 
-Then('the logo is rendered in the {word} gradient', function (this: ReturningHomeWorld, theme: string) {
-  const head = GRADIENT_HEAD_SGR[theme];
-  assert.ok(head, `unknown theme ${theme}`);
-  assert.ok(this.capturedOutput.includes(head), `expected ${theme} gradient head SGR ${head} in logo`);
-});
+Then(
+  'the logo is rendered in the {word} gradient',
+  function (this: ReturningHomeWorld, theme: string) {
+    const head = GRADIENT_HEAD_SGR[theme];
+    assert.ok(head, `unknown theme ${theme}`);
+    assert.ok(
+      this.capturedOutput.includes(head),
+      `expected ${theme} gradient head SGR ${head} in logo`,
+    );
+  },
+);
 
-Then('the swatch colours match the {word} gradient', function (this: ReturningHomeWorld, theme: string) {
-  const head = GRADIENT_HEAD_SGR[theme];
-  assert.ok(head, `unknown theme ${theme}`);
-  assert.ok(this.capturedOutput.includes(head), `expected ${theme} swatch gradient SGR ${head}`);
-});
+Then(
+  'the swatch colours match the {word} gradient',
+  function (this: ReturningHomeWorld, theme: string) {
+    const head = GRADIENT_HEAD_SGR[theme];
+    assert.ok(head, `unknown theme ${theme}`);
+    assert.ok(this.capturedOutput.includes(head), `expected ${theme} swatch gradient SGR ${head}`);
+  },
+);
 
-Then('the started session is rendered in the {word} work colour', function (this: ReturningHomeWorld, theme: string) {
-  const sgr = WORK_SGR[theme];
-  assert.ok(sgr, `unknown theme ${theme}`);
-  assert.ok(this.capturedOutput.includes(sgr), `expected ${theme} WORK SGR ${sgr} in output`);
-});
+Then(
+  'the started session is rendered in the {word} work colour',
+  function (this: ReturningHomeWorld, theme: string) {
+    const sgr = WORK_SGR[theme];
+    assert.ok(sgr, `unknown theme ${theme}`);
+    assert.ok(this.capturedOutput.includes(sgr), `expected ${theme} WORK SGR ${sgr} in output`);
+  },
+);
 
 Then('a tmux row is shown in the recap', function (this: ReturningHomeWorld) {
   assert.ok(/tmux/i.test(stripAnsi(this.capturedOutput)), `expected a tmux row in the recap`);
 });
 
 Then('no tmux row is shown in the recap', function (this: ReturningHomeWorld) {
-  assert.equal(/tmux/i.test(stripAnsi(this.capturedOutput)), false, `unexpected tmux row in the recap`);
-});
-
-Then('no {string} error appears on the home path', function (this: ReturningHomeWorld, errText: string) {
   assert.equal(
-    (this.capturedOutput + this.capturedStderr).includes(errText),
+    /tmux/i.test(stripAnsi(this.capturedOutput)),
     false,
-    `unexpected "${errText}" error`,
+    `unexpected tmux row in the recap`,
   );
 });
 
-Then('the help output completes within {int} milliseconds on the home path', function (this: ReturningHomeWorld, ms: number) {
-  assert.ok(this.elapsedMs < ms, `help took ${this.elapsedMs}ms (budget ${ms}ms)`);
-});
+Then(
+  'no {string} error appears on the home path',
+  function (this: ReturningHomeWorld, errText: string) {
+    assert.equal(
+      (this.capturedOutput + this.capturedStderr).includes(errText),
+      false,
+      `unexpected "${errText}" error`,
+    );
+  },
+);
+
+Then(
+  'the help output completes within {int} milliseconds on the home path',
+  function (this: ReturningHomeWorld, ms: number) {
+    assert.ok(this.elapsedMs < ms, `help took ${this.elapsedMs}ms (budget ${ms}ms)`);
+  },
+);
 
 Then('the home process exits with code {int}', function (this: ReturningHomeWorld, code: number) {
   assert.equal(this.exitCode, code, `stderr: ${this.capturedStderr}`);

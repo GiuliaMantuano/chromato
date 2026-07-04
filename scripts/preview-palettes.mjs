@@ -44,11 +44,11 @@ const PALETTES = [
 ];
 
 for (const palette of PALETTES) {
-  console.log('\n' + chalk.bold.white(`  ── ${palette.name} ──`));
+  console.log(`\n${chalk.bold.white(`  ── ${palette.name} ──`)}`);
   console.log();
   for (let i = 0; i < LOGO.length; i++) {
     console.log(chalk.hex(palette.colors[i])(LOGO[i]));
   }
 }
 
-console.log('\n' + chalk.dim('  Tell Claude which palette letter you prefer to apply it.') + '\n');
+console.log(`\n${chalk.dim('  Tell Claude which palette letter you prefer to apply it.')}\n`);

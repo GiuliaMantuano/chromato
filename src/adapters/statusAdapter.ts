@@ -18,10 +18,10 @@ import type { SessionSnapshot } from '../domain/types.js';
 // Phase colors matching TuiAdapter PHASE_COLORS for consistency (AC-03.3).
 // Duplicated here to avoid cross-adapter import violation.
 const PHASE_COLORS: Record<string, string> = {
-  WORK:       '#00d7ff',
-  BREAK:      '#005fff',
+  WORK: '#00d7ff',
+  BREAK: '#005fff',
   LONG_BREAK: '#af00ff',
-  OVERDUE:    '#ff0000',
+  OVERDUE: '#ff0000',
 };
 
 function formatMinSec(totalSeconds: number): string {
@@ -30,7 +30,7 @@ function formatMinSec(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: the \x1b control char is a deliberate part of the ANSI escape pattern this regex strips.
 const ANSI_PATTERN = /\x1b\[[0-9;]*[A-Za-z]/g;
 
 function stripAnsi(str: string): string {

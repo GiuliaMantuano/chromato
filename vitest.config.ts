@@ -5,7 +5,11 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     setupFiles: ['./tests/vitest.setup.ts'],
-    include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts', 'tests/regression/**/*.test.ts'],
+    include: [
+      'tests/unit/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/regression/**/*.test.ts',
+    ],
     server: {
       deps: {
         // Inline ink so its exports are writable (enables vi.spyOn on ink.render —

@@ -30,26 +30,14 @@ describe('shouldShowHome (returning-home guard)', () => {
   });
 
   it.each<[string, HomeGuardInput]>([
-    [
-      'piped / non-TTY stdout',
-      { ...interactiveReturningUser, isTTY: false },
-    ],
-    [
-      'NO_COLOR is set in the environment',
-      { ...interactiveReturningUser, env: { NO_COLOR: '1' } },
-    ],
+    ['piped / non-TTY stdout', { ...interactiveReturningUser, isTTY: false }],
+    ['NO_COLOR is set in the environment', { ...interactiveReturningUser, env: { NO_COLOR: '1' } }],
     [
       'the --no-color flag is present in argv',
       { ...interactiveReturningUser, argv: [...baseArgv, '--no-color'] },
     ],
-    [
-      'CI is set in the environment',
-      { ...interactiveReturningUser, env: { CI: 'true' } },
-    ],
-    [
-      'no config exists (brand-new user)',
-      { ...interactiveReturningUser, configExists: false },
-    ],
+    ['CI is set in the environment', { ...interactiveReturningUser, env: { CI: 'true' } }],
+    ['no config exists (brand-new user)', { ...interactiveReturningUser, configExists: false }],
   ])('hides the home when %s', (_label, input) => {
     expect(shouldShowHome(input)).toBe(false);
   });
@@ -64,7 +52,9 @@ describe('normalizeGuardEnv (CI falsy-value normalisation)', () => {
     const normalized = normalizeGuardEnv({ CI: ciValue, PATH: '/usr/bin' });
     expect(normalized['CI']).toBeUndefined();
     // The guard then reads it as not-in-CI; other env entries are preserved.
-    expect(shouldShowHome({ isTTY: true, env: normalized, argv: [], configExists: true })).toBe(true);
+    expect(shouldShowHome({ isTTY: true, env: normalized, argv: [], configExists: true })).toBe(
+      true,
+    );
     expect(normalized['PATH']).toBe('/usr/bin');
   });
 

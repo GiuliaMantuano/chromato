@@ -24,7 +24,11 @@
 // Falls back to 'dev' when running via tsx in dev mode.
 declare const __CHROMATO_VERSION__: string | undefined;
 const VERSION: string = (() => {
-  try { return __CHROMATO_VERSION__ ?? 'dev'; } catch { return 'dev'; }
+  try {
+    return __CHROMATO_VERSION__ ?? 'dev';
+  } catch {
+    return 'dev';
+  }
 })();
 
 const argv = process.argv;
@@ -33,11 +37,7 @@ const argv = process.argv;
 // Handles the status subcommand without loading commander, which adds 5-7ms
 // of cold-start cost incompatible with the <50ms AC-03.1 budget.
 if (argv[2] === 'status') {
-  const [
-    { PersistenceAdapter },
-    { StatusAdapter },
-    { StatusService },
-  ] = await Promise.all([
+  const [{ PersistenceAdapter }, { StatusAdapter }, { StatusService }] = await Promise.all([
     import('./adapters/persistenceAdapter.js'),
     import('./adapters/statusAdapter.js'),
     import('./application/statusService.js'),
@@ -65,7 +65,7 @@ if (argv[2] === 'status') {
   const statusService = new StatusService(persistenceAdapter, statusAdapter);
   const output = statusService.getStatus(format, maxWidth);
   if (output.length > 0) {
-    process.stdout.write(output + '\n');
+    process.stdout.write(`${output}\n`);
   }
   process.exit(0);
 }
@@ -77,23 +77,34 @@ if (argv[2] === 'status') {
 // For --minimal mode, skip ink/react (they are not needed and add overhead).
 const isStartCommand = argv[2] === 'start';
 // Minimal/no-color: skip ink/react pre-load when --minimal or --no-color is specified.
-const isMinimalStart = isStartCommand && (
-  argv.includes('--minimal') ||
-  argv.includes('--no-color') ||
-  process.env['NO_COLOR'] !== undefined
-);
+const isMinimalStart =
+  isStartCommand &&
+  (argv.includes('--minimal') ||
+    argv.includes('--no-color') ||
+    process.env['NO_COLOR'] !== undefined);
 
-const startModulesP = isStartCommand && !isMinimalStart
-  ? Promise.all([
-      import('./adapters/tuiAdapter.js'),
-      import('./application/sessionService.js'),
-      import('./adapters/persistenceAdapter.js'),
-    ] as const)
-  : null;
+const startModulesP =
+  isStartCommand && !isMinimalStart
+    ? Promise.all([
+        import('./adapters/tuiAdapter.js'),
+        import('./application/sessionService.js'),
+        import('./adapters/persistenceAdapter.js'),
+      ] as const)
+    : null;
 
 // Full commander-based CLI for start, help, version, and future commands.
 // Loaded lazily: status path above exits before reaching this point.
-const [{ Command }, { loadConfig, configFileExists, configFilePath }, { shouldRunWizard }, { shouldShowHome, normalizeGuardEnv }, { printBanner }, { printHelpSplash }, { detectNonUnicode }, { getPalette }, chalk] = await Promise.all([
+const [
+  { Command },
+  { loadConfig, configFileExists, configFilePath },
+  { shouldRunWizard },
+  { shouldShowHome, normalizeGuardEnv },
+  { printBanner },
+  { printHelpSplash },
+  { detectNonUnicode },
+  { getPalette },
+  chalk,
+] = await Promise.all([
   import('commander'),
   import('./configLoader.js'),
   import('./firstRun.js'),
@@ -139,9 +150,7 @@ async function buildNotificationPort(
 
 const program = new Command();
 
-program
-  .name('chromato')
-  .version(VERSION);
+program.name('chromato').version(VERSION);
 
 program.option('-C, --no-color', 'Suppress all ANSI color output');
 
@@ -181,11 +190,10 @@ program.addHelpText('beforeAll', () => {
 function parsePositiveInt(flagName: string) {
   return (value: string): number => {
     const parsed = parseInt(value, 10);
-    if (isNaN(parsed) || String(parsed) !== value.trim() || parsed <= 0) {
-      program.error(
-        `error: option '--${flagName}' must be a positive integer, got: ${value}`,
-        { exitCode: 2 }
-      );
+    if (Number.isNaN(parsed) || String(parsed) !== value.trim() || parsed <= 0) {
+      program.error(`error: option '--${flagName}' must be a positive integer, got: ${value}`, {
+        exitCode: 2,
+      });
     }
     return parsed;
   };
@@ -196,107 +204,122 @@ program
   .description('Start a Pomodoro session')
   .option('-w, --work <minutes>', 'Work duration in minutes', parsePositiveInt('work'), 25)
   .option('-b, --break <minutes>', 'Break duration in minutes', parsePositiveInt('break'), 5)
-  .option('-l, --long-break <minutes>', 'Long break duration in minutes', parsePositiveInt('long-break'), 15)
+  .option(
+    '-l, --long-break <minutes>',
+    'Long break duration in minutes',
+    parsePositiveInt('long-break'),
+    15,
+  )
   .option('-c, --count <count>', 'Number of Pomodoros per cycle', parsePositiveInt('count'), 4)
   .option('--minimal', 'Use plain text output (no TUI)')
   .option('--ascii', 'Use ASCII progress bar characters (suppresses auto-detection message)')
   .option('-p, --palette <name>', 'Color palette name (ocean, lavender, berry, forest)')
-  .action(async (opts: {
-    work: number;
-    break: number;
-    longBreak: number;
-    count: number;
-    minimal?: boolean;
-    ascii?: boolean;
-    palette?: string;
-  }, command: import('commander').Command) => {
-    // Only forward a timing flag when the user EXPLICITLY supplied it on the CLI
-    // (source 'cli'), not when commander filled in its declared default (source
-    // 'default'). This is what lets config.json timing (DD-4) win over the
-    // built-in default while an explicit --work still wins over config.json.
-    const fromCli = (name: string): boolean => command.getOptionValueSource(name) === 'cli';
-    let configResult;
-    try {
-      configResult = loadConfig({
-        ...(fromCli('work') ? { work: opts.work } : {}),
-        ...(fromCli('break') ? { breakDuration: opts.break } : {}),
-        ...(fromCli('longBreak') ? { longBreak: opts.longBreak } : {}),
-        ...(fromCli('count') ? { cycles: opts.count } : {}),
-        minimal: opts.minimal ?? false,
-        noColor: program.opts().color === false,
-        ascii: opts.ascii ?? false,
-        palette: opts.palette,
-      });
-    } catch (err) {
-      // Unknown palette name or invalid config.json → exit 1 with a clear message.
-      // No session is started.
-      process.stderr.write(`${(err as Error).message}\n`);
-      process.exit(1);
-    }
-    const { config, autoDetectedAscii, resolvedPalette, notifications } = configResult;
+  .action(
+    async (
+      opts: {
+        work: number;
+        break: number;
+        longBreak: number;
+        count: number;
+        minimal?: boolean;
+        ascii?: boolean;
+        palette?: string;
+      },
+      command: import('commander').Command,
+    ) => {
+      // Only forward a timing flag when the user EXPLICITLY supplied it on the CLI
+      // (source 'cli'), not when commander filled in its declared default (source
+      // 'default'). This is what lets config.json timing (DD-4) win over the
+      // built-in default while an explicit --work still wins over config.json.
+      const fromCli = (name: string): boolean => command.getOptionValueSource(name) === 'cli';
+      let configResult: import('./configLoader.js').ConfigResult;
+      try {
+        configResult = loadConfig({
+          ...(fromCli('work') ? { work: opts.work } : {}),
+          ...(fromCli('break') ? { breakDuration: opts.break } : {}),
+          ...(fromCli('longBreak') ? { longBreak: opts.longBreak } : {}),
+          ...(fromCli('count') ? { cycles: opts.count } : {}),
+          minimal: opts.minimal ?? false,
+          noColor: program.opts().color === false,
+          ascii: opts.ascii ?? false,
+          palette: opts.palette,
+        });
+      } catch (err) {
+        // Unknown palette name or invalid config.json → exit 1 with a clear message.
+        // No session is started.
+        process.stderr.write(`${(err as Error).message}\n`);
+        process.exit(1);
+      }
+      const { config, autoDetectedAscii, resolvedPalette, notifications } = configResult;
 
-    // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
-    // Color suppression implies the caller wants plain text output with no ANSI sequences.
-    const useMinimalAdapter = opts.minimal || !config.useColor;
+      // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
+      // Color suppression implies the caller wants plain text output with no ANSI sequences.
+      const useMinimalAdapter = opts.minimal || !config.useColor;
 
-    if (useMinimalAdapter) {
-      // Minimal / no-color mode: plain-text output, no TUI, no ink/react.
-      const [
-        { MinimalAdapter },
-        { SessionService },
-        { PersistenceAdapter },
-      ] = await Promise.all([
-        import('./adapters/minimalAdapter.js'),
-        import('./application/sessionService.js'),
-        import('./adapters/persistenceAdapter.js'),
-      ] as const);
+      if (useMinimalAdapter) {
+        // Minimal / no-color mode: plain-text output, no TUI, no ink/react.
+        const [{ MinimalAdapter }, { SessionService }, { PersistenceAdapter }] = await Promise.all([
+          import('./adapters/minimalAdapter.js'),
+          import('./application/sessionService.js'),
+          import('./adapters/persistenceAdapter.js'),
+        ] as const);
 
-      printBanner(resolvedPalette, program.opts().color === false);
-      const renderAdapter = new MinimalAdapter();
+        printBanner(resolvedPalette, program.opts().color === false);
+        const renderAdapter = new MinimalAdapter();
+        const persistenceAdapter = new PersistenceAdapter();
+        const notificationAdapter = await buildNotificationPort(notifications, config);
+        const service = new SessionService(
+          renderAdapter,
+          persistenceAdapter,
+          notificationAdapter,
+          persistenceAdapter,
+        );
+
+        process.on('SIGTERM', () => {
+          service.interrupt();
+        });
+        await service.run(config);
+        process.exit(0);
+      }
+
+      // Full TUI mode: await the pre-loaded modules (already resolving in parallel since argv check).
+      const [{ TuiAdapter }, { SessionService }, { PersistenceAdapter }] = await (startModulesP ??
+        Promise.all([
+          import('./adapters/tuiAdapter.js'),
+          import('./application/sessionService.js'),
+          import('./adapters/persistenceAdapter.js'),
+        ] as const));
+
+      // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
+      if (autoDetectedAscii) {
+        process.stdout.write(
+          'Note: Unicode not detected — using ASCII progress bar. Pass --ascii to suppress this message.\n',
+        );
+      }
+
+      const tuiAdapter = new TuiAdapter(resolvedPalette);
       const persistenceAdapter = new PersistenceAdapter();
       const notificationAdapter = await buildNotificationPort(notifications, config);
-      const service = new SessionService(renderAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
+      const service = new SessionService(
+        tuiAdapter,
+        persistenceAdapter,
+        notificationAdapter,
+        persistenceAdapter,
+      );
 
-      process.on('SIGTERM', () => { service.interrupt(); });
+      // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
+      // service exists, closing the RenderPort↔SessionControlPort cycle without a static
+      // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
+      tuiAdapter.attachControl(service);
+
+      process.on('SIGTERM', () => {
+        service.interrupt();
+      });
+
       await service.run(config);
       process.exit(0);
-    }
-
-    // Full TUI mode: await the pre-loaded modules (already resolving in parallel since argv check).
-    const [
-      { TuiAdapter },
-      { SessionService },
-      { PersistenceAdapter },
-    ] = await (startModulesP ?? Promise.all([
-      import('./adapters/tuiAdapter.js'),
-      import('./application/sessionService.js'),
-      import('./adapters/persistenceAdapter.js'),
-    ] as const));
-
-    // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
-    if (autoDetectedAscii) {
-      process.stdout.write(
-        'Note: Unicode not detected — using ASCII progress bar. Pass --ascii to suppress this message.\n'
-      );
-    }
-
-    const tuiAdapter = new TuiAdapter(resolvedPalette);
-    const persistenceAdapter = new PersistenceAdapter();
-    const notificationAdapter = await buildNotificationPort(notifications, config);
-    const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
-
-    // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
-    // service exists, closing the RenderPort↔SessionControlPort cycle without a static
-    // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
-    tuiAdapter.attachControl(service);
-
-    process.on('SIGTERM', () => {
-      service.interrupt();
-    });
-
-    await service.run(config);
-    process.exit(0);
-  });
+    },
+  );
 
 /**
  * Launch handoff (step 04-01): start a real `chromato start` session from the
@@ -341,14 +364,21 @@ async function launchSessionFromConfigResult(
   const tuiAdapter = new TuiAdapter(resolvedPalette);
   const persistenceAdapter = new PersistenceAdapter();
   const notificationAdapter = await buildNotificationPort(notifications, config);
-  const service = new SessionService(tuiAdapter, persistenceAdapter, notificationAdapter, persistenceAdapter);
+  const service = new SessionService(
+    tuiAdapter,
+    persistenceAdapter,
+    notificationAdapter,
+    persistenceAdapter,
+  );
 
   // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
   // service exists, closing the RenderPort↔SessionControlPort cycle without a static
   // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
   tuiAdapter.attachControl(service);
 
-  process.on('SIGTERM', () => { service.interrupt(); });
+  process.on('SIGTERM', () => {
+    service.interrupt();
+  });
   await service.run(config);
 }
 
@@ -358,15 +388,13 @@ async function launchSessionFromConfigResult(
  * (SC-05, AC-RH-05.3) so there is one wizard launch path, not two. `initial`
  * pre-seeds the wizard with the saved settings on a Reconfigure re-run (R2 / OQ-1).
  */
-async function runSetupWizard(
-  initial?: import('./configTypes.js').WizardResult,
-): Promise<void> {
+async function runSetupWizard(initial?: import('./configTypes.js').WizardResult): Promise<void> {
   // Non-TTY refusal (US-06 AC-06.4, ADR-012): the wizard needs raw-mode stdin.
   // Refuse with guidance BEFORE the dynamic import() below, so ink/react stay
   // off the refusal path and Ink's setRawMode is never reached on a non-TTY.
   if (!process.stdin.isTTY) {
     process.stderr.write(
-      'chromato setup needs an interactive terminal (a TTY). Run it directly in your terminal.\n'
+      'chromato setup needs an interactive terminal (a TTY). Run it directly in your terminal.\n',
     );
     process.exit(1);
   }

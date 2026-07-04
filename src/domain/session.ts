@@ -72,9 +72,10 @@ export class Session {
     // Modulo normalization keeps currentPomodoro in [1, cycleCount] across multiple cycles.
     const cycleCount = this.config.cycleCount;
     const completedCount = this.stateMachine.completedCount();
-    const currentPomodoro = (phase === 'BREAK' || phase === 'LONG_BREAK' || phase === 'OVERDUE')
-      ? ((completedCount - 1) % cycleCount) + 1
-      : (completedCount % cycleCount) + 1;
+    const currentPomodoro =
+      phase === 'BREAK' || phase === 'LONG_BREAK' || phase === 'OVERDUE'
+        ? ((completedCount - 1) % cycleCount) + 1
+        : (completedCount % cycleCount) + 1;
 
     if (phase === 'OVERDUE') {
       // In OVERDUE state, the timer is fully elapsed (progressFraction = 1.0).
@@ -163,9 +164,7 @@ export class Session {
     return this.phaseDurationForPhase(this.stateMachine.currentPhase());
   }
 
-  private phaseDurationForPhase(
-    phase: ReturnType<PhaseStateMachine['currentPhase']>
-  ): number {
+  private phaseDurationForPhase(phase: ReturnType<PhaseStateMachine['currentPhase']>): number {
     if (phase === 'WORK') {
       return this.config.workDurationSeconds;
     }

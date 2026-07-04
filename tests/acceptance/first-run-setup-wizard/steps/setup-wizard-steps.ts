@@ -10,10 +10,10 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import { spawnSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import { strict as assert } from 'assert';
+import { spawnSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { strict as assert } from 'node:assert';
 import type { SetupWizardWorld } from './world.js';
 
 // Palette WORK foreground truecolor SGR fragments (from src/domain/palette.ts).
@@ -24,10 +24,17 @@ const WORK_SGR: Record<string, string> = {
   ocean: '38;2;77;184;232', // #4db8e8
 };
 
-function run(world: SetupWizardWorld, args: string[], extraEnv: NodeJS.ProcessEnv = {}, stdin?: string): void {
+function run(
+  world: SetupWizardWorld,
+  args: string[],
+  extraEnv: NodeJS.ProcessEnv = {},
+  stdin?: string,
+): void {
   const isTs = world.chromatoBin.endsWith('.ts');
   const cmd = isTs ? 'node' : 'node';
-  const argv = isTs ? ['--import', 'tsx', world.chromatoBin, ...args] : [world.chromatoBin, ...args];
+  const argv = isTs
+    ? ['--import', 'tsx', world.chromatoBin, ...args]
+    : [world.chromatoBin, ...args];
   const start = Date.now();
   const res = spawnSync(cmd, argv, {
     // FORCE_COLOR=3 makes chalk emit truecolor SGR even on the piped (non-TTY)
@@ -60,36 +67,68 @@ Given('a chromato config file already exists', function (this: SetupWizardWorld)
   this.seedConfig({ palette: 'ocean' });
 });
 
-Given('the setup wizard has saved the theme {string} to the config file', function (this: SetupWizardWorld, theme: string) {
-  this.seedConfig({ palette: theme });
-});
+Given(
+  'the setup wizard has saved the theme {string} to the config file',
+  function (this: SetupWizardWorld, theme: string) {
+    this.seedConfig({ palette: theme });
+  },
+);
 
-Given('the setup wizard has saved a {int}-minute work duration to the config file', function (this: SetupWizardWorld, minutes: number) {
-  this.seedConfig({ palette: 'ocean', work: minutes, break: 5, longBreak: 15, cycles: 4, notifications: true });
-});
+Given(
+  'the setup wizard has saved a {int}-minute work duration to the config file',
+  function (this: SetupWizardWorld, minutes: number) {
+    this.seedConfig({
+      palette: 'ocean',
+      work: minutes,
+      break: 5,
+      longBreak: 15,
+      cycles: 4,
+      notifications: true,
+    });
+  },
+);
 
-Given('the setup wizard has saved a full configuration to the config file', function (this: SetupWizardWorld) {
-  this.seedConfig({ palette: 'lavender', work: 50, break: 10, longBreak: 20, cycles: 6, notifications: true });
-});
+Given(
+  'the setup wizard has saved a full configuration to the config file',
+  function (this: SetupWizardWorld) {
+    this.seedConfig({
+      palette: 'lavender',
+      work: 50,
+      break: 10,
+      longBreak: 20,
+      cycles: 6,
+      notifications: true,
+    });
+  },
+);
 
 Given('a corrupted config file exists', function (this: SetupWizardWorld) {
   fs.mkdirSync(path.dirname(this.configFilePath), { recursive: true });
   fs.writeFileSync(this.configFilePath, '{ this is not valid json', 'utf8');
 });
 
-Given('the config file names an unknown theme {string}', function (this: SetupWizardWorld, theme: string) {
-  this.seedConfig({ palette: theme });
-});
+Given(
+  'the config file names an unknown theme {string}',
+  function (this: SetupWizardWorld, theme: string) {
+    this.seedConfig({ palette: theme });
+  },
+);
 
 // ── Whens ───────────────────────────────────────────────────────────────────
 
-When('the developer runs setup-wizard {string} with a {int}-minute work duration', function (this: SetupWizardWorld, _cmd: string, minutes: number) {
-  run(this, ['start', '--work', String(minutes)]);
-});
+When(
+  'the developer runs setup-wizard {string} with a {int}-minute work duration',
+  function (this: SetupWizardWorld, _cmd: string, minutes: number) {
+    run(this, ['start', '--work', String(minutes)]);
+  },
+);
 
-When('the developer runs {string} with no duration flags', function (this: SetupWizardWorld, _cmd: string) {
-  run(this, ['start']);
-});
+When(
+  'the developer runs {string} with no duration flags',
+  function (this: SetupWizardWorld, _cmd: string) {
+    run(this, ['start']);
+  },
+);
 
 When('the developer runs {string} with no flags', function (this: SetupWizardWorld, _cmd: string) {
   run(this, ['start']);
@@ -110,11 +149,14 @@ function cmdToArgs(cmd: string): string[] {
 
 // Quoted context captures the FULL phrase (BL-001 fix): {word} cannot match
 // multi-word / punctuated contexts, so the context is a quoted {string}.
-When('the developer runs {string} with {string}', function (this: SetupWizardWorld, cmd: string, context: string) {
-  const env = CONTEXT_ENV[context];
-  assert.ok(env !== undefined, `unknown non-interactive context "${context}"`);
-  run(this, cmdToArgs(cmd), env);
-});
+When(
+  'the developer runs {string} with {string}',
+  function (this: SetupWizardWorld, cmd: string, context: string) {
+    const env = CONTEXT_ENV[context];
+    assert.ok(env !== undefined, `unknown non-interactive context "${context}"`);
+    run(this, cmdToArgs(cmd), env);
+  },
+);
 
 When('the developer runs setup-wizard {string}', function (this: SetupWizardWorld, cmd: string) {
   run(this, cmdToArgs(cmd));
@@ -122,28 +164,42 @@ When('the developer runs setup-wizard {string}', function (this: SetupWizardWorl
 
 // ── Thens ─────────────────────────────────────────────────────────────────────
 
-Then('the rendered output uses the {word} work colour', function (this: SetupWizardWorld, theme: string) {
-  const sgr = WORK_SGR[theme];
-  assert.ok(sgr, `unknown theme ${theme}`);
-  assert.ok(this.capturedOutput.includes(sgr), `expected ${theme} WORK SGR ${sgr} in output`);
-});
+Then(
+  'the rendered output uses the {word} work colour',
+  function (this: SetupWizardWorld, theme: string) {
+    const sgr = WORK_SGR[theme];
+    assert.ok(sgr, `unknown theme ${theme}`);
+    assert.ok(this.capturedOutput.includes(sgr), `expected ${theme} WORK SGR ${sgr} in output`);
+  },
+);
 
 Then('the process starts the session without error', function (this: SetupWizardWorld) {
-  assert.equal(this.capturedStderr.includes('Error'), false, `unexpected error: ${this.capturedStderr}`);
+  assert.equal(
+    this.capturedStderr.includes('Error'),
+    false,
+    `unexpected error: ${this.capturedStderr}`,
+  );
 });
 
 Then('the setup wizard does not launch', function (this: SetupWizardWorld) {
   // The wizard's welcome marker must be absent (it would only appear on a TTY).
-  assert.equal(this.capturedOutput.includes("Let's tune chromato"), false, 'wizard launched in a non-interactive context');
+  assert.equal(
+    this.capturedOutput.includes("Let's tune chromato"),
+    false,
+    'wizard launched in a non-interactive context',
+  );
 });
 
 Then('no {string} error appears', function (this: SetupWizardWorld, errText: string) {
   assert.equal(this.capturedStderr.includes(errText), false, `unexpected error: ${errText}`);
 });
 
-Then('the setup-wizard process exits with code {int}', function (this: SetupWizardWorld, code: number) {
-  assert.equal(this.exitCode, code, `stderr: ${this.capturedStderr}`);
-});
+Then(
+  'the setup-wizard process exits with code {int}',
+  function (this: SetupWizardWorld, code: number) {
+    assert.equal(this.exitCode, code, `stderr: ${this.capturedStderr}`);
+  },
+);
 
 Then('the process exits with a non-zero code', function (this: SetupWizardWorld) {
   assert.notEqual(this.exitCode, 0);
@@ -153,13 +209,23 @@ Then('the help text is shown', function (this: SetupWizardWorld) {
   assert.ok(/Examples:|Usage:|chromato start/.test(this.capturedOutput), 'help text not shown');
 });
 
-Then('the help output completes in under {int} milliseconds', function (this: SetupWizardWorld, ms: number) {
-  assert.ok(this.elapsedMs < ms, `help took ${this.elapsedMs}ms (budget ${ms}ms)`);
-});
+Then(
+  'the help output completes in under {int} milliseconds',
+  function (this: SetupWizardWorld, ms: number) {
+    assert.ok(this.elapsedMs < ms, `help took ${this.elapsedMs}ms (budget ${ms}ms)`);
+  },
+);
 
-Then('a message explains that setup needs an interactive terminal', function (this: SetupWizardWorld) {
-  assert.ok(/interactive terminal|requires a TTY|needs a terminal/i.test(this.capturedOutput + this.capturedStderr));
-});
+Then(
+  'a message explains that setup needs an interactive terminal',
+  function (this: SetupWizardWorld) {
+    assert.ok(
+      /interactive terminal|requires a TTY|needs a terminal/i.test(
+        this.capturedOutput + this.capturedStderr,
+      ),
+    );
+  },
+);
 
 Then('the work timer counts down from {string}', function (this: SetupWizardWorld, clock: string) {
   assert.ok(this.capturedOutput.includes(clock), `expected timer ${clock} in output`);
@@ -170,15 +236,24 @@ Then('chromato reports an error mentioning the config file', function (this: Set
   assert.ok(/config/i.test(out), `expected an error mentioning the config file, got: ${out}`);
 });
 
-Then('chromato reports an error listing the valid palette names', function (this: SetupWizardWorld) {
-  const out = this.capturedOutput + this.capturedStderr;
-  assert.ok(/ocean/.test(out) && /lavender/.test(out), `expected valid palette names in error, got: ${out}`);
-});
+Then(
+  'chromato reports an error listing the valid palette names',
+  function (this: SetupWizardWorld) {
+    const out = this.capturedOutput + this.capturedStderr;
+    assert.ok(
+      /ocean/.test(out) && /lavender/.test(out),
+      `expected valid palette names in error, got: ${out}`,
+    );
+  },
+);
 
-Then('the config file contains valid JSON with the keys palette, work, break, longBreak, cycles, notifications', function (this: SetupWizardWorld) {
-  const raw = fs.readFileSync(this.configFilePath, 'utf8');
-  const parsed = JSON.parse(raw); // throws if invalid
-  for (const k of ['palette', 'work', 'break', 'longBreak', 'cycles', 'notifications']) {
-    assert.ok(k in parsed, `missing key ${k}`);
-  }
-});
+Then(
+  'the config file contains valid JSON with the keys palette, work, break, longBreak, cycles, notifications',
+  function (this: SetupWizardWorld) {
+    const raw = fs.readFileSync(this.configFilePath, 'utf8');
+    const parsed = JSON.parse(raw); // throws if invalid
+    for (const k of ['palette', 'work', 'break', 'longBreak', 'cycles', 'notifications']) {
+      assert.ok(k in parsed, `missing key ${k}`);
+    }
+  },
+);
