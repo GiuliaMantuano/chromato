@@ -35,7 +35,6 @@ import * as inkModule from 'ink';
 import chalk from 'chalk';
 import { EventEmitter } from 'events';
 import { TimerFrame, TuiAdapter } from '../../../src/adapters/tuiAdapter.js';
-import { printBanner } from '../../../src/adapters/bannerAdapter.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 
 function stripAnsi(str: string): string {
@@ -143,7 +142,7 @@ describe('TuiAdapter phase-matched progress bar colors (AC-01.5)', () => {
   // FORCE_COLOR is read at module import time by chalk; we set it before importing.
   // Since chalk is already imported, we must set the env before the describe block
   // to influence chalk's color level for subsequent renders.
-  let originalChalkLevel: chalk.Level;
+  let originalChalkLevel: typeof chalk.level;
   beforeAll(() => { originalChalkLevel = chalk.level; chalk.level = 3; });
   afterAll(() => { chalk.level = originalChalkLevel; });
 
@@ -291,7 +290,7 @@ function makeOverdueSnapshot(overdueElapsedSeconds: number): SessionSnapshot {
 }
 
 describe('TuiAdapter overdue pulse animation (AC-01.6)', () => {
-  let originalChalkLevel: chalk.Level;
+  let originalChalkLevel: typeof chalk.level;
   beforeAll(() => { originalChalkLevel = chalk.level; chalk.level = 3; });
   afterAll(() => { chalk.level = originalChalkLevel; });
 
@@ -467,7 +466,12 @@ describe('Regression R1: useInput fires SIGINT on Ctrl+C (Ink 4.x key interface)
   it('R1: process.emit("SIGINT") is called when useInput receives input="c" with key.ctrl=true', () => {
     // mockReturnValue(false) prevents the SIGINT from actually propagating to Node.js
     // signal handlers (which would kill the vitest worker), while still recording the call.
-    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false);
+    // `false as never`: @types/node types some process.emit overloads as
+    // returning `this` (Process), so vitest infers the mock return type as
+    // Process rather than boolean. The return value is irrelevant here (we only
+    // assert emit was called); `as never` satisfies the mis-inferred overload
+    // without a blanket any/@ts-ignore.
+    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false as never);
 
     // ink-testing-library exposes stdin.write() to simulate raw input.
     // Ctrl+C in a real terminal sends byte 0x03 (ETX). In Ink 4.x raw mode

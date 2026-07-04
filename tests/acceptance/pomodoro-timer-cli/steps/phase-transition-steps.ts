@@ -9,8 +9,8 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
-import { spawnChromato, runChromato, readStateFile, waitForOutput } from './helpers';
+import type { ChromatoWorld } from './world.js';
+import { runChromato, readStateFile, waitForOutput } from './helpers.js';
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -245,8 +245,9 @@ Given('Kai started a {int}-second work session {int} seconds ago', function (
     })
   );
   // Store elapsed/total for use in fill percentage assertion step.
-  this['_elapsedSeconds'] = elapsedSeconds;
-  this['_totalSeconds'] = totalSeconds;
+  const store = this as ChromatoWorld & { _elapsedSeconds?: number; _totalSeconds?: number };
+  store._elapsedSeconds = elapsedSeconds;
+  store._totalSeconds = totalSeconds;
 });
 
 // ---------------------------------------------------------------------------

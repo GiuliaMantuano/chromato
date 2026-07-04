@@ -15,8 +15,8 @@
  * 2. No global 'chromato' binary needs to be installed in the test environment
  */
 
-import { spawn, spawnSync, ChildProcess } from 'child_process';
-import type { ChromatoWorld } from './world';
+import { spawn, ChildProcess } from 'child_process';
+import type { ChromatoWorld } from './world.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -247,8 +247,19 @@ export function readStateFile(world: ChromatoWorld): Record<string, unknown> | n
  * Measures the elapsed time (in milliseconds) to receive the first byte of
  * stdout from a spawned process.
  */
+/**
+ * Minimal structural shape measureTimeToFirstByte needs. Both ChromatoWorld
+ * and the help-splash ChromatoHelpWorld satisfy it (interface segregation),
+ * so the helper can time either suite's world without a coupling cast.
+ */
+export interface FirstByteWorld {
+  chromatoBin: string;
+  chromatoEnv: NodeJS.ProcessEnv;
+  process: ChildProcess | null;
+}
+
 export function measureTimeToFirstByte(
-  world: ChromatoWorld,
+  world: FirstByteWorld,
   args: string[],
   timeoutMs: number = 5000
 ): Promise<number> {

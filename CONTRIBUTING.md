@@ -45,7 +45,7 @@ pnpm build
 pnpm test
 
 # 5. Generate a coverage report
-pnpm coverage
+pnpm test:coverage
 ```
 
 ### Useful dev commands
@@ -54,7 +54,7 @@ pnpm coverage
 |---------|-------------|
 | `pnpm build` | Compile TypeScript to `dist/` |
 | `pnpm test` | Run all tests with Vitest |
-| `pnpm coverage` | Run tests and produce a coverage report |
+| `pnpm test:coverage` | Run tests and produce a coverage report |
 | `pnpm check:arch` | Enforce dependency-cruiser architecture rules |
 
 ### Bumping the package manager
@@ -140,7 +140,7 @@ docs/contributing-guide
 
 - [ ] `pnpm build` succeeds with no TypeScript errors
 - [ ] `pnpm test` -- all tests green
-- [ ] `pnpm coverage` -- no unexpected coverage regressions
+- [ ] `pnpm test:coverage` -- no unexpected coverage regressions
 - [ ] `pnpm check:arch` -- no architecture boundary violations
 - [ ] Commit messages follow Conventional Commits
 - [ ] New behaviour is covered by a test in `tests/unit/`, `tests/integration/`, or `tests/acceptance/`

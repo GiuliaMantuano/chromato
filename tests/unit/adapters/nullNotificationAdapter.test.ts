@@ -127,7 +127,7 @@ describe('Notifications off (NullNotificationAdapter wiring)', () => {
     // No terminal bell emitted. The falsifiability guard below drives the SAME
     // transition through the REAL adapter and asserts the bell DOES fire, so this
     // zero is a genuine signal — not a vacuous pass.
-    const bellWrites = bellSpy.mock.calls.filter((c) => String(c[0]).includes('\x07'));
+    const bellWrites = bellSpy.mock.calls.filter((c: unknown[]) => String(c[0]).includes('\x07'));
     expect(bellWrites).toHaveLength(0);
   });
 
@@ -140,7 +140,7 @@ describe('Notifications off (NullNotificationAdapter wiring)', () => {
 
     nullNotifier.notifySessionComplete(100);
 
-    const bellWrites = bellSpy.mock.calls.filter((c) => String(c[0]).includes('\x07'));
+    const bellWrites = bellSpy.mock.calls.filter((c: unknown[]) => String(c[0]).includes('\x07'));
     expect(bellWrites).toHaveLength(0);
     expect(runner.calls).toHaveLength(0);
   });
@@ -160,7 +160,7 @@ describe('Notifications off (NullNotificationAdapter wiring)', () => {
 
     driveWorkToBreak(service, makeConfig());
 
-    const bellWrites = bellSpy.mock.calls.filter((c) => String(c[0]).includes('\x07'));
+    const bellWrites = bellSpy.mock.calls.filter((c: unknown[]) => String(c[0]).includes('\x07'));
     expect(bellWrites.length).toBeGreaterThan(0);
   });
 });

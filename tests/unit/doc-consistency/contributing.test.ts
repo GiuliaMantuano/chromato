@@ -35,9 +35,9 @@ describe('CONTRIBUTING.md', () => {
     expect(content).toContain('pnpm test')
   })
 
-  it('references pnpm coverage', () => {
+  it('references pnpm test:coverage', () => {
     const content = readContributing()
-    expect(content).toContain('pnpm coverage')
+    expect(content).toContain('pnpm test:coverage')
   })
 
   it('contains a Pull Request Process section', () => {

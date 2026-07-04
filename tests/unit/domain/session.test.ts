@@ -26,7 +26,7 @@
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { Session } from '../../../src/domain/session.js';
 import type { SessionConfig } from '../../../src/domain/config.js';
 
@@ -206,7 +206,7 @@ describe('Session aggregate root', () => {
     // B7.4: no-op during WORK / IDLE (phase + countdown unchanged). Same behavior,
     // two phase inputs -> one parametrized test (Mandate 5).
     it.each([
-      ['IDLE', (s: Session) => { /* never ticked: stays IDLE */ }],
+      ['IDLE', (_s: Session) => { /* never ticked: stays IDLE */ }],
       ['WORK', (s: Session) => { s.tick(1); /* IDLE -> WORK */ }],
     ])('is a no-op during %s (phase and countdown unchanged)', (_label, reach) => {
       const session = new Session(makeConfig({ workDurationSeconds: 10 }));

@@ -18,7 +18,7 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
+import type { ChromatoWorld } from './world.js';
 import * as assert from 'assert';
 import * as child_process from 'child_process';
 import * as fs from 'fs';
@@ -116,6 +116,9 @@ Given(
     );
 
     // Determine the path to the installed binary.
+    if (!world.globalInstallDir) {
+      throw new Error('globalInstallDir was not initialised before locating the installed binary');
+    }
     const binDir = path.join(world.globalInstallDir, 'bin');
     world.globalBinPath = path.join(binDir, 'chromato');
   }

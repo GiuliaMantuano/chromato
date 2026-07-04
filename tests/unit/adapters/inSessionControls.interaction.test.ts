@@ -44,10 +44,9 @@
  * footerHint all throw "-- RED scaffold").
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import chalk from 'chalk';
 import { TimerFrame, TuiAdapter, footerHint } from '../../../src/adapters/tuiAdapter.js';
 import { SessionService } from '../../../src/application/sessionService.js';
 import type {
@@ -578,7 +577,12 @@ describe('US-02 — quit the running timer with q', () => {
   // Ctrl+C (DN-1). Pressing Ctrl+C emits SIGINT; it must NOT go through the
   // control port (no double-interrupt). Mirrors tuiAdapter R1 regression test.
   it('Ctrl+C still emits SIGINT and does NOT route through the control port (non-regression)', async () => {
-    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false);
+    // `false as never`: @types/node types some process.emit overloads as
+    // returning `this` (Process), so vitest infers the mock return type as
+    // Process rather than boolean. The return value is irrelevant here (we only
+    // assert emit was called); `as never` satisfies the mis-inferred overload
+    // without a blanket any/@ts-ignore.
+    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false as never);
     const control = new FakeControl();
     try {
       const { stdin } = render(

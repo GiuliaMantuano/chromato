@@ -81,7 +81,7 @@ function mountHome(config: ConfigResult = configResultFor(), tmuxDetected = fals
 }
 
 describe('HomeAdapter interaction (ink-testing-library) — HomeChoice resolution', () => {
-  let originalChalkLevel: chalk.Level;
+  let originalChalkLevel: typeof chalk.level;
   beforeAll(() => {
     originalChalkLevel = chalk.level;
     chalk.level = 3; // SPIKE gotcha: no TTY → chalk.level 0 → no colour to assert on.

@@ -8,13 +8,12 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
-import { runChromato, measureTimeToFirstByte, spawnChromato } from './helpers';
+import type { ChromatoWorld } from './world.js';
+import { runChromato, measureTimeToFirstByte, spawnChromato } from './helpers.js';
 import * as assert from 'assert';
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 
 // ---------------------------------------------------------------------------
 // Given: infrastructure preconditions

@@ -183,7 +183,7 @@ describe('SetupWizardAdapter (contract)', () => {
 
 // ── Theme step (Slice 01) — ink-testing-library, forced colour ─────────────────
 describe('SetupWizard interactive surface (ink-testing-library)', () => {
-  let originalChalkLevel: chalk.Level;
+  let originalChalkLevel: typeof chalk.level;
   beforeAll(() => {
     originalChalkLevel = chalk.level;
     chalk.level = 3; // SPIKE gotcha: no TTY → chalk.level 0 → no colour to assert on.
@@ -382,7 +382,6 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
 
   // ── Timing step (step 03-01) ────────────────────────────────────────────────
   const ARROW_LEFT = '\x1b[D';
-  const ARROW_RIGHT = '\x1b[C';
 
   /** Mounts the wizard advanced to the Timing step (Enter welcome, Enter theme). */
   async function mountAtTiming(props: Record<string, unknown> = {}) {

@@ -10,8 +10,8 @@
  */
 
 import { When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
-import { runChromato, stripAnsi, stripAllEscapes } from './helpers';
+import type { ChromatoWorld } from './world.js';
+import { runChromato, stripAnsi, stripAllEscapes } from './helpers.js';
 import * as assert from 'assert';
 
 // ---------------------------------------------------------------------------

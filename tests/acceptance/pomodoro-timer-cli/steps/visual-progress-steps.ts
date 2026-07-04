@@ -11,7 +11,7 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
+import type { ChromatoWorld } from './world.js';
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';

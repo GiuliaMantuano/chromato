@@ -17,8 +17,9 @@
     "test:coverage": "vitest run --coverage",
     "cucumber": "cucumber-js --config cucumber.config.mjs",
     "test:acceptance": "cucumber-js --config cucumber.config.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "check:arch": "dependency-cruiser src",
-    "quality:gates": "pnpm check:arch && pnpm build && pnpm test && pnpm test:acceptance"
+    "quality:gates": "pnpm typecheck && pnpm check:arch && pnpm build && pnpm test && pnpm test:acceptance"
   },
   "engines": {
     "node": ">=22.12.0",

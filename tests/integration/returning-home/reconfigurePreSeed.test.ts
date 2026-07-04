@@ -44,7 +44,6 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
 import chalk from 'chalk';
 import * as fs from 'fs';
@@ -52,7 +51,6 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   SetupWizardAdapter,
-  SetupWizard,
 } from '../../../src/adapters/setupWizardAdapter.js';
 import {
   loadConfig,
@@ -102,7 +100,7 @@ function reconfigureSeed(configResult: ConfigResult): WizardResult {
 }
 
 describe('Reconfigure pre-seed — composition-root integration (R2 / OQ-1)', () => {
-  let originalChalkLevel: chalk.Level;
+  let originalChalkLevel: typeof chalk.level;
   let originalXdg: string | undefined;
   let tempDir: string;
   let configFilePath: string;

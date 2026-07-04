@@ -68,7 +68,7 @@ function configResultFor(
 const CONFIG_PATH = '/home/kai/.config/chromato/config.json';
 
 describe('HomeScreen render (ink-testing-library)', () => {
-  let originalChalkLevel: chalk.Level;
+  let originalChalkLevel: typeof chalk.level;
   beforeAll(() => {
     originalChalkLevel = chalk.level;
     chalk.level = 3; // SPIKE gotcha: no TTY → chalk.level 0 → no colour to assert on.

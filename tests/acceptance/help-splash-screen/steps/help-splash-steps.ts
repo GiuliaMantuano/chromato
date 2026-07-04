@@ -13,9 +13,9 @@
  *   override chromatoEnv before invoking chromato.
  */
 
-import { Given, When, Then, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
+import { Given, When, Then, After, setDefaultTimeout } from '@cucumber/cucumber';
 import type { ChromatoHelpWorld } from './world.js';
-import { runChromato, countAnsiSequences, stripAnsi, runChromatoUntilFirstFrame } from './helpers.js';
+import { runChromato, countAnsiSequences, stripAnsi } from './helpers.js';
 import * as assert from 'assert';
 import * as fs from 'fs';
 

@@ -14,8 +14,8 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
-import { spawnChromato, runChromato, runChromatoUntilFirstFrame, readStateFile, waitForOutput } from './helpers';
+import type { ChromatoWorld } from './world.js';
+import { spawnChromato, runChromato, runChromatoUntilFirstFrame, readStateFile, waitForOutput } from './helpers.js';
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -621,7 +621,6 @@ Then('the first {int} lines include at least {int} concrete example commands', f
   const lines = this.capturedOutput.split('\n').slice(0, lineCount);
   const firstSection = lines.join('\n');
   // Count lines that look like chromato command examples (start with "chromato" or "$")
-  const examplePattern = /chromato\s+\w+|^\s+chromato\s+/m;
   const exampleLines = lines.filter(l => /chromato\s+\w+/.test(l));
   assert.ok(
     exampleLines.length >= minExamples,

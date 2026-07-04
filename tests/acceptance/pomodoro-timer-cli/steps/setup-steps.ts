@@ -8,7 +8,7 @@
  */
 
 import { Given, When, Then, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
+import type { ChromatoWorld } from './world.js';
 import { runChromato } from './helpers.js';
 import * as assert from 'assert';
 

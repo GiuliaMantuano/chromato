@@ -37,6 +37,7 @@ import { render as inkRender } from 'ink';
 import chalk from 'chalk';
 import { EventEmitter } from 'events';
 import type { Palette } from '../../../src/domain/palette.js';
+import type { SessionSnapshot } from '../../../src/domain/types.js';
 
 // ---------------------------------------------------------------------------
 // Color observation helper.
@@ -158,12 +159,12 @@ describe('printBanner palette injection (bannerAdapter — Phase A)', () => {
 // ---------------------------------------------------------------------------
 
 describe('TimerFrame palette injection (tuiAdapter — Phase A)', () => {
-  let origChalkLevel: chalk.Level;
+  let origChalkLevel: typeof chalk.level;
   beforeAll(() => { origChalkLevel = chalk.level; chalk.level = 3; });
   afterAll(() => { chalk.level = origChalkLevel; });
 
   // Import snapshot factory from existing test for consistency
-  function makeTestSnapshot(phase: string, useColor: boolean) {
+  function makeTestSnapshot(phase: SessionSnapshot['phase'], useColor: boolean) {
     return {
       phase,
       timer: {

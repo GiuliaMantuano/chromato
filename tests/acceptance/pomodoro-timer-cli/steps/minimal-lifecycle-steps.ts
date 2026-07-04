@@ -8,8 +8,8 @@
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
-import type { ChromatoWorld } from './world';
-import { spawnChromato, runChromato, waitForOutput, readStateFile } from './helpers';
+import type { ChromatoWorld } from './world.js';
+import { spawnChromato, runChromato, waitForOutput, readStateFile } from './helpers.js';
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
