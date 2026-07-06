@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `chromato status --width N` now actually bounds output length when color is active — previously the ANSI escape overhead alone could exceed the requested width even though the visible text fit, silently breaking narrow tmux status bars
 - macOS desktop notifications no longer fail silently
 - Overdue counter no longer displays fractional seconds
 - Pomodoro counter no longer overflows after completing a full cycle
