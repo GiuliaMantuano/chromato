@@ -13,6 +13,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { PersistedConfig } from '../configTypes.js';
 import type { ConfigWritePort } from '../domain/ports.js';
+import { ensureOwnerOnlyDir, OWNER_ONLY_FILE_MODE } from '../utils/fileMode.js';
 
 // Re-export so existing importers (setupWizardAdapter.test.ts) keep working.
 export type { ConfigWritePort } from '../domain/ports.js';
@@ -28,11 +29,35 @@ function resolveConfigFilePath(): string {
 }
 
 export class ConfigFileWriterAdapter implements ConfigWritePort {
+  /**
+   * Hardened per LOW-4/LOW-5 (2026-07-06 security review): any stale tmp
+   * (leftover from a crashed prior write, or a symlink pre-planted at the tmp
+   * path) is unlinked first -- unlinkSync removes a symlink itself rather than
+   * following it -- then the tmp file is created with O_EXCL (`flag: 'wx'`),
+   * so a write can never silently follow a pre-existing file/symlink at that
+   * path (CWE-59). This closes the static "symlink already sitting at the tmp
+   * path" case (tested below); the O_EXCL flag also fails safe (throws EEXIST
+   * rather than following) if a symlink is replanted in the narrow window
+   * between the unlink and the create, but that live race isn't independently
+   * exercised by a single-threaded test. ensureOwnerOnlyDir/OWNER_ONLY_FILE_MODE
+   * keep the directory/file owner-only (CWE-276), including retroactively for
+   * a directory an older, pre-fix version already created.
+   */
   write(config: PersistedConfig): void {
     const configFile = resolveConfigFilePath();
-    fs.mkdirSync(path.dirname(configFile), { recursive: true });
+    ensureOwnerOnlyDir(path.dirname(configFile));
     const tmpFile = `${configFile}.tmp`;
-    fs.writeFileSync(tmpFile, JSON.stringify(config, null, 2), 'utf8');
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
+      }
+    }
+    fs.writeFileSync(tmpFile, JSON.stringify(config, null, 2), {
+      mode: OWNER_ONLY_FILE_MODE,
+      flag: 'wx',
+    });
     fs.renameSync(tmpFile, configFile);
   }
 }

@@ -4,7 +4,7 @@
  * Tests use real temp dirs (os.tmpdir()), not mocks.
  * Adapter integration tests verify real file I/O behavior.
  *
- * Test Budget: 5 distinct behaviors x 2 = 10 max unit tests
+ * Test Budget: 7 distinct behaviors x 2 = 14 max unit tests
  *   B1: writeState + readState round-trip: written state is readable and valid JSON
  *   B2: readState returns null when no state file exists
  *   B3: readStreak() returns 0 when no sessions recorded
@@ -18,6 +18,11 @@
  *       new dependency is `it.each`, see tests/unit/domain/notificationMode.test.ts).
  *       The sqlite write/read itself is wiring-level (single mechanism exercised
  *       across all cases), not a property in its own right.
+ *   B6: writeState/writeIdle create the state dir at 0o700 and write state.json
+ *       at 0o600 (LOW-4, CWE-276: file_write_without_mode)
+ *   B7: the tmp-then-rename write never follows a pre-existing symlink planted
+ *       at the tmp path -- closes the TOCTOU gap (LOW-5, CWE-59:
+ *       insecure_temp_then_rename)
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -117,5 +122,60 @@ describe('PersistenceAdapter', () => {
     } finally {
       db.close();
     }
+  });
+
+  // B6/B7: file permission + TOCTOU hardening (LOW-4/LOW-5, 2026-07-06 security review)
+  describe('file permission + TOCTOU hardening (LOW-4/LOW-5)', () => {
+    it('creates the state directory with owner-only permissions (0o700)', () => {
+      adapter.writeState(WORK_SNAPSHOT);
+      const stateDir = path.join(tempDir, 'chromato');
+      const mode = fs.statSync(stateDir).mode & 0o777;
+      expect(mode).toBe(0o700);
+    });
+
+    it('writes state.json with owner-only permissions (0o600)', () => {
+      adapter.writeState(WORK_SNAPSHOT);
+      const stateFile = path.join(tempDir, 'chromato', 'state.json');
+      const mode = fs.statSync(stateFile).mode & 0o777;
+      expect(mode).toBe(0o600);
+    });
+
+    it('writeIdle also writes state.json with owner-only permissions (0o600)', () => {
+      adapter.writeState(WORK_SNAPSHOT);
+      adapter.writeIdle();
+      const stateFile = path.join(tempDir, 'chromato', 'state.json');
+      const mode = fs.statSync(stateFile).mode & 0o777;
+      expect(mode).toBe(0o600);
+    });
+
+    it('retroactively hardens a pre-existing state directory left at 0o755 by an older version', () => {
+      // mkdirSync's `mode` option is a documented no-op when the directory
+      // already exists -- this pre-seeds the dir the way an install upgrading
+      // from a pre-fix version would find it, and proves the fix chmods it
+      // explicitly rather than relying on mkdirSync alone.
+      fs.mkdirSync(path.join(tempDir, 'chromato'), { recursive: true, mode: 0o755 });
+      adapter.writeState(WORK_SNAPSHOT);
+      const mode = fs.statSync(path.join(tempDir, 'chromato')).mode & 0o777;
+      expect(mode).toBe(0o700);
+    });
+
+    it('does not follow a pre-existing symlink planted at the tmp path (TOCTOU guard)', () => {
+      const stateDir = path.join(tempDir, 'chromato');
+      fs.mkdirSync(stateDir, { recursive: true });
+      const victim = path.join(tempDir, 'victim.json');
+      fs.writeFileSync(victim, 'untouched');
+      const tmpPath = path.join(stateDir, 'state.json.tmp');
+      fs.symlinkSync(victim, tmpPath);
+
+      adapter.writeState(WORK_SNAPSHOT);
+
+      // The symlink target must be untouched -- the write must not have
+      // followed it -- and the real state file must contain fresh content.
+      expect(fs.readFileSync(victim, 'utf8')).toBe('untouched');
+      const stateFile = path.join(stateDir, 'state.json');
+      expect(fs.lstatSync(stateFile).isSymbolicLink()).toBe(false);
+      const written = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+      expect(written.phase).toBe('WORK');
+    });
   });
 });

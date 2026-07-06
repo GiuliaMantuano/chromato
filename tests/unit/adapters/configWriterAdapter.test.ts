@@ -64,4 +64,54 @@ describe('ConfigFileWriterAdapter', () => {
     const file = path.join(tmpDir, 'chromato', 'config.json');
     expect(() => JSON.parse(fs.readFileSync(file, 'utf8'))).not.toThrow();
   });
+
+  // LOW-4/LOW-5 (2026-07-06 security review): file permission + TOCTOU hardening
+  describe('file permission + TOCTOU hardening (LOW-4/LOW-5)', () => {
+    it('creates the chromato/ directory with owner-only permissions (0o700)', () => {
+      const writer = new ConfigFileWriterAdapter();
+      writer.write({ palette: 'ocean' });
+      const dir = path.join(tmpDir, 'chromato');
+      const mode = fs.statSync(dir).mode & 0o777;
+      expect(mode).toBe(0o700);
+    });
+
+    it('writes config.json with owner-only permissions (0o600)', () => {
+      const writer = new ConfigFileWriterAdapter();
+      writer.write({ palette: 'ocean' });
+      const file = path.join(tmpDir, 'chromato', 'config.json');
+      const mode = fs.statSync(file).mode & 0o777;
+      expect(mode).toBe(0o600);
+    });
+
+    it('retroactively hardens a pre-existing chromato/ directory left at 0o755 by an older version', () => {
+      // mkdirSync's `mode` option is a documented no-op when the directory
+      // already exists -- this pre-seeds the dir the way an install upgrading
+      // from a pre-fix version would find it, and proves the fix chmods it
+      // explicitly rather than relying on mkdirSync alone.
+      const dir = path.join(tmpDir, 'chromato');
+      fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+      const writer = new ConfigFileWriterAdapter();
+      writer.write({ palette: 'ocean' });
+      const mode = fs.statSync(dir).mode & 0o777;
+      expect(mode).toBe(0o700);
+    });
+
+    it('does not follow a pre-existing symlink planted at the tmp path (TOCTOU guard)', () => {
+      const dir = path.join(tmpDir, 'chromato');
+      fs.mkdirSync(dir, { recursive: true });
+      const victim = path.join(tmpDir, 'victim.json');
+      fs.writeFileSync(victim, 'untouched');
+      const tmpPath = path.join(dir, 'config.json.tmp');
+      fs.symlinkSync(victim, tmpPath);
+
+      const writer = new ConfigFileWriterAdapter();
+      writer.write({ palette: 'berry' });
+
+      expect(fs.readFileSync(victim, 'utf8')).toBe('untouched');
+      const file = path.join(dir, 'config.json');
+      expect(fs.lstatSync(file).isSymbolicLink()).toBe(false);
+      const written = JSON.parse(fs.readFileSync(file, 'utf8'));
+      expect(written.palette).toBe('berry');
+    });
+  });
 });

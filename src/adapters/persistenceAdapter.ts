@@ -17,6 +17,7 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { StatePort, HistoryPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
+import { ensureOwnerOnlyDir, OWNER_ONLY_FILE_MODE } from '../utils/fileMode.js';
 
 // createRequire allows loading CJS native modules (better-sqlite3) from ESM context.
 const _require = createRequire(import.meta.url);
@@ -62,7 +63,7 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
   }
 
   writeState(snapshot: SessionSnapshot): void {
-    fs.mkdirSync(this.stateDir, { recursive: true });
+    ensureOwnerOnlyDir(this.stateDir);
 
     const contents: StateFileContents = {
       schemaVersion: 1,
@@ -79,13 +80,11 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
       lastUpdatedUtc: new Date().toISOString(),
     };
 
-    const tmp = `${this.stateFile}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(contents));
-    fs.renameSync(tmp, this.stateFile);
+    this.writeStateFileAtomic(JSON.stringify(contents));
   }
 
   writeIdle(): void {
-    fs.mkdirSync(this.stateDir, { recursive: true });
+    ensureOwnerOnlyDir(this.stateDir);
 
     // Preserve completedToday so an interrupted session does not reset the daily count.
     // The last writeState() call wrote the current completedToday; read it back here.
@@ -106,8 +105,32 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
       lastUpdatedUtc: new Date().toISOString(),
     };
 
+    this.writeStateFileAtomic(JSON.stringify(idleContents));
+  }
+
+  /**
+   * Atomic tmp-then-rename write, hardened per LOW-4/LOW-5 (2026-07-06 security
+   * review): any stale tmp (leftover from a crashed prior write, or a symlink
+   * pre-planted at the tmp path) is unlinked first -- unlinkSync removes a
+   * symlink itself rather than following it -- then the tmp file is created
+   * with O_EXCL (`flag: 'wx'`), so a write can never silently follow a
+   * pre-existing file/symlink at that path (CWE-59). This closes the static
+   * "symlink already sitting at the tmp path" case (tested below); the O_EXCL
+   * flag also fails safe (throws EEXIST rather than following) if a symlink is
+   * replanted in the narrow window between the unlink and the create, but that
+   * live race isn't independently exercised by a single-threaded test.
+   * OWNER_ONLY_FILE_MODE keeps the written file owner-only (CWE-276).
+   */
+  private writeStateFileAtomic(serialized: string): void {
     const tmp = `${this.stateFile}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(idleContents));
+    try {
+      fs.unlinkSync(tmp);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
+      }
+    }
+    fs.writeFileSync(tmp, serialized, { mode: OWNER_ONLY_FILE_MODE, flag: 'wx' });
     fs.renameSync(tmp, this.stateFile);
   }
 
@@ -250,7 +273,7 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
     if (this.db !== null) {
       return this.db;
     }
-    fs.mkdirSync(this.stateDir, { recursive: true });
+    ensureOwnerOnlyDir(this.stateDir);
     // Use _require (createRequire) to load CJS native module from ESM context.
     // Lazy load to keep `chromato status` startup fast (AC-03.1).
     const Database = _require('better-sqlite3');
