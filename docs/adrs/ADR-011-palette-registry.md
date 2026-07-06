@@ -1,9 +1,12 @@
 # ADR-011: Palette Registry Placement and Adapter Injection Pattern
 
-**Status**: Proposed
+**Status**: Accepted — implemented as described (see `src/domain/palette.ts`, `configLoader.ts`'s
+`resolvedPalette`/`paletteName`). Status corrected 2026-07-06; this ADR sat marked "Proposed" after
+the feature had already shipped. Superseding design-wave working docs (`docs/architecture/
+palette-themes/`) removed the same day — this ADR is the durable record.
 **Date**: 2026-05-31
 **Feature**: palette-themes
-**Deciders**: the solution architect, maintainer (pending confirmation)
+**Deciders**: the solution architect, maintainer (confirmed)
 
 ---
 

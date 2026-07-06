@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const docPath = join(process.cwd(), 'TESTING-LOCALLY.md');
+const docPath = join(process.cwd(), 'docs', 'howto', 'testing-locally.md');
 const docContent = readFileSync(docPath, 'utf-8');
 
-describe('TESTING-LOCALLY.md stale content regression tests', () => {
+describe('docs/howto/testing-locally.md stale content regression tests', () => {
   it('does not contain stale --help description referencing only start and status', () => {
     expect(docContent).not.toContain('list of commands (`start`, `status`)');
   });

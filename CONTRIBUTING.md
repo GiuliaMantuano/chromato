@@ -84,6 +84,10 @@ pnpm test tests/integration/
 pnpm test tests/acceptance/
 ```
 
+For manual, scenario-by-scenario verification against a real terminal (useful when reviewing a PR
+or checking a change end-to-end), see
+[`docs/howto/testing-locally.md`](docs/howto/testing-locally.md).
+
 ---
 
 ## Code Style

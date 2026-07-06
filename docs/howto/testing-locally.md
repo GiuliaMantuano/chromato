@@ -8,7 +8,7 @@ This guide walks you through manual testing of the chromato Pomodoro timer. Each
 
 Before you start, make sure these are installed:
 
-- **Node.js** — v20 or newer (see `.nvmrc` for the exact version CI uses)
+- **Node.js** — v22.12.0 or newer (`.nvmrc` pins the exact version CI uses, v24.13.0)
 - **pnpm** — the project's package manager. If you don't have it yet: `npm install -g pnpm`
 - **Git** — for cloning the repo
 
@@ -28,7 +28,7 @@ Before you start, make sure these are installed:
    ```
    node --version
    ```
-   ✅ Should print `v20.x.x` or newer. To match CI exactly, use the version pinned in `.nvmrc` — activate it via your preferred Node version manager (nvm, asdf, volta, fnm).
+   ✅ Should print `v22.12.0` or newer. To match CI exactly, use the version pinned in `.nvmrc` — activate it via your preferred Node version manager (nvm, asdf, volta, fnm).
 
 3. Install dependencies:
    ```
@@ -56,7 +56,7 @@ Run:
 node_modules/.bin/tsx src/index.ts --help
 ```
 
-✅ You should see an ASCII banner, the tagline "Focus in full colour", an "Examples" block with common invocations, a "Tmux integration" hint, and a "Commands" list. As of this writing, only `start` is listed under Commands; `status` is referenced in the Examples block (it's available but hidden from the top-level command list).
+✅ You should see an ASCII banner, the tagline "Focus in full colour", an "Examples" block with common invocations, a "Color palettes" reference, a "Tmux integration" hint, and a "Commands" list. As of this writing, `start` and `setup` are listed under Commands; `status` is referenced in the Examples block and Tmux integration hint (it's available but hidden from the top-level command list, since it's meant to be run from a shell prompt/tmux config, not typed interactively).
 
 ---
 
@@ -182,18 +182,17 @@ Press `Ctrl+C` to stop.
 
 **Goal**: Trigger a LONG BREAK to see the 4-phase cycle.
 
-This runs 2 Pomodoros with 5-second work/break phases so you can watch transitions quickly:
+This runs 2 Pomodoros with 5-second work/break phases (via the env-var seconds trick) so you can watch transitions quickly. There's no seconds-based override for the long break, so it uses `--long-break 1` (1 real minute — the CLI's `--work`/`--break`/`--long-break`/`--count` flags only accept whole minutes):
 
 ```
-CHROMATO_WORK_SECONDS=5 CHROMATO_BREAK_SECONDS=3 CHROMATO_LONG_BREAK_SECONDS=6 node_modules/.bin/tsx src/index.ts start --count 2
+CHROMATO_WORK_SECONDS=5 CHROMATO_BREAK_SECONDS=3 node_modules/.bin/tsx src/index.ts start --count 2 --long-break 1
 ```
 
 ✅ You should see the sequence:
 1. **WORK** (5 sec) — cyan/green bar
 2. **BREAK** (3 sec) — blue/indigo bar
 3. **WORK** (5 sec) — cyan/green bar
-4. **BREAK** (3 sec) — blue/indigo bar
-5. **LONG BREAK** (6 sec) — purple/teal bar
+4. **LONG BREAK** (1 min) — purple/teal bar
 
 Each phase label and timer reset at transitions. Session badge shows `POMODORO X of 2`.
 
@@ -268,9 +267,11 @@ CHROMATO_WORK_SECONDS=6 node_modules/.bin/tsx src/index.ts start --minimal
 
 ✅ You should see:
 - Plain text lines printed to stdout (no full-screen TUI)
-- Each line includes phase, remaining time, and session number — e.g. `WORK 00:05 P1/4`
-- No colored text — everything is plain terminal default
-- No Unicode block characters
+- Each line includes phase, remaining time, an ASCII progress bar, percentage, and the Pomodoro count — e.g. `WORK 00:06 [--------------------] 0% POMODORO 1 of 4`
+- No colored text in the timer lines — everything is plain terminal default
+- No Unicode block characters (the progress bar uses `=`/`-`, same as `--ascii` mode)
+
+Note: the startup ASCII-art banner ("chromato" logo) still prints once at the start, colored unless `NO_COLOR` is set or output is piped — that's a separate, pre-existing element, not part of the per-tick timer line.
 
 This mode is useful for piping into scripts or logging. Press `Ctrl+C` to stop.
 
@@ -328,7 +329,7 @@ node_modules/.bin/tsx src/index.ts status --format plain
 
 ✅ You should see output like:
 ```
-WORK — 0:47 remaining (POMODORO 1/4)
+WORK 00:47
 ```
 
 **Step 4**: In the second window, check the tmux format (compact, colored):
@@ -338,17 +339,16 @@ node_modules/.bin/tsx src/index.ts status --format tmux
 
 ✅ You should see output like:
 ```
-#[fg=cyan]●#[default] 0:47
+00:47 WORK
 ```
-
-(The exact colors may vary; this is compact format for `status-right`.)
+(In an interactive/colored terminal this is wrapped in ANSI color codes; tmux renders the color, it doesn't need tmux's own `#[fg=...]` styling tags — chromato emits real ANSI directly. This is the compact format for `status-right`.)
 
 **Step 5**: Wait a few seconds, then run the status command again in the second window:
 ```
 node_modules/.bin/tsx src/index.ts status --format plain
 ```
 
-✅ The timer should have counted down (e.g., now `0:42` instead of `0:47`). This confirms the status reads the live session state.
+✅ The timer should have counted down (e.g., now `00:42` instead of `00:47`). This confirms the status reads the live session state.
 
 Return to the first window and press `Ctrl+C` to stop.
 
@@ -378,7 +378,7 @@ Or if pnpm is not on PATH:
 node node_modules/@cucumber/cucumber/bin/cucumber.js --config cucumber.config.mjs
 ```
 
-✅ All 68 scenarios across milestones 1–7 should pass (405 steps, ~2m40s).
+✅ All scenarios should pass — the exact count grows as features are added (130 scenarios / 1027 steps as of this writing, ~6 minutes); don't hardcode-match a number, just confirm zero failures.
 
 ---
 
@@ -401,7 +401,7 @@ node node_modules/@cucumber/cucumber/bin/cucumber.js --config cucumber.config.mj
 - **Use the environment variables**: Env vars like `CHROMATO_WORK_SECONDS` are the fastest way to test phase transitions without waiting.
 - **Open two terminals**: The status command tests are easiest with one terminal running the session and a second running status queries.
 - **Watch the bar fill**: The progress bar is the most visible sign the timer is running. If it doesn't move, something is wrong.
-- **Ctrl+C always works**: The only key that does something. `q`, `p`, and `s` are not implemented yet.
+- **Keys that work during a session**: `Ctrl+C` and `q` both quit cleanly (exit code 0). `s` skips straight to the next focus block — but only during a break, long break, or overdue (it's intentionally disabled during WORK). See `docs/howto/install-and-configure.md`'s "Control a running session" section for the full reference.
 
 ---
 
