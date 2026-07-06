@@ -53,7 +53,7 @@
    chromato setup
    ```
 
-2. The wizard walks you through: **Welcome → Theme** (with a live colour preview) **→ Timing** (the 25 · 5 × 4 default, or custom) **→ Notifications** (on/off; plus a tmux hint when run inside tmux) **→ Summary**. It then saves your choices and starts a session.
+2. The wizard walks you through: **Welcome → Theme** (with a live colour preview) **→ Timing** (the 25 · 5 × 4 default, or custom) **→ Notifications** (pick one of four modes — **Banner + bell** (recommended), **Banner only**, **Bell only**, or **Off** — plus a tmux hint when run inside tmux) **→ Summary**. It then saves your choices and starts a session.
 
 3. Your choices are written to `config.json` (default `~/.config/chromato/config.json`, or `$XDG_CONFIG_HOME/chromato/config.json`) and become the defaults for bare `chromato` and `chromato start`.
 

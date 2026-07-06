@@ -42,12 +42,25 @@ export interface NotificationCopy {
 }
 
 /**
+ * Single-sourced OVERDUE copy (Upstream Issue 3, step 06-05): both the
+ * standalone OVERDUE moment kind AND PHASE_CHANGE(to='OVERDUE') resolve to
+ * this SAME literal, so there is exactly one place that owns the text.
+ */
+const OVERDUE_COPY: NotificationCopy = {
+  title: 'Break ran over',
+  body: 'Ready to focus again?',
+};
+
+/**
  * Map a moment + resolved numbers to the D3 warm-voice copy.
  *
  * PHASE_CHANGE is keyed on the destination phase (`to`):
  *   - to === 'WORK'       → break-agnostic "Break’s over" (any BREAK|LONG_BREAK → WORK)
  *   - to === 'BREAK'      → "Pomodoro complete 🍅"
  *   - to === 'LONG_BREAK' → "{cycles} pomodoros done 🎉"
+ *   - to === 'OVERDUE'    → "Break ran over" (OVERDUE_COPY, same as the standalone
+ *                           OVERDUE moment kind — a break timing out into OVERDUE
+ *                           fires this destination alongside OVERDUE_ACTIVATED)
  * Keying on `to` (not `from`) is what makes the Break→Work moment break-agnostic:
  * LONG_BREAK→WORK reuses the same copy as SHORT_BREAK→WORK and never throws.
  */
@@ -56,7 +69,7 @@ export function resolveCopy(
   numbers: NotificationCopyNumbers,
 ): NotificationCopy {
   if (moment.kind === 'OVERDUE') {
-    return { title: 'Break ran over', body: 'Ready to focus again?' };
+    return OVERDUE_COPY;
   }
   if (moment.kind === 'SESSION_COMPLETE') {
     return {
@@ -65,6 +78,46 @@ export function resolveCopy(
     };
   }
   return resolvePhaseChangeCopy(moment.to, numbers);
+}
+
+/** Typographic em dash (U+2014) — degrades to a plain ASCII hyphen, not deleted. */
+const EM_DASH = '—';
+
+/**
+ * Matches a run of one-or-more non-printable-ASCII code points (anything
+ * outside the printable range 0x20-0x7e — mirrors the acceptance suite's own
+ * ASCII-only check) with any immediately adjacent spaces/tabs, so the
+ * surrounding whitespace can be collapsed correctly when the run is removed:
+ * dropped entirely at a word boundary (leading-only or trailing-only
+ * whitespace), collapsed to a single space when it sat between two words
+ * (both sides had whitespace). The `u` flag makes `[^\x20-\x7e]` match whole
+ * Unicode code points, so surrogate-pair emoji are removed as one unit rather
+ * than leaving an orphan half.
+ */
+const NON_ASCII_RUN = /[ \t]*[^\x20-\x7e]+[ \t]*/gu;
+
+/**
+ * Single-sourced ASCII-degradation helper (DDD-8): strips emoji/non-ASCII
+ * code points and normalizes the typographic em dash to a plain hyphen, while
+ * staying grammatical (no doubled or orphaned whitespace at the removal
+ * site). Consumed by resolveCopy's callers (copy renderers) AND
+ * windowTitle.ts's ASCII title variant — one stripping rule, no second
+ * implementation ([D11], step 06-02).
+ *
+ * Because the removal regex only ever matches where a non-ASCII code point
+ * is actually present, a purely-ASCII input is returned byte-for-byte
+ * unchanged (including any existing double spaces) — this is what makes the
+ * helper idempotent and identity-preserving on ASCII-only input.
+ */
+export function stripNonAscii(text: string): string {
+  return text
+    .split(EM_DASH)
+    .join('-')
+    .replace(NON_ASCII_RUN, (run) => {
+      const hasLeadingSpace = /^[ \t]/.test(run);
+      const hasTrailingSpace = /[ \t]$/.test(run);
+      return hasLeadingSpace && hasTrailingSpace ? ' ' : '';
+    });
 }
 
 function resolvePhaseChangeCopy(
@@ -82,6 +135,9 @@ function resolvePhaseChangeCopy(
       title: `${numbers.cycleCount} pomodoros done 🎉`,
       body: `Take a proper ${numbers.longBreakMinutes}-minute break.`,
     };
+  }
+  if (to === 'OVERDUE') {
+    return OVERDUE_COPY;
   }
   return {
     title: 'Pomodoro complete 🍅',

@@ -27,7 +27,7 @@ Feature: The home recap faithfully reflects the saved configuration
     Then the recap shows the theme name "Ocean"
     And the recap shows the timing "25 · 5 × 4"
     And the recap shows the long break "15m"
-    And the recap shows notifications "On"
+    And the recap shows notifications "Banner + bell"
     And the footer note shows the resolved config file path
 
   # -----------------------------------------------------------------------

@@ -61,7 +61,7 @@ function configResultFor(paletteName: PaletteName = 'ocean'): ConfigResult {
     autoDetectedAscii: false,
     resolvedPalette: getPalette(paletteName),
     paletteName,
-    notifications: true,
+    notifications: 'banner+bell',
   };
 }
 

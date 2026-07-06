@@ -18,6 +18,7 @@ import {
   type Palette,
   type PaletteName,
 } from './domain/palette.js';
+import { parseNotificationMode, type NotificationMode } from './domain/notificationMode.js';
 import { detectNonUnicode } from './utils/unicodeDetect.js';
 
 export interface StartFlags {
@@ -54,12 +55,15 @@ export interface ConfigResult {
    */
   paletteName: PaletteName;
   /**
-   * Whether desktop notifications are enabled (config.json "notifications",
-   * default true). NOT a domain SessionConfig field (ADR-014 / DD-1): it is a
-   * composition-root concern surfaced here so index.ts can select the real
-   * NotificationAdapter (true) or the NullNotificationAdapter (false).
+   * The resolved notification mode (config.json "notifications", default
+   * "banner+bell" — DDD-1/[D6]/[D10]). NOT a domain SessionConfig field
+   * (ADR-014 / DD-1): it is a composition-root concern surfaced here so
+   * index.ts's buildNotificationPort can wire the mode-appropriate adapter
+   * bundle. Resolved via parseNotificationMode at the single config parse
+   * (DD-4); an invalid raw value already triggered its one stderr warning
+   * before this field is set.
    */
-  notifications: boolean;
+  notifications: NotificationMode;
 }
 
 /**
@@ -224,9 +228,19 @@ export function loadConfig(flags: StartFlags): ConfigResult {
   const paletteName = noColor ? DEFAULT_PALETTE_NAME : resolvePaletteNameFor(flags, fileConfig);
   const resolvedPalette = getPalette(paletteName);
 
-  // Notifications (ADR-014 / DD-1): composition-root concern, not a SessionConfig
-  // field. Default true; only an explicit `false` in config.json turns it off.
-  const notifications = fileConfig.notifications !== false;
+  // Notifications (ADR-014 / DD-1 / DDD-1): composition-root concern, not a
+  // SessionConfig field. Resolved via the single parseNotificationMode call
+  // (DD-4 single-parse precedent, mirroring palette/timing). An unknown raw
+  // value ([D10]) writes EXACTLY ONE stderr warning naming the valid modes and
+  // falls back to the default — the session still starts, never blocks.
+  const parsedNotifications = parseNotificationMode(fileConfig.notifications);
+  if (parsedNotifications.invalid !== undefined) {
+    process.stderr.write(
+      `Unknown notifications setting "${parsedNotifications.invalid}" in chromato config.json. ` +
+        `Valid values: banner+bell, banner, bell, off. Using the default.\n`,
+    );
+  }
+  const notifications = parsedNotifications.mode;
 
   return { config, autoDetectedAscii: autoDetected, resolvedPalette, paletteName, notifications };
 }

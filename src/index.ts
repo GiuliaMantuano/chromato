@@ -117,35 +117,211 @@ const [
 ] as const);
 
 /**
- * Selects the NotificationPort for a session (ADR-014 / DD-1). The wizard's
- * notifications=false is a composition-root injection, not a domain field: when
- * off, the no-op NullNotificationAdapter is wired so a work→break transition fires
- * no desktop notification and no bell; otherwise the real NotificationAdapter is
- * used. Either way a NotificationPort is returned and SessionService is untouched.
- * Shared by every session launch path (start action, wizard launch, home Start).
+ * The mode→composite factory (DDD-2 wiring table, slice-03; slice-05 extends
+ * it to the minimal path per [D9] — mode semantics apply uniformly):
+ *   banner+bell -> [visualNotifier, bell, title]
+ *   banner      -> [visualNotifier, title]
+ *   bell        -> [bell, title]
+ *   off         -> [] (empty composite — the null object, DDD-2)
+ * No mode flags inside the adapters — the bundle choice is made HERE only.
+ * `visualNotifier` is the in-frame banner for the TUI path (the TuiAdapter
+ * instance) or the persistent-line printer for the minimal path (the
+ * MinimalAdapter instance, slice-05); title gating passes the `true` literal
+ * to createWindowTitleAdapter's non-nullable overload (mode is already known
+ * non-off in every branch that constructs one). Returns the composed port
+ * plus the WindowTitleAdapter (or null for "off") so the caller can drive its
+ * start()/stop() lifecycle (03-03).
  */
 async function buildNotificationPort(
-  notifications: boolean,
-  config: import('./domain/config.js').SessionConfig,
-): Promise<import('./domain/ports.js').NotificationPort> {
-  if (!notifications) {
-    const { NullNotificationAdapter } = await import('./adapters/nullNotificationAdapter.js');
-    return new NullNotificationAdapter();
+  mode: import('./domain/notificationMode.js').NotificationMode,
+  visualNotifier: import('./domain/ports.js').NotificationPort,
+  useAscii: boolean,
+): Promise<{
+  port: import('./domain/ports.js').NotificationPort;
+  windowTitleAdapter: import('./adapters/windowTitleAdapter.js').WindowTitleAdapter | null;
+}> {
+  const { CompositeNotificationAdapter } = await import(
+    './adapters/compositeNotificationAdapter.js'
+  );
+  const { modeIncludesBanner, modeIncludesBell } = await import('./domain/notificationMode.js');
+
+  if (mode === 'off') {
+    return { port: new CompositeNotificationAdapter([]), windowTitleAdapter: null };
   }
-  // Derive the resolved copy NUMBERS from the SAME ConfigResult.config the session
-  // uses (SC-07: single-sourced, no second loadConfig) — seconds ÷ 60 → minutes,
-  // mirroring reconfigureSeed's toMinutes and the TuiAdapter(resolvedPalette)
-  // precedent. `numbers` is a REQUIRED ctor arg (no default) — omitting it is a
-  // compile error, so the copy can never silently say "Take 5" when the user's
-  // break is 10 (decision 7 / D-NB-7).
-  const numbers: import('./domain/notificationCopy.js').NotificationCopyNumbers = {
+
+  const { createWindowTitleAdapter } = await import('./adapters/windowTitleAdapter.js');
+  const windowTitleAdapter = createWindowTitleAdapter(true, useAscii);
+
+  const children: import('./domain/ports.js').NotificationPort[] = [];
+  if (modeIncludesBanner(mode)) {
+    children.push(visualNotifier);
+  }
+  if (modeIncludesBell(mode)) {
+    const { BellNotificationAdapter } = await import('./adapters/bellNotificationAdapter.js');
+    children.push(new BellNotificationAdapter());
+  }
+  children.push(windowTitleAdapter);
+
+  return { port: new CompositeNotificationAdapter(children), windowTitleAdapter };
+}
+
+/**
+ * Derive the resolved copy NUMBERS from the SAME ConfigResult.config the session
+ * uses (SC-07: single-sourced, no second loadConfig) — seconds ÷ 60 → minutes,
+ * mirroring reconfigureSeed's toMinutes and the TuiAdapter(resolvedPalette)
+ * precedent. `numbers` is a REQUIRED arg wherever copy is resolved (no default) —
+ * omitting it is a compile error, so the copy can never silently say "Take 5"
+ * when the user's break is 10 (decision 7 / D-NB-7). Shared by the desktop
+ * NotificationAdapter (minimal path) and the TuiAdapter in-frame banner
+ * (in-terminal-notifications slice-01).
+ */
+function copyNumbersFrom(
+  config: import('./domain/config.js').SessionConfig,
+): import('./domain/notificationCopy.js').NotificationCopyNumbers {
+  return {
     workMinutes: Math.round(config.workDurationSeconds / 60),
     breakMinutes: Math.round(config.breakDurationSeconds / 60),
     longBreakMinutes: Math.round(config.longBreakDurationSeconds / 60),
     cycleCount: config.cycleCount,
   };
-  const { NotificationAdapter } = await import('./adapters/notificationAdapter.js');
-  return new NotificationAdapter(numbers);
+}
+
+/**
+ * Launch a Pomodoro session from an already-loaded ConfigResult. The SINGLE
+ * session-launch implementation shared by every entry point: the `start`
+ * action's minimal and TUI branches, the wizard's Summary-confirm handoff, and
+ * the home screen's "Start" choice (SC-06, AC-RH-04.2 / K8 — no second
+ * loadConfig). buildNotificationPort has exactly one wiring point: here.
+ *
+ * Mode 'minimal': plain-text output — never imports ink/react (dependency-
+ * cruiser rule / AC-03.1 budget), prints the banner, and wires the SAME
+ * mode-driven buildNotificationPort composite the TUI path uses (slice-05,
+ * [D9]): MinimalAdapter itself stands in as the "visualNotifier" — its
+ * persistent-line printer takes the banner slot.
+ *
+ * Mode 'tui': awaits the pre-loaded startModulesP fast-path when available
+ * (AC-05.1 first-frame budget; non-null only on a non-minimal `start`
+ * invocation — every other caller falls back to the same dynamic imports).
+ * In-terminal-notifications slice-02 (DDD-2 default bundle): the TUI path's
+ * NotificationPort is a CompositeNotificationAdapter fanning each moment out
+ * to the in-frame banner (the TuiAdapter itself, slice-01 spike promotion)
+ * and the TTY-gated BellNotificationAdapter. The legacy notifications=false
+ * boolean keeps the null wiring; the config enum ("banner"/"bell"/...) lands
+ * in slice-03.
+ *
+ * `announceAutoDetectedAscii` gates the ASCII auto-detection note — passed only
+ * by the `start` action's TUI branch (not when --ascii explicit, never on the
+ * wizard/home launches).
+ *
+ * Callers own process.exit — this helper only runs the session to completion.
+ */
+async function launchSession(
+  configResult: import('./configLoader.js').ConfigResult,
+  mode: 'tui' | 'minimal',
+  options: { announceAutoDetectedAscii?: boolean } = {},
+): Promise<void> {
+  const { config, autoDetectedAscii, resolvedPalette, notifications } = configResult;
+
+  if (mode === 'minimal') {
+    // Minimal / no-color mode: plain-text output, no TUI, no ink/react.
+    const [{ MinimalAdapter }, { SessionService }, { PersistenceAdapter }] = await Promise.all([
+      import('./adapters/minimalAdapter.js'),
+      import('./application/sessionService.js'),
+      import('./adapters/persistenceAdapter.js'),
+    ] as const);
+
+    printBanner(resolvedPalette, program.opts().color === false);
+    const renderAdapter = new MinimalAdapter();
+    renderAdapter.attachNotificationCopy(copyNumbersFrom(config));
+    const persistenceAdapter = new PersistenceAdapter();
+
+    // In-terminal-notifications slice-05 ([D9]): the minimal path wires the
+    // SAME mode-driven composite factory the TUI path uses (buildNotificationPort),
+    // with MinimalAdapter itself standing in as the "visualNotifier" — its own
+    // persistent-line printer takes the banner slot.
+    const { port: notificationAdapter, windowTitleAdapter } = await buildNotificationPort(
+      notifications,
+      renderAdapter,
+      config.useAscii,
+    );
+    const service = new SessionService(
+      renderAdapter,
+      persistenceAdapter,
+      notificationAdapter,
+      persistenceAdapter,
+    );
+
+    windowTitleAdapter?.start();
+    process.on('SIGTERM', () => {
+      service.interrupt();
+    });
+    await service.run(config);
+    windowTitleAdapter?.stop();
+    return;
+  }
+
+  // Full TUI mode: await the pre-loaded modules when the `start` fast-path fired
+  // (already resolving in parallel since the argv check); otherwise import now.
+  const [{ TuiAdapter }, { SessionService }, { PersistenceAdapter }] = await (startModulesP ??
+    Promise.all([
+      import('./adapters/tuiAdapter.js'),
+      import('./application/sessionService.js'),
+      import('./adapters/persistenceAdapter.js'),
+    ] as const));
+
+  // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
+  if (options.announceAutoDetectedAscii && autoDetectedAscii) {
+    process.stdout.write(
+      'Note: Unicode not detected — using ASCII progress bar. Pass --ascii to suppress this message.\n',
+    );
+  }
+
+  const tuiAdapter = new TuiAdapter(resolvedPalette);
+  tuiAdapter.attachNotificationCopy(copyNumbersFrom(config));
+
+  // In-terminal-notifications slice-03 (DDD-2 wiring table): the TUI path's
+  // NotificationPort is the mode-driven composite bundle built by
+  // buildNotificationPort — banner+bell/banner/bell/off, per ConfigResult's
+  // resolved mode ([D6]/[D10]). NO pipe special-casing here — the [D8] gate
+  // lives inside each adapter.
+  const { port: tuiNotificationPort, windowTitleAdapter } = await buildNotificationPort(
+    notifications,
+    tuiAdapter,
+    config.useAscii,
+  );
+
+  const persistenceAdapter = new PersistenceAdapter();
+  const service = new SessionService(
+    tuiAdapter,
+    persistenceAdapter,
+    tuiNotificationPort,
+    persistenceAdapter,
+  );
+
+  // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
+  // service exists, closing the RenderPort↔SessionControlPort cycle without a static
+  // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
+  tuiAdapter.attachControl(service);
+
+  // DDD-4 lifecycle invariant: wire, start(), then run(). IDLE→WORK emits no
+  // PHASE_CHANGED, so this lifecycle call IS the session-start title (save the
+  // user's title with XTWINOPS 22, then set the WORK title). The SINGLE
+  // stop() after run() resolves (03-03) covers every exit path — Q keypress
+  // (routed to SessionControlPort.quit() via attachControl above), Ctrl+C
+  // (SessionService.run()'s own SIGINT handler), SIGTERM (below), and natural
+  // completion — because all of them converge on session.interrupt() setting
+  // isInterrupted(), which is the ONLY thing run()'s tick loop checks before
+  // resolving. No per-signal special-casing here (DDD-12): stop()'s
+  // neutral-then-restore ordering is unconditional, so whichever path
+  // resolves run() first still leaves the terminal titled "chromato", never
+  // a stale phase title (AC-06.2/AC-06.3/AC-06.8).
+  windowTitleAdapter?.start();
+
+  process.on('SIGTERM', () => {
+    service.interrupt();
+  });
+  await service.run(config);
+  windowTitleAdapter?.stop();
 }
 
 const program = new Command();
@@ -250,73 +426,16 @@ program
         process.stderr.write(`${(err as Error).message}\n`);
         process.exit(1);
       }
-      const { config, autoDetectedAscii, resolvedPalette, notifications } = configResult;
-
       // Use MinimalAdapter when --minimal is set OR when color is suppressed (--no-color / NO_COLOR).
       // Color suppression implies the caller wants plain text output with no ANSI sequences.
-      const useMinimalAdapter = opts.minimal || !config.useColor;
+      const useMinimalAdapter = opts.minimal || !configResult.config.useColor;
 
       if (useMinimalAdapter) {
-        // Minimal / no-color mode: plain-text output, no TUI, no ink/react.
-        const [{ MinimalAdapter }, { SessionService }, { PersistenceAdapter }] = await Promise.all([
-          import('./adapters/minimalAdapter.js'),
-          import('./application/sessionService.js'),
-          import('./adapters/persistenceAdapter.js'),
-        ] as const);
-
-        printBanner(resolvedPalette, program.opts().color === false);
-        const renderAdapter = new MinimalAdapter();
-        const persistenceAdapter = new PersistenceAdapter();
-        const notificationAdapter = await buildNotificationPort(notifications, config);
-        const service = new SessionService(
-          renderAdapter,
-          persistenceAdapter,
-          notificationAdapter,
-          persistenceAdapter,
-        );
-
-        process.on('SIGTERM', () => {
-          service.interrupt();
-        });
-        await service.run(config);
+        await launchSession(configResult, 'minimal');
         process.exit(0);
       }
 
-      // Full TUI mode: await the pre-loaded modules (already resolving in parallel since argv check).
-      const [{ TuiAdapter }, { SessionService }, { PersistenceAdapter }] = await (startModulesP ??
-        Promise.all([
-          import('./adapters/tuiAdapter.js'),
-          import('./application/sessionService.js'),
-          import('./adapters/persistenceAdapter.js'),
-        ] as const));
-
-      // Print informational message when ASCII mode was auto-detected (not when --ascii explicit).
-      if (autoDetectedAscii) {
-        process.stdout.write(
-          'Note: Unicode not detected — using ASCII progress bar. Pass --ascii to suppress this message.\n',
-        );
-      }
-
-      const tuiAdapter = new TuiAdapter(resolvedPalette);
-      const persistenceAdapter = new PersistenceAdapter();
-      const notificationAdapter = await buildNotificationPort(notifications, config);
-      const service = new SessionService(
-        tuiAdapter,
-        persistenceAdapter,
-        notificationAdapter,
-        persistenceAdapter,
-      );
-
-      // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
-      // service exists, closing the RenderPort↔SessionControlPort cycle without a static
-      // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
-      tuiAdapter.attachControl(service);
-
-      process.on('SIGTERM', () => {
-        service.interrupt();
-      });
-
-      await service.run(config);
+      await launchSession(configResult, 'tui', { announceAutoDetectedAscii: true });
       process.exit(0);
     },
   );
@@ -341,45 +460,7 @@ async function launchSessionFromWizard(
     cycles: result.cycles,
     palette: result.palette,
   });
-  await launchSessionFromConfigResult(configResult);
-}
-
-/**
- * Start a real TUI session from an already-loaded ConfigResult. The home screen's
- * "Start" choice reuses this with the config it ALREADY loaded for the recap — no
- * second loadConfig call (AC-RH-04.2 / K8). launchSessionFromWizard funnels here too
- * so the wizard and home start paths share one launch implementation (SC-06).
- */
-async function launchSessionFromConfigResult(
-  configResult: import('./configLoader.js').ConfigResult,
-): Promise<void> {
-  const { config, resolvedPalette, notifications } = configResult;
-
-  const [{ TuiAdapter }, { SessionService }, { PersistenceAdapter }] = await Promise.all([
-    import('./adapters/tuiAdapter.js'),
-    import('./application/sessionService.js'),
-    import('./adapters/persistenceAdapter.js'),
-  ] as const);
-
-  const tuiAdapter = new TuiAdapter(resolvedPalette);
-  const persistenceAdapter = new PersistenceAdapter();
-  const notificationAdapter = await buildNotificationPort(notifications, config);
-  const service = new SessionService(
-    tuiAdapter,
-    persistenceAdapter,
-    notificationAdapter,
-    persistenceAdapter,
-  );
-
-  // ADR-017 §8 late injection: hand the TUI a SessionControlPort reference AFTER the
-  // service exists, closing the RenderPort↔SessionControlPort cycle without a static
-  // adapter→application edge. Must precede run() so s/q/Q routing is live on first frame.
-  tuiAdapter.attachControl(service);
-
-  process.on('SIGTERM', () => {
-    service.interrupt();
-  });
-  await service.run(config);
+  await launchSession(configResult, 'tui');
 }
 
 /**
@@ -502,7 +583,7 @@ program.action(async () => {
     if (choice.kind === 'start') {
       // Start reuses the config ALREADY loaded for the recap — no second loadConfig
       // (AC-RH-04.2 / K8) — funnelling through the shared launch path (SC-06).
-      await launchSessionFromConfigResult(configResult);
+      await launchSession(configResult, 'tui');
       process.exit(0);
     }
     if (choice.kind === 'reconfigure') {

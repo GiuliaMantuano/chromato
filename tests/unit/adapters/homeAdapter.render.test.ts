@@ -25,6 +25,7 @@ import chalk from 'chalk';
 import { HomeScreen } from '../../../src/adapters/homeAdapter.js';
 import type { ConfigResult } from '../../../src/configLoader.js';
 import { getPalette, type PaletteName } from '../../../src/domain/palette.js';
+import { MODE_LABELS, type NotificationMode } from '../../../src/domain/notificationMode.js';
 
 /** Truecolor SGR introducer for a #rrggbb hex string, e.g. '38;2;77;184;232'. */
 function hexToSgr(hex: string): string {
@@ -47,7 +48,7 @@ function stripAnsi(frame: string): string {
  */
 function configResultFor(
   paletteName: PaletteName,
-  opts: { notifications?: boolean } = {},
+  opts: { notifications?: NotificationMode } = {},
 ): ConfigResult {
   return {
     config: {
@@ -61,7 +62,7 @@ function configResultFor(
     autoDetectedAscii: false,
     resolvedPalette: getPalette(paletteName),
     paletteName,
-    notifications: opts.notifications ?? true,
+    notifications: opts.notifications ?? 'banner+bell',
   };
 }
 
@@ -80,7 +81,7 @@ describe('HomeScreen render (ink-testing-library)', () => {
   it('renders the recap rows for the saved config: theme label, timing, long break, notifications, footer config-path', () => {
     const harness = render(
       React.createElement(HomeScreen, {
-        config: configResultFor('ocean', { notifications: true }),
+        config: configResultFor('ocean', { notifications: 'banner+bell' }),
         tmuxDetected: false,
         configPath: CONFIG_PATH,
       }),
@@ -93,8 +94,8 @@ describe('HomeScreen render (ink-testing-library)', () => {
     expect(plain).toContain('25 · 5 × 4');
     // Long break note (minutes) on the timing row.
     expect(plain).toContain('long break 15m');
-    // Notifications On (label + value sit together on the recap row).
-    expect(plain).toMatch(/Notifications\s+On/);
+    // Notifications mode label (MODE_LABELS['banner+bell']), not boolean On/Off.
+    expect(plain).toMatch(/Notifications\s+Banner \+ bell/);
     // Footer config-path note: the resolved config file path.
     expect(plain).toContain(CONFIG_PATH);
     harness.unmount();
@@ -121,13 +122,30 @@ describe('HomeScreen render (ink-testing-library)', () => {
   it('renders Notifications Off when the saved config disables them', () => {
     const harness = render(
       React.createElement(HomeScreen, {
-        config: configResultFor('ocean', { notifications: false }),
+        config: configResultFor('ocean', { notifications: 'off' }),
         tmuxDetected: false,
         configPath: CONFIG_PATH,
       }),
     );
     const plain = stripAnsi(harness.lastFrame() ?? '');
     expect(plain).toMatch(/Notifications\s+Off/);
+    harness.unmount();
+  });
+
+  // AC-04.5: the recap row sources its value from MODE_LABELS (DDD-10 shared
+  // artifact), not a locally-restated string. "bell" is a distinct mode from
+  // the two already covered above (banner+bell, off) — its mapped label
+  // ("Bell") only appears if homeAdapter reads MODE_LABELS[mode] directly.
+  it('renders the MODE_LABELS value for a representative non-boolean mode ("bell" -> "Bell")', () => {
+    const harness = render(
+      React.createElement(HomeScreen, {
+        config: configResultFor('ocean', { notifications: 'bell' }),
+        tmuxDetected: false,
+        configPath: CONFIG_PATH,
+      }),
+    );
+    const plain = stripAnsi(harness.lastFrame() ?? '');
+    expect(plain).toMatch(new RegExp(`Notifications\\s+${MODE_LABELS.bell}\\b`));
     harness.unmount();
   });
 

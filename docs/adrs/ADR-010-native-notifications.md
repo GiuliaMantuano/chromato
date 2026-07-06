@@ -1,6 +1,6 @@
 # ADR-010: Replace node-notifier with native OS commands (osascript / notify-send)
 
-**Status**: Accepted
+**Status**: Accepted. Superseded by ADR-022 (in-terminal-notifications, 2026-07-06).
 **Date**: 2026-05-30
 **Feature**: pomodoro-timer-cli (bugfix: fix-macos-notification-silent)
 

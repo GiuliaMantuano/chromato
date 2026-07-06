@@ -249,9 +249,13 @@ Then(
 );
 
 Then('the recap shows notifications {string}', function (this: ReturningHomeWorld, value: string) {
-  // Match "Notifications  On" / "Notifications  Off" — the recap row label + value.
-  // The label and value render in separate colour spans, so strip SGR first.
-  const re = new RegExp(`Notifications\\s+${value}\\b`);
+  // Match "Notifications  Banner + bell" / "Notifications  Off" — the recap row
+  // label + value. The label and value render in separate colour spans, so strip
+  // SGR first. Mode labels (DDD-10) can contain regex-special characters (e.g.
+  // "Banner + bell"), so the value must be escaped before building the RegExp —
+  // same escaping pattern as the long-break step above.
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`Notifications\\s+${escaped}\\b`);
   assert.ok(re.test(stripAnsi(this.capturedOutput)), `expected notifications "${value}" in recap`);
 });
 

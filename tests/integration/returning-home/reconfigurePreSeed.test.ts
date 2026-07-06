@@ -173,7 +173,8 @@ describe('Reconfigure pre-seed — composition-root integration (R2 / OQ-1)', ()
     // The seed itself, derived through the production path, reflects the saved file.
     expect(seed.palette).toBe('ocean');
     expect(seed.work).toBe(50);
-    expect(seed.notifications).toBe(false);
+    // Legacy boolean false in config.json maps to "off" ([D6]/DDD-1).
+    expect(seed.notifications).toBe('off');
 
     const lines = (driver.lastFrame() ?? '').split('\n');
     const oceanLine = lines.find((l) => l.includes('Ocean')) ?? '';

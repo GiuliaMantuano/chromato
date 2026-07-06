@@ -1,9 +1,11 @@
 /**
  * TuiAdapter: Ink 4.x React component renderer.
- * Implements RenderPort.
+ * Implements RenderPort and NotificationPort (in-terminal-notifications
+ * slice-01: phase-change notifications render as an in-frame banner).
  *
  * Renders: phase label, progress bar (with percentage), countdown timer,
- * and session badge. Phase labels are always visible as text (accessibility NFR-05.1).
+ * session badge, and (when active) the warm-copy notification banner below
+ * the frame. Phase labels are always visible as text (accessibility NFR-05.1).
  *
  * Compact mode: activates when columns < 40. Phase label is stacked above
  * the progress bar to prevent overflow on narrow terminals.
@@ -13,15 +15,28 @@
 
 import React from 'react';
 import { render, Text, Box, useApp, useStdout, useInput, useStdin } from 'ink';
-import type { RenderPort, SessionControlPort } from '../domain/ports.js';
+import type { RenderPort, SessionControlPort, NotificationPort } from '../domain/ports.js';
 import type { SessionSnapshot } from '../domain/types.js';
 import type { PomodoroPhase } from '../domain/phase.js';
 import { getPalette, type Palette } from '../domain/palette.js';
+import {
+  resolveCopy,
+  stripNonAscii,
+  type NotificationCopy,
+  type NotificationCopyNumbers,
+  type NotificationMoment,
+} from '../domain/notificationCopy.js';
 import { Footer, type KeyHint } from './tui/components.js';
 
 const COMPACT_THRESHOLD = 40;
 const BLOCK_FULL = '█';
 const BLOCK_EMPTY = '░';
+
+// In-frame notification banner (in-terminal-notifications slice-01, spike
+// promotion 2026-07-04). Owner decisions: banner BELOW the frame, 10s auto-clear.
+const BANNER_AUTO_CLEAR_MS = 10_000;
+const BANNER_MAX_WIDTH = 60;
+const BANNER_MIN_WIDTH = 20;
 
 const ALTERNATE_SCREEN_ENTER = '\x1b[?1049h\x1b[2J\x1b[H';
 const ALTERNATE_SCREEN_EXIT = '\x1b[?1049l';
@@ -42,6 +57,84 @@ function formatOverdueCountdown(overdueElapsedSeconds: number): string {
 function isOverdueDimPulse(overdueElapsedSeconds: number): boolean {
   return Math.floor(overdueElapsedSeconds / 2) % 2 === 1;
 }
+
+/**
+ * In-frame notification banner state (in-terminal-notifications slice-01).
+ * Held by TuiAdapter (set on NotificationPort calls), rendered by TimerFrame
+ * BELOW the frame content (owner decision 2026-07-04).
+ */
+export interface BannerNotification {
+  readonly copy: NotificationCopy;
+  /** Destination phase — selects the palette colour for the banner. */
+  readonly phase: PomodoroPhase;
+  /** Epoch ms when the banner was shown; drives pulse + 10s auto-clear. */
+  readonly shownAtMs: number;
+}
+
+/**
+ * Mirrors the shipped isOverdueDimPulse cadence (dim on odd 2-second interval),
+ * validated visually in the spike — one pulse rhythm across the whole TUI.
+ */
+function isBannerDimPulse(shownAtMs: number, nowMs: number): boolean {
+  return isOverdueDimPulse((nowMs - shownAtMs) / 1000);
+}
+
+/**
+ * Pads a banner line to a fixed width so the inverse-video bar renders solid.
+ * NOTE: String.length approximates terminal cells (the copy's emoji are 2
+ * UTF-16 units ≈ 2 cells); grapheme-aware width is a DELIVER refinement
+ * (spike finding: ±1 cell drift on emoji-single-width terminals).
+ */
+function padBannerLine(text: string, width: number): string {
+  if (text.length >= width) {
+    return text;
+  }
+  return text + ' '.repeat(width - text.length);
+}
+
+/**
+ * Degrades banner copy text for the current NO_COLOR/ASCII mode (step 06-02,
+ * the only TuiAdapter extension DESIGN authorizes): ASCII mode strips
+ * emoji/non-ASCII via the single-sourced stripNonAscii helper (DDD-8); colour
+ * suppression wraps the (possibly already-degraded) text in ">>> … <<<" ASCII
+ * emphasis markers, mirroring the FooterHints colour-suppression pattern
+ * (plain text when useColor is false) and MinimalAdapter's identical
+ * treatment of its persistent notification line.
+ */
+function degradeBannerText(text: string, useAscii: boolean, useColor: boolean): string {
+  const degraded = useAscii ? stripNonAscii(text) : text;
+  return useColor ? degraded : `>>> ${degraded} <<<`;
+}
+
+/**
+ * Inverse-video pulsing banner rendering the warm notification copy in the
+ * destination phase's palette colour. Placement (below the frame) is owned by
+ * TimerFrame; NO_COLOR/ASCII styling refinement is step 06-02 scope.
+ */
+const NotificationBanner: React.FC<{
+  notification: BannerNotification;
+  palette: Palette;
+  columns: number;
+  useColor: boolean;
+  useAscii: boolean;
+}> = ({ notification, palette, columns, useColor, useAscii }) => {
+  const dim = isBannerDimPulse(notification.shownAtMs, Date.now());
+  const colour = palette.phases[notification.phase].fg;
+  const width = Math.min(Math.max(columns - 4, BANNER_MIN_WIDTH), BANNER_MAX_WIDTH);
+  const titleText = degradeBannerText(notification.copy.title, useAscii, useColor);
+  const bodyText = degradeBannerText(notification.copy.body, useAscii, useColor);
+  const titleLine = padBannerLine(`  ${titleText}`, width);
+  const bodyLine = padBannerLine(`  ${bodyText}`, width);
+  const styled = useColor ? { inverse: true, color: colour, dimColor: dim } : {};
+  return (
+    <Box flexDirection="column" marginTop={1}>
+      <Text bold {...styled}>
+        {titleLine}
+      </Text>
+      <Text {...styled}>{bodyLine}</Text>
+    </Box>
+  );
+};
 
 /**
  * Phase-aware footer hints (HARD #3, design §6). Pure phase -> KeyHint[] mapper,
@@ -118,6 +211,12 @@ export interface FrameProps {
    * (raw mode stays active so Ink keeps consuming keys). NEW for Slice 01.
    */
   control?: SessionControlPort | undefined;
+  /**
+   * Active in-frame notification banner, or null/absent for none. Set by
+   * TuiAdapter on NotificationPort calls; rendered BELOW the frame content
+   * (in-terminal-notifications slice-01, owner decision 2026-07-04).
+   */
+  notification?: BannerNotification | null | undefined;
 }
 
 const PHASE_DISPLAY_LABELS: Record<PomodoroPhase, string> = {
@@ -134,6 +233,7 @@ export const TimerFrame: React.FC<FrameProps> = ({
   onUnmount,
   columns: columnsProp,
   control,
+  notification,
 }) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -207,6 +307,19 @@ export const TimerFrame: React.FC<FrameProps> = ({
     }
   }, [exit, onUnmount]);
 
+  // Banner BELOW the frame (owner decision, spike 2026-07-04) — shared by both
+  // layouts. Compact-mode banner refinement is a DESIGN call; the clamp keeps
+  // it within the column budget meanwhile.
+  const bannerNode = notification ? (
+    <NotificationBanner
+      notification={notification}
+      palette={activePalette}
+      columns={resolvedColumns}
+      useColor={useColor}
+      useAscii={useAscii}
+    />
+  ) : null;
+
   if (isCompact) {
     // Compact layout: stack elements vertically to fit in narrow terminal
     return (
@@ -233,6 +346,7 @@ export const TimerFrame: React.FC<FrameProps> = ({
           <Text dimColor>{todayLabel}</Text>
         </Box>
         <FooterHints hints={footerHint(phase, true)} useColor={useColor} />
+        {bannerNode}
       </Box>
     );
   }
@@ -261,15 +375,19 @@ export const TimerFrame: React.FC<FrameProps> = ({
         <Text bold>{countdown}</Text>
       </Box>
       <FooterHints hints={footerHint(phase)} useColor={useColor} />
+      {bannerNode}
     </Box>
   );
 };
 
-export class TuiAdapter implements RenderPort {
+export class TuiAdapter implements RenderPort, NotificationPort {
   private inkInstance: ReturnType<typeof render> | null = null;
   private testMode: boolean;
   private palette: Palette;
   private control: SessionControlPort | undefined = undefined;
+  private copyNumbers: NotificationCopyNumbers | null = null;
+  private banner: BannerNotification | null = null;
+  private lastSnapshot: SessionSnapshot | null = null;
 
   constructor(palette: Palette = getPalette('ocean')) {
     this.palette = palette;
@@ -286,7 +404,70 @@ export class TuiAdapter implements RenderPort {
     this.control = control;
   }
 
+  /**
+   * Inject the resolved copy numbers (seconds ÷ 60 → minutes, derived once at
+   * the composition root from the SAME ConfigResult.config the session uses —
+   * mirrors the NotificationAdapter(numbers) ctor and TuiAdapter(resolvedPalette)
+   * precedents). Required before the NotificationPort methods render a banner.
+   * NEW for in-terminal-notifications slice-01 (spike promotion 2026-07-04).
+   */
+  attachNotificationCopy(numbers: NotificationCopyNumbers): void {
+    this.copyNumbers = numbers;
+  }
+
+  /** NotificationPort: phase change → warm copy banner in the frame. */
+  notifyPhaseChange(from: PomodoroPhase, to: PomodoroPhase): void {
+    this.showBanner({ kind: 'PHASE_CHANGE', from, to }, to);
+  }
+
+  /** NotificationPort: break ran over → overdue banner. */
+  notifyOverdue(): void {
+    this.showBanner({ kind: 'OVERDUE' }, 'OVERDUE');
+  }
+
+  /**
+   * NotificationPort: session complete — INTENTIONAL no-op in this walking
+   * skeleton. The domain emits SESSION_COMPLETED together with the WORK→BREAK
+   * PHASE_CHANGED in the same event drain (session.ts), so a single-slot banner
+   * would instantly supersede the owner-validated "Pomodoro complete 🍅" copy
+   * with the session summary. Which moment wins (or how they stack) is a
+   * DESIGN/DELIVER decision — recorded in spike/upstream-issues.md.
+   */
+  notifySessionComplete(_focusedMinutes: number): void {
+    // Deliberate no-op (slice-01). See doc comment above.
+  }
+
+  /**
+   * Resolve the warm copy and show it as the active banner. A new notification
+   * supersedes the current banner; otherwise the banner auto-clears after 10s
+   * (checked on each tick render). Re-renders immediately so the banner appears
+   * on the transition frame, not one tick later (SessionService renders BEFORE
+   * draining events).
+   */
+  private showBanner(moment: NotificationMoment, phase: PomodoroPhase): void {
+    if (this.copyNumbers === null) {
+      return;
+    }
+    this.banner = {
+      copy: resolveCopy(moment, this.copyNumbers),
+      phase,
+      shownAtMs: Date.now(),
+    };
+    if (this.lastSnapshot !== null && this.inkInstance !== null) {
+      this.render(this.lastSnapshot);
+    }
+  }
+
+  /** The active banner, expiring it after BANNER_AUTO_CLEAR_MS (10s, owner). */
+  private activeBanner(): BannerNotification | null {
+    if (this.banner !== null && Date.now() - this.banner.shownAtMs >= BANNER_AUTO_CLEAR_MS) {
+      this.banner = null;
+    }
+    return this.banner;
+  }
+
   render(snapshot: SessionSnapshot): void {
+    this.lastSnapshot = snapshot;
     if (this.inkInstance === null) {
       // Enter alternate screen buffer so the TUI runs in an isolated screen.
       // On exit (stop()), the primary buffer is restored and the shell prompt
@@ -299,6 +480,7 @@ export class TuiAdapter implements RenderPort {
         palette: this.palette,
         onUnmount: this.testMode ? () => undefined : undefined,
         control: this.control,
+        notification: this.activeBanner(),
       });
       this.inkInstance = render(element, { debug: this.testMode, exitOnCtrlC: false });
 
@@ -310,7 +492,12 @@ export class TuiAdapter implements RenderPort {
       }
     } else {
       this.inkInstance.rerender(
-        React.createElement(TimerFrame, { snapshot, palette: this.palette, control: this.control }),
+        React.createElement(TimerFrame, {
+          snapshot,
+          palette: this.palette,
+          control: this.control,
+          notification: this.activeBanner(),
+        }),
       );
     }
   }

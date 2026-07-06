@@ -27,6 +27,7 @@ export class Session {
   private interrupted: boolean = false;
   private completedToday: number = 0;
   private streak: number = 0;
+  private lastEndedOverdueDurationSeconds: number | null = null;
 
   constructor(config: SessionConfig, initialCompletedToday: number = 0, initialStreak: number = 0) {
     this.config = config;
@@ -125,11 +126,29 @@ export class Session {
       return;
     }
 
+    if (from === 'OVERDUE') {
+      // Capture the episode's final duration BEFORE the count-up is cleared
+      // below (KPI 1/2 data source, step 04-04) -- see takeEndedOverdueDurationSeconds().
+      this.lastEndedOverdueDurationSeconds = this.overdueElapsedSeconds;
+    }
+
     this.stateMachine.completeBreak(); // phase FIRST: current -> WORK
     this.elapsedSeconds = 0;
     this.overdueElapsedSeconds = 0; // HARD #2: clear the overdue count-up
     // completedToday left UNTOUCHED.
     this.events.push({ type: 'PHASE_CHANGED', from, to: 'WORK' });
+  }
+
+  /**
+   * Read-once surface (KPI 1/2 data source, step 04-04): returns the duration
+   * of the OVERDUE episode that just ended via skipToWork(), or null if none
+   * ended since the last call. SessionService calls this immediately after
+   * skipToWork() to persist the episode via HistoryPort.
+   */
+  takeEndedOverdueDurationSeconds(): number | null {
+    const value = this.lastEndedOverdueDurationSeconds;
+    this.lastEndedOverdueDurationSeconds = null;
+    return value;
   }
 
   interrupt(): void {

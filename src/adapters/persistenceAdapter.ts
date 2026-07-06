@@ -181,6 +181,23 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
     return row.total;
   }
 
+  /**
+   * KPI 1/2 data source (step 04-04): records one completed OVERDUE episode.
+   * Written when the episode ends (skip to WORK) or the session exits while
+   * still overdue (quit/Ctrl+C/SIGTERM) -- see SessionService's hook points.
+   * `started_at` is derived (now - duration) since the domain only surfaces
+   * the elapsed count, not a wall-clock start. Additive: sessions table and
+   * the lazy-sqlite status fast path (AC-03.1) are untouched.
+   */
+  recordOverdueEpisode(durationSeconds: number): void {
+    const db = this.openDb();
+    const recordedAt = new Date();
+    const startedAt = new Date(recordedAt.getTime() - durationSeconds * 1000);
+    db.prepare(
+      'INSERT INTO overdue_episodes (phase, started_at, duration_seconds, recorded_at) VALUES (?, ?, ?, ?)',
+    ).run('OVERDUE', startedAt.toISOString(), durationSeconds, recordedAt.toISOString());
+  }
+
   readStreak(): number {
     const db = this.openDb();
     // Compute streak: count the number of consecutive calendar days ending today
@@ -243,6 +260,13 @@ export class PersistenceAdapter implements StatePort, HistoryPort {
       CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         completed_pomodoros INTEGER NOT NULL,
+        recorded_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS overdue_episodes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phase TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        duration_seconds INTEGER NOT NULL,
         recorded_at TEXT NOT NULL
       )
     `);

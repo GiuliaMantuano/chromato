@@ -9,6 +9,7 @@
  */
 
 import type { WizardResult } from './configTypes.js';
+import { DEFAULT_NOTIFICATION_MODE } from './domain/notificationMode.js';
 
 export interface FirstRunGuardInput {
   /** process.stdin.isTTY */
@@ -40,6 +41,6 @@ export function firstRunDefaults(): WizardResult {
     break: 5,
     longBreak: 15,
     cycles: 4,
-    notifications: true,
+    notifications: DEFAULT_NOTIFICATION_MODE,
   };
 }

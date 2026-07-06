@@ -25,11 +25,23 @@ import type { SessionSnapshot } from '../domain/types.js';
 const TICK_INTERVAL_MS = 1000;
 const OVERDUE_SECOND_NOTIFICATION_SECONDS = 60;
 
+/**
+ * KPI observability (step 04-04): the driven HistoryPort gains an additive,
+ * OPTIONAL method for recording completed OVERDUE episodes. Declared as a
+ * local extension (not added to HistoryPort in ports.ts) so the many
+ * InMemory HistoryPort test doubles across the suite are structurally
+ * unaffected -- an optional member's absence is always assignment-compatible.
+ * Only PersistenceAdapter implements it concretely.
+ */
+type HistoryPortWithOverdueEpisodes = HistoryPort & {
+  recordOverdueEpisode?(durationSeconds: number): void;
+};
+
 export class SessionService implements SessionControlPort, SessionReadPort {
   private readonly renderPort: RenderPort;
   private readonly statePort: StatePort | null;
   private readonly notificationPort: NotificationPort | null;
-  private readonly historyPort: HistoryPort | null;
+  private readonly historyPort: HistoryPortWithOverdueEpisodes | null;
   private session: Session | null = null;
   private config: SessionConfig | null = null;
   private overdueSecondNotified = false;
@@ -40,7 +52,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     renderPort: RenderPort,
     statePort: StatePort | null,
     notificationPort: NotificationPort | null,
-    historyPort: HistoryPort | null,
+    historyPort: HistoryPortWithOverdueEpisodes | null,
   ) {
     this.renderPort = renderPort;
     this.statePort = statePort;
@@ -73,6 +85,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     }
 
     if (this.session.isInterrupted()) {
+      this.recordOverdueEpisodeOnExit();
       this.renderPort.stop();
       this.statePort?.writeIdle();
       return;
@@ -81,6 +94,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     this.session.tick(deltaSeconds);
 
     const snapshot = this.session.getSnapshot();
+    this.lastSnapshot = snapshot;
     this.renderPort.render(snapshot);
     this.statePort?.writeState(snapshot);
 
@@ -109,6 +123,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
       return;
     }
     this.session.skipToWork();
+    this.recordEndedOverdueEpisode(this.session.takeEndedOverdueDurationSeconds());
     const snapshot = this.session.getSnapshot();
     this.lastSnapshot = snapshot;
     this.renderPort.render(snapshot);
@@ -172,6 +187,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
       const tick = () => {
         if (session.isInterrupted()) {
           this.printInterruptSummary();
+          this.recordOverdueEpisodeOnExit();
           this.renderPort.stop();
           this.statePort?.writeIdle();
           resolve();
@@ -211,6 +227,40 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     process.stdout.write(
       `Session interrupted at ${timeStr} (${pct}% complete). Partial session not counted.\n`,
     );
+  }
+
+  /**
+   * KPI observability (step 04-04): records an OVERDUE episode ended by
+   * skipToWork() (skip() hook point), swallowing a sqlite-unavailable error
+   * the same way SESSION_COMPLETED recording does.
+   */
+  private recordEndedOverdueEpisode(durationSeconds: number | null): void {
+    if (durationSeconds === null) {
+      return;
+    }
+    try {
+      this.historyPort?.recordOverdueEpisode?.(durationSeconds);
+    } catch {
+      /* sqlite unavailable */
+    }
+  }
+
+  /**
+   * KPI observability (step 04-04): if the session exits (quit/Ctrl+C/SIGTERM)
+   * while still OVERDUE, the in-flight episode would otherwise be lost --
+   * this is the single place that already handles every exit path (both
+   * tickOnce() and run()'s tick loop reach here via isInterrupted()), parity
+   * with WindowTitleAdapter's stop() lifecycle covering every exit path.
+   * Read-once: nulls lastSnapshot so a repeated isInterrupted() pass does not
+   * double-record.
+   */
+  private recordOverdueEpisodeOnExit(): void {
+    const snapshot = this.lastSnapshot;
+    this.lastSnapshot = null;
+    if (snapshot === null || snapshot.phase !== 'OVERDUE') {
+      return;
+    }
+    this.recordEndedOverdueEpisode(snapshot.timer.overdueElapsedSeconds);
   }
 
   private processOverdueMilestones(snapshot: SessionSnapshot): void {

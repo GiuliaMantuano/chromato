@@ -161,12 +161,12 @@ The design philosophy is: **non-negotiable visibility without coercion**. chroma
 
 ### How Notifications Work
 
-OVERDUE includes a two-stage notification system:
+OVERDUE includes a two-stage notification system — the timing hasn't changed, but the delivery has. Earlier versions of chromato fired these as OS desktop notifications (`osascript` / `notify-send`); that mechanism proved unreliable for a terminal-native audience (suppressed by Focus/Do Not Disturb, hidden behind full-screen terminal sessions, invisible when the pane isn't focused). chromato now delivers both stages **in the terminal itself**, via whichever combination of banner, bell, and window title your `notifications` mode selects (`banner+bell` by default):
 
-1. **At 0:00 overdue**: The moment your break expires, your system's desktop notification fires ("Time is up!" or similar). This is immediate feedback.
-2. **At +1:00 overdue**: If you're still in OVERDUE after a full minute has passed without action, a second notification fires ("Still working? Take a break now." or similar). This is a follow-up reminder for users who missed or dismissed the first notification.
+1. **At 0:00 overdue**: The moment your break expires, `notifyOverdue()` fires — an in-frame banner appears ("Break ran over — Ready to focus again?" or similar), a single terminal bell rings (also raising the tmux window-bell flag if you're backgrounded), and the window title updates. This is immediate feedback, delivered where your eyes and ears already are.
+2. **At +1:00 overdue**: If you're still in OVERDUE after a full minute has passed without action, the same `notifyOverdue()` signal bundle fires again — a follow-up reminder for users who missed or ignored the first one.
 
-Beyond +1:00, no further notifications send. Continuous prompting becomes noise and defeats the purpose of an ambient signal.
+Beyond +1:00, no further notifications send. Continuous prompting becomes noise and defeats the purpose of an ambient signal. Which of banner, bell, and window title actually appear depends on your configured `notifications` mode (`banner` / `banner+bell` / `bell` / `off`); `off` silences all three.
 
 ### The Current Limitation: Ctrl+C Is the Only Exit in v1.0
 
@@ -209,7 +209,7 @@ The five-phase cycle, the countdown-to-count-up transition, the persistence of s
 A terminal-native developer using chromato gets:
 
 - **Ambient awareness**: Colors and animations update in your terminal window, visible from peripheral vision.
-- **Unmissable escalation**: Breaks that expire become progressively harder to ignore (color change → pulsing → notification → second notification).
+- **Unmissable escalation**: Breaks that expire become progressively harder to ignore (color change → pulsing → notification signal → second notification signal).
 - **Persistence**: Your daily session count, the cycle position, and the current timer state all survive restarts.
 - **Agency**: The system shows you what's happening but doesn't prevent you from continuing to work. The choice is informed and visible.
 - **Rhythm**: The default 25-5-15 cycle mirrors the Pomodoro Technique, but you can customize all durations and the cycle length to match your preferences.

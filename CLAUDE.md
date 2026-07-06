@@ -67,7 +67,7 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 | commander | ^15.0.0 | CLI framework |
 | better-sqlite3 | ^12.10.0 | Session history SQLite (synchronous) |
 
-OS desktop notifications are implemented **natively** (shelling out to `osascript` on macOS / `notify-send` on Linux, with a terminal-bell fallback) — no runtime package. The former `node-notifier` dependency was removed per ADR-016.
+Notifications are delivered **in-terminal**, not as OS desktop notifications: a 4-mode enum (`banner` / `banner+bell` / `bell` / `off`) drives an in-frame banner (`TuiAdapter`), a single BEL byte (`BellNotificationAdapter`), and a window-title update (`WindowTitleAdapter`), fanned out via `CompositeNotificationAdapter`. The former `osascript`/`notify-send` desktop-notification surface (and the `node-notifier` dependency it replaced, per ADR-016) was removed entirely — zero new runtime dependencies.
 
 **Dev dependencies**: vitest, @vitest/coverage-v8, ink-testing-library, tsx, esbuild, dependency-cruiser, TypeScript type packages
 
@@ -88,14 +88,18 @@ src/
     events.ts                 # TimerEvent discriminated union
     ports.ts                  # Port interfaces (RenderPort, StatePort, NotificationPort, HistoryPort)
     types.ts                  # Shared domain types (SessionSnapshot, etc.)
+    notificationMode.ts       # NotificationMode enum, legacy mapping, MODE_LABELS
+    windowTitle.ts            # Window-title text derivation per notification moment
   application/
     sessionService.ts         # start/tick/stop use case
     statusService.ts          # status subcommand use case
   adapters/
-    tuiAdapter.ts             # Ink React component TUI renderer
+    tuiAdapter.ts             # Ink React component TUI renderer + in-frame banner
     minimalAdapter.ts         # Plain-text stdout renderer (--minimal)
     statusAdapter.ts          # tmux + prompt format strings
-    notificationAdapter.ts    # node-notifier + bell fallback
+    bellNotificationAdapter.ts    # single BEL byte on interactive terminals
+    windowTitleAdapter.ts         # terminal window-title escape sequences
+    compositeNotificationAdapter.ts # fans out to banner/bell/window-title per mode
     persistenceAdapter.ts     # state.json atomic writer + better-sqlite3
   configLoader.ts             # Resolves flags > env > config file > defaults
 tests/

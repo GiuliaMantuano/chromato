@@ -109,6 +109,42 @@ module.exports = {
       from: { path: '^src/adapters/bannerAdapter\\.' },
       to: { dependencyTypes: ['npm'], path: '^react$' },
     },
+    {
+      name: 'composite-notification-adapter-no-ink',
+      severity: 'error',
+      from: { path: '^src/adapters/compositeNotificationAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^ink$' },
+    },
+    {
+      name: 'composite-notification-adapter-no-react',
+      severity: 'error',
+      from: { path: '^src/adapters/compositeNotificationAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^react$' },
+    },
+    {
+      name: 'bell-notification-adapter-no-ink',
+      severity: 'error',
+      from: { path: '^src/adapters/bellNotificationAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^ink$' },
+    },
+    {
+      name: 'bell-notification-adapter-no-react',
+      severity: 'error',
+      from: { path: '^src/adapters/bellNotificationAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^react$' },
+    },
+    {
+      name: 'window-title-adapter-no-ink',
+      severity: 'error',
+      from: { path: '^src/adapters/windowTitleAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^ink$' },
+    },
+    {
+      name: 'window-title-adapter-no-react',
+      severity: 'error',
+      from: { path: '^src/adapters/windowTitleAdapter\\.' },
+      to: { dependencyTypes: ['npm'], path: '^react$' },
+    },
 
     // Rule 4 (amended, ADR-015): adapters must not import each other — EXCEPT the
     // shared presentational src/adapters/tui/ module (an allowed import target). The

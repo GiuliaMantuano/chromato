@@ -6,7 +6,7 @@ Complete reference for every command, flag, environment variable, and output for
 
 ## chromato start
 
-Starts a Pomodoro session with automatic phase transitions through WORK → BREAK → LONG_BREAK cycles. Renders a full animated TUI with color gradient progress bar by default. Sends desktop notifications at phase transitions; falls back to terminal bell if unavailable.
+Starts a Pomodoro session with automatic phase transitions through WORK → BREAK → LONG_BREAK cycles. Renders a full animated TUI with color gradient progress bar by default. Notifies at phase transitions in-terminal — an in-frame banner, a single bell byte, and/or a window-title update, depending on the configured notification mode.
 
 ### Options
 
@@ -77,19 +77,20 @@ Updated every second. Safe to pipe to files or other programs. No color codes ev
 
 ### Notifications
 
-A desktop notification fires within 1 second of each notable moment. Copy is warm and unit-aware (durations interpolated from your session):
+Notifications are delivered **in-terminal** — no OS desktop notifications, no external process, no new runtime dependencies. Four modes control delivery, set in [`chromato setup`](#chromato-setup) or via the `notifications` config key:
 
-| Moment | Title | Body |
-|--------|-------|------|
-| WORK → short break | `Pomodoro complete 🍅` | `Time for a {break}-minute break.` |
-| break → WORK | `Break’s over` | `Back to focus for a {work}-minute block.` |
-| WORK → long break | `{n} pomodoros done 🎉` | `Take a proper {long-break}-minute break.` |
-| Overdue (break ran long) | `Break ran over` | `Ready to focus again?` |
-| Session complete | `Session complete` | `{focused} min focused. Well done.` |
+| Mode | Banner | Bell | Window title |
+|------|--------|------|--------------|
+| `banner+bell` (default) | Yes | Yes | Yes |
+| `banner` | Yes | No | Yes |
+| `bell` | No | Yes | Yes |
+| `off` | No | No | No |
 
-Delivery is platform-native and adds **no runtime dependencies**: `osascript` on macOS, `notify-send` on Linux (with a timer-ring icon), falling back to the terminal bell (`\a`) when a desktop notifier is unavailable or the session is non-interactive/headless.
+- **Banner**: a copy line drawn inside the TUI frame at each notable moment (WORK → break, break → WORK, long break, overdue, session complete). Copy is warm and unit-aware (durations interpolated from your session).
+- **Bell**: a single `\a` (BEL) byte, emitted only on interactive terminals — never on piped/non-interactive output, keeping piped stdout byte-clean.
+- **Window title**: the terminal window title updates to reflect the current phase/moment; reverts on exit.
 
-Notifications honour the on/off choice made in [`chromato setup`](#chromato-setup); when off, no desktop notification is sent.
+Legacy config values are read-tolerant: a saved boolean `true` maps to `"banner+bell"`, `false` maps to `"off"`.
 
 ### ASCII Fallback
 
@@ -165,7 +166,7 @@ The state file is updated:
 
 ## chromato setup
 
-Runs the interactive first-run setup wizard. Walks through **Welcome → Theme** (with a live colour preview) **→ Timing** (the 25 · 5 × 4 default, or custom values) **→ Notifications** (on/off, plus a tmux hint when `$TMUX` is set) **→ Summary**, then writes your choices to the config file and launches the first session.
+Runs the interactive first-run setup wizard. Walks through **Welcome → Theme** (with a live colour preview) **→ Timing** (the 25 · 5 × 4 default, or custom values) **→ Notifications** (pick one of four modes — Banner + bell, Banner only, Bell only, Off — plus a tmux hint when `$TMUX` is set) **→ Summary**, then writes your choices to the config file and launches the first session.
 
 `chromato setup` always runs the wizard, regardless of whether a config already exists. It requires an interactive colour terminal; in a non-interactive context it exits without prompting.
 
@@ -312,7 +313,7 @@ Timing keys are in **minutes** (the runtime multiplies by 60). All keys are opti
 | `break` | integer | 1–30 | Short break duration (minutes) |
 | `longBreak` | integer | 5–60 (step 5) | Long break duration (minutes) |
 | `cycles` | integer | 1–8 | Pomodoros before a long break |
-| `notifications` | boolean | | Whether desktop notifications are sent |
+| `notifications` | string | `"banner"` \| `"banner+bell"` \| `"bell"` \| `"off"` | Default `"banner+bell"`. Notification delivery mode (see [Notifications](#notifications)). Legacy boolean values are read-tolerant on upgrade: `true` → `"banner+bell"`, `false` → `"off"` — the config is not rewritten until the wizard runs again. |
 
 ### Example
 
@@ -323,7 +324,7 @@ Timing keys are in **minutes** (the runtime multiplies by 60). All keys are opti
   "break": 5,
   "longBreak": 15,
   "cycles": 4,
-  "notifications": true
+  "notifications": "banner+bell"
 }
 ```
 

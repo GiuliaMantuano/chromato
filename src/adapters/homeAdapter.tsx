@@ -22,6 +22,7 @@ import React from 'react';
 import { render as inkRender, Text, Box, useApp, useInput } from 'ink';
 import type { ConfigResult } from '../configLoader.js';
 import { TAGLINE, DESCRIPTOR } from '../domain/brand.js';
+import { MODE_LABELS } from '../domain/notificationMode.js';
 import { LogoBlock, Footer, swatch, colorize, PALETTE_META } from './tui/components.js';
 
 /** Render-intent seam (D-RH-5): the home resolves the user's action to this union. */
@@ -137,7 +138,7 @@ export const HomeScreen: React.FC<
           value={cadence}
           trailing={colorize(NOTE_FG, `long break ${longBreak}m`)}
         />
-        <RecapRow label="Notifications" value={notifications ? 'On' : 'Off'} />
+        <RecapRow label="Notifications" value={MODE_LABELS[notifications]} />
         {tmuxDetected ? <RecapRow label="tmux" value="status bar ready" /> : null}
       </Box>
 

@@ -13,13 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Welcome-back home screen — running bare `chromato` with a saved config shows a recap plus a Start / Reconfigure / Quit menu (instead of the help dump)
 - Configurable colour palettes — `ocean` (default), `lavender`, `berry`, `forest` — via the wizard, the `--palette` flag, or `CHROMATO_PALETTE`
 - In-session keyboard controls — `s` skips a break or overdue straight to the next focus block; `q` quits cleanly
-- Session-complete desktop notification reporting focused minutes
+- Session-complete notification reporting focused minutes
+- 4-mode in-terminal notification system (`banner` / `banner+bell` / `bell` / `off`, default `banner+bell`) — an in-frame banner, a single terminal bell, and a window-title update replace desktop notifications entirely
 - Persisted configuration in `config.json` (written by the wizard) supplying your defaults for bare `chromato` and `chromato start`
 - Redesigned launch banner with the "Focus in full colour" tagline
 
 ### Changed
 
-- Desktop notifications now use native `osascript` (macOS) / `notify-send` (Linux) with a terminal-bell fallback, adding **no runtime dependencies** (previously node-notifier)
+- Desktop notifications (`osascript` / `notify-send`) removed entirely in favor of in-terminal delivery — banner, bell, and window title — adding **no new runtime dependencies**
+- Setup wizard and home-screen recap notification labels updated for the 4-mode picker
 - Notification copy is warmer and unit-aware (e.g. "Take a proper 15-minute break")
 - Timer footer uses key-cap hints consistent with the wizard and home screens
 

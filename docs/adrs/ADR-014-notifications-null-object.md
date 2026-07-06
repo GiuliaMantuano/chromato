@@ -1,6 +1,6 @@
 # ADR-014: Honour `notifications` Preference via Null-Object Adapter
 
-**Status**: Proposed
+**Status**: Proposed. Superseded by ADR-022 (in-terminal-notifications, 2026-07-06).
 **Date**: 2026-05-31
 **Feature**: first-run-setup-wizard
 **Deciders**: the solution architect, maintainer (confirmed DD-1 via Propose mode 2026-05-31)

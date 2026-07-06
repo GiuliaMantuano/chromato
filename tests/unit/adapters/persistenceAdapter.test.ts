@@ -4,17 +4,27 @@
  * Tests use real temp dirs (os.tmpdir()), not mocks.
  * Adapter integration tests verify real file I/O behavior.
  *
- * Test Budget: 4 distinct behaviors x 2 = 8 max unit tests
+ * Test Budget: 5 distinct behaviors x 2 = 10 max unit tests
  *   B1: writeState + readState round-trip: written state is readable and valid JSON
  *   B2: readState returns null when no state file exists
  *   B3: readStreak() returns 0 when no sessions recorded
  *   B4: readStreak() returns 1 when sessions recorded today (consecutive-day streak)
+ *   B5: recordOverdueEpisode() persists one overdue_episodes row per call, in call
+ *       order, with duration_seconds matching the input (KPI 1/2 data source, step
+ *       04-04). Property: for ANY sequence of overdue durations, recorded rows equal
+ *       ended episodes with matching durations. Parametrized over representative
+ *       duration sequences (no fast-check in this repo's devDependencies — this
+ *       project's established convention for equivalence-class coverage without a
+ *       new dependency is `it.each`, see tests/unit/domain/notificationMode.test.ts).
+ *       The sqlite write/read itself is wiring-level (single mechanism exercised
+ *       across all cases), not a property in its own right.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as os from 'node:os';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import Database from 'better-sqlite3';
 import { PersistenceAdapter } from '../../../src/adapters/persistenceAdapter.js';
 import type { SessionSnapshot } from '../../../src/domain/types.js';
 
@@ -83,5 +93,29 @@ describe('PersistenceAdapter', () => {
     adapter.recordSession(1);
     const streak = adapter.readStreak();
     expect(streak).toBeGreaterThanOrEqual(1);
+  });
+
+  // B5: recordOverdueEpisode() persists one row per call, matching duration_seconds,
+  // in call order — the property holds for any sequence of overdue durations.
+  it.each([
+    [[1]],
+    [[30, 60]],
+    [[5, 3600, 12]],
+    [[0]],
+  ])('records %j as matching overdue_episodes rows', (durations) => {
+    for (const duration of durations) {
+      adapter.recordOverdueEpisode(duration);
+    }
+
+    const dbPath = path.join(tempDir, 'chromato', 'sessions.db');
+    const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    try {
+      const rows = db
+        .prepare('SELECT duration_seconds FROM overdue_episodes ORDER BY id')
+        .all() as { duration_seconds: number }[];
+      expect(rows.map((r) => r.duration_seconds)).toEqual(durations);
+    } finally {
+      db.close();
+    }
   });
 });

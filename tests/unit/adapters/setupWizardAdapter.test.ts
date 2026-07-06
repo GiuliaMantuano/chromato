@@ -18,12 +18,16 @@
  * rendered frame (user-observable output) and the ConfigWritePort (driven port).
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import chalk from 'chalk';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { SetupWizardAdapter, SetupWizard } from '../../../src/adapters/setupWizardAdapter.js';
 import { getPalette } from '../../../src/domain/palette.js';
+import { ConfigFileWriterAdapter } from '../../../src/adapters/configWriterAdapter.js';
 import type { ConfigWritePort } from '../../../src/domain/ports.js';
 
 class InMemoryConfigWriter implements ConfigWritePort {
@@ -91,17 +95,18 @@ describe('SetupWizardAdapter (contract)', () => {
       break: expect.any(Number),
       longBreak: expect.any(Number),
       cycles: expect.any(Number),
-      notifications: expect.any(Boolean),
+      notifications: expect.any(String),
     });
     // Persisted the SAME result via the driven port (not just resolved it),
-    // and the default-On notifications value reaches the ConfigWritePort.
+    // and the default-On notifications value reaches the ConfigWritePort as
+    // the enum ("banner+bell", DDD-1 — the wizard always writes the enum).
     expect(writer.written).toEqual(result);
-    expect((writer.written as { notifications: boolean }).notifications).toBe(true);
+    expect((writer.written as { notifications: string }).notifications).toBe('banner+bell');
   });
 
-  // AC1 (persistence): a toggled-Off notifications value must reach the driven
-  // ConfigWritePort, not merely be resolved by the wizard internally.
-  it('persists notifications=false via the ConfigWritePort when toggled Off', async () => {
+  // AC1 (persistence): selecting "Off" on the 4-mode picker must reach the
+  // driven ConfigWritePort, not merely be resolved by the wizard internally.
+  it('persists notifications="off" via the ConfigWritePort when Off is selected', async () => {
     const writer = new InMemoryConfigWriter();
     let driver: ReturnType<typeof render> | undefined;
     const adapter = new SetupWizardAdapter(writer, (element) => {
@@ -117,7 +122,7 @@ describe('SetupWizardAdapter (contract)', () => {
     await flush();
     driver!.stdin.write(ENTER); // Timing (Default recommended) → Notifications
     await flush();
-    driver!.stdin.write('\x1b[D'); // ← toggle notifications Off
+    driver!.stdin.write(ARROW_UP); // Banner + bell (index 0) wraps to Off (index 3)
     await flush();
     driver!.stdin.write(ENTER); // Notifications (Off) → Summary
     await flush();
@@ -125,7 +130,7 @@ describe('SetupWizardAdapter (contract)', () => {
     await flush();
 
     await resultPromise;
-    expect((writer.written as { notifications: boolean }).notifications).toBe(false);
+    expect((writer.written as { notifications: string }).notifications).toBe('off');
   });
 
   // Universal escape hatch: Ctrl+C quits from ANY screen (not just Welcome's Q) and
@@ -512,7 +517,7 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     harness.unmount();
   });
 
-  // ── Notifications step (step 03-02) ─────────────────────────────────────────
+  // ── Notifications step (step 05-01: US-04 4-mode picker) ────────────────────
 
   /** Mounts the wizard advanced to the Notifications step (welcome → theme → timing → notify). */
   async function mountAtNotifications(props: Record<string, unknown> = {}) {
@@ -534,74 +539,150 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     return harness;
   }
 
-  it('the Notifications screen matches the prototype rNotify: title, breadcrumb 3, save-note, finish row', async () => {
+  // AC-04.1 twin — DISTILL scenario "The last wizard step offers the four modes".
+  it('the Notifications screen offers the four modes with descriptions, Banner + bell preselected, and no desktop-notifications wording', async () => {
     const harness = await mountAtNotifications();
 
     const frame = harness.lastFrame() ?? '';
     // Breadcrumbs active={3}: step 3 (Setup) is the active crumb.
     expect(frame).toMatch(/3\s*Setup/);
-    // Title is just "Notifications" (the "& integration" tmux variant is 03-03).
+    // Title is just "Notifications" (the "& integration" tmux variant is separate).
     expect(frame).toContain('Notifications');
     expect(frame).not.toContain('& integration');
-    // Save-note copy (prototype rNotify).
+    // The four modes, in order, with their owner-approved one-line descriptions.
+    expect(frame).toContain('Banner + bell');
+    expect(frame).toContain('recommended');
+    expect(frame).toContain('A banner inside the timer plus a soft ding.');
+    expect(frame).toContain('Banner only');
+    expect(frame).toContain('The in-timer banner, silent.');
+    expect(frame).toContain('Bell only');
+    expect(frame).toContain('Just the ding — nothing drawn.');
+    expect(frame).toContain('Off');
+    expect(frame).toContain('No notifications — just the timer.');
+    // "Banner + bell" is preselected (the ▸ marker sits on its row).
+    expect(frame).toMatch(/▸\s*Banner \+ bell/);
+    // AC-04.1: no option mentions the retired "desktop notifications" wording.
+    expect(frame.toLowerCase()).not.toContain('desktop notifications');
+    // Save-note copy + finish row + footer hints.
     expect(frame).toContain('~/.config/chromato/config.json');
     expect(frame).toContain('chromato setup');
-    // Highlighted finish action row.
     expect(frame).toContain('Finish & start my first session');
-    // Footer hints: ↑↓ move / ←→ toggle / Enter finish / Esc back (04-01 added the
-    // now-live cross-step Esc-back hint, deferred by the 01-05 review D1/D2).
     expect(frame).toContain('move');
-    expect(frame).toContain('toggle');
     expect(frame).toContain('finish');
     expect(frame).toContain('back');
-    // No tmux snippet here (03-03).
+    // No tmux snippet when tmux is not detected.
     expect(frame).not.toContain('~/.tmux.conf');
     harness.unmount();
   });
 
-  it('Left/Right toggles notifications; default On', async () => {
-    let completed: { notifications: boolean } | null = null;
-
-    // Default On: complete immediately without toggling.
-    const onHarness = await mountAtNotifications({
-      onComplete: (r: typeof completed) => {
-        completed = r;
-      },
+  // AC-04.2 twin — DISTILL scenario "A deliberate mode choice lands in the config".
+  it('selecting Bell only finishes the wizard, shows it in the Summary recap, and persists notifications "bell"', async () => {
+    const writer = new InMemoryConfigWriter();
+    let driver: ReturnType<typeof render> | undefined;
+    const adapter = new SetupWizardAdapter(writer, (element) => {
+      driver = render(element);
+      return driver;
     });
-    let frame = onHarness.lastFrame() ?? '';
-    // The On/Off toggle is shown with On highlighted by default.
-    expect(frame).toContain('On');
-    expect(frame).toContain('Off');
-    onHarness.stdin.write(ENTER); // default On → Summary
-    await flush();
-    onHarness.stdin.write(ENTER); // Summary → begin (finish)
-    await flush();
-    expect(completed).not.toBeNull();
-    expect(completed!.notifications).toBe(true);
-    onHarness.unmount();
 
-    // Toggle Off: Left arrow flips notifications to false, then finish persists false.
-    completed = null;
-    const offHarness = await mountAtNotifications({
-      onComplete: (r: typeof completed) => {
-        completed = r;
-      },
+    const resultPromise = adapter.run({ tmuxDetected: false });
+    await flush();
+    driver!.stdin.write(ENTER); // Welcome → Theme
+    await flush();
+    driver!.stdin.write(ENTER); // Theme (ocean) → Timing
+    await flush();
+    driver!.stdin.write(ENTER); // Timing (Default) → Notifications
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner + bell → Banner only
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner only → Bell only
+    await flush();
+    driver!.stdin.write(ENTER); // Notifications (Bell only) → Summary
+    await flush();
+
+    const summaryFrame = (driver!.lastFrame() ?? '').replace(/\x1b\[[0-9;]*m/g, '');
+    expect(summaryFrame).toMatch(/Notify\s+Bell only/);
+
+    driver!.stdin.write(ENTER); // Summary → begin (write + launch)
+    await flush();
+    await resultPromise;
+
+    expect((writer.written as { notifications: string }).notifications).toBe('bell');
+  });
+
+  // AC-04.4 twin — DISTILL scenario "Reconfigure remembers the saved mode".
+  it('reconfigure pre-seeds the Notifications picker from the saved mode (banner highlights Banner only)', async () => {
+    const harness = await mountAtNotifications({ initial: { notifications: 'banner' } });
+
+    const frame = harness.lastFrame() ?? '';
+    expect(frame).toMatch(/▸\s*Banner only/);
+    expect(frame).not.toMatch(/▸\s*Banner \+ bell/);
+    harness.unmount();
+  });
+
+  // AC-04.6 twin — DISTILL scenario "Backing out of the picker loses nothing".
+  it('Esc-back from the Notifications step preserves the highlighted mode, and Q afterwards writes no config', async () => {
+    const writer = new InMemoryConfigWriter();
+    let driver: ReturnType<typeof render> | undefined;
+    const adapter = new SetupWizardAdapter(writer, (element) => {
+      driver = render(element);
+      return driver;
     });
-    offHarness.stdin.write('\x1b[D'); // ← toggle to Off
-    await flush();
-    frame = offHarness.lastFrame() ?? '';
-    expect(frame).toContain('Off');
-    offHarness.stdin.write(ENTER); // Off → Summary
-    await flush();
-    offHarness.stdin.write(ENTER); // Summary → begin (finish with Off)
-    await flush();
-    expect(completed).not.toBeNull();
-    expect(completed!.notifications).toBe(false);
 
-    // Right arrow toggles back On — proves the toggle is bidirectional, not one-way.
-    offHarness.stdin.write('\x1b[C'); // (no-op after complete, but guards the binding exists)
+    const resultPromise = adapter.run({ tmuxDetected: false });
     await flush();
-    offHarness.unmount();
+    driver!.stdin.write(ENTER); // Welcome → Theme
+    await flush();
+    driver!.stdin.write(ENTER); // Theme → Timing
+    await flush();
+    driver!.stdin.write(ENTER); // Timing (Default) → Notifications
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner + bell → Banner only
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner only → Bell only
+    await flush();
+
+    driver!.stdin.write(ESCAPE); // Esc back to Timing
+    await flush();
+    driver!.stdin.write(ENTER); // Timing (Default) → Notifications again
+    await flush();
+
+    const frame = driver!.lastFrame() ?? '';
+    expect(frame).toMatch(/▸\s*Bell only/); // selection survived the round trip
+
+    driver!.stdin.write('q'); // Q quits — writes nothing
+    await flush();
+    const result = await resultPromise;
+    expect(result).toBeNull();
+    expect(writer.written).toBeNull();
+  });
+
+  // AC-04.6 (habit path) twin — DISTILL scenario "Interrupting the picker the
+  // habitual way writes nothing".
+  it('Ctrl+C from the Notifications step quits without writing config, regardless of the highlighted mode', async () => {
+    const writer = new InMemoryConfigWriter();
+    let driver: ReturnType<typeof render> | undefined;
+    const adapter = new SetupWizardAdapter(writer, (element) => {
+      driver = render(element);
+      return driver;
+    });
+
+    const resultPromise = adapter.run({ tmuxDetected: false });
+    await flush();
+    driver!.stdin.write(ENTER); // Welcome → Theme
+    await flush();
+    driver!.stdin.write(ENTER); // Theme → Timing
+    await flush();
+    driver!.stdin.write(ENTER); // Timing (Default) → Notifications
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner + bell → Banner only
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner only → Bell only
+    await flush();
+    driver!.stdin.write('\x03'); // Ctrl+C on the Notifications screen
+
+    const result = await resultPromise;
+    expect(result).toBeNull();
+    expect(writer.written).toBeNull();
   });
   // Step 03-03 — the tmux integration hint, conditional on the tmuxDetected prop
   // (wired from $TMUX in index.ts). The snippet is COPY-PASTE only: the wizard
@@ -666,12 +747,14 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
 
   const ESCAPE = '\x1b';
 
-  // S-skip (rWelcome `S skip · use defaults`): pressing S on the Welcome screen
-  // jumps STRAIGHT to the Summary, pre-filled with the locked defaults
-  // (ocean · 25·5·15 · 4 cycles · notifications On). Esc-back and the per-field
-  // steps are bypassed. The Summary recap must reflect those defaults, and
-  // confirming ("begin") must persist exactly those six defaults via the driven port.
-  it('S on welcome jumps to summary with ocean/default/On defaults and persists them on begin', async () => {
+  // AC-04.3 twin — DISTILL scenario "Skipping with defaults picks the
+  // recommended mode". S-skip (rWelcome `S skip · use defaults`): pressing S
+  // on the Welcome screen jumps STRAIGHT to the Summary, pre-filled with the
+  // locked defaults (ocean · 25·5·15 · 4 cycles · notifications Banner +
+  // bell). Esc-back and the per-field steps are bypassed. The Summary recap
+  // must reflect those defaults, and confirming ("begin") must persist
+  // exactly those six defaults via the driven port.
+  it('S on welcome jumps to summary with ocean/default/Banner + bell defaults and persists them on begin', async () => {
     const writer = new InMemoryConfigWriter();
     let driver: ReturnType<typeof render> | undefined;
     const adapter = new SetupWizardAdapter(writer, (element) => {
@@ -688,14 +771,16 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     // Summary confirmation hero (rSummary L251-252).
     expect(frame).toContain("You're all set");
     expect(frame).toContain('Starting your first WORK session');
-    // The recap shows the DEFAULTS: Ocean theme, 25 · 5 × 4, long break 15, On.
+    // The recap shows the DEFAULTS: Ocean theme, 25 · 5 × 4, long break 15,
+    // Banner + bell.
     expect(frame).toContain('Ocean');
     expect(frame).toContain('25 · 5 × 4');
     expect(frame).toContain('long break 15');
-    // The Notify recap line shows "On" (defaults). Strip ANSI to assert the
-    // label and value sit together on the recap row (Ink interleaves SGR codes).
+    // The Notify recap line shows "Banner + bell" (the recommended default).
+    // Strip ANSI to assert the label and value sit together on the recap row
+    // (Ink interleaves SGR codes).
     // eslint-disable-next-line no-control-regex
-    expect(frame.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Notify\s+On/);
+    expect(frame.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Notify\s+Banner \+ bell/);
     // "WORK · POMODORO 1 of 4" bar at 00:00 (rSummary L258-259).
     expect(frame).toContain('WORK · POMODORO 1 of 4');
     expect(frame).toContain('25:00');
@@ -715,7 +800,7 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
       break: 5,
       longBreak: 15,
       cycles: 4,
-      notifications: true,
+      notifications: 'banner+bell',
     });
     driver!.unmount();
   });
@@ -798,7 +883,7 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
       break: 5,
       longBreak: 15,
       cycles: 4,
-      notifications: true,
+      notifications: 'banner+bell',
     });
     // The SAME six-key set was written atomically through the driven port.
     expect(writer.written).toEqual(result);
@@ -834,7 +919,7 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
       const result = await resultPromise;
       // The session can still launch: the in-memory result resolved despite the failure.
       expect(result).not.toBeNull();
-      expect(result).toMatchObject({ palette: 'ocean', notifications: true });
+      expect(result).toMatchObject({ palette: 'ocean', notifications: 'banner+bell' });
       // A clear error was surfaced on stderr (graceful, not a crash).
       const stderrOut = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
       expect(stderrOut).toContain('could not save your config');
@@ -873,5 +958,62 @@ describe('SetupWizard interactive surface (ink-testing-library)', () => {
     expect(frame).toContain('Q');
     expect(frame).toContain('quit');
     harness.unmount();
+  });
+});
+
+// ── ConfigFileWriterAdapter round-trip (real I/O, step 05-01) ────────────────
+// AC-04.2's writer-round-trip clause proven against the REAL driven adapter
+// (not InMemoryConfigWriter): a selected mode must survive a real
+// write-then-read of config.json, not merely reach an in-memory double.
+describe('SetupWizardAdapter + ConfigFileWriterAdapter (real filesystem round-trip)', () => {
+  let tmpDir: string;
+  let previousXdg: string | undefined;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chromato-wizard-cfgw-'));
+    previousXdg = process.env['XDG_CONFIG_HOME'];
+    process.env['XDG_CONFIG_HOME'] = tmpDir;
+  });
+
+  afterEach(() => {
+    if (previousXdg === undefined) {
+      delete process.env['XDG_CONFIG_HOME'];
+    } else {
+      process.env['XDG_CONFIG_HOME'] = previousXdg;
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('a selected mode round-trips through the real ConfigFileWriterAdapter onto config.json', async () => {
+    const writer = new ConfigFileWriterAdapter();
+    let driver: ReturnType<typeof render> | undefined;
+    const adapter = new SetupWizardAdapter(writer, (element) => {
+      driver = render(element);
+      return driver;
+    });
+
+    const resultPromise = adapter.run({ tmuxDetected: false });
+    await flush();
+    driver!.stdin.write(ENTER); // Welcome → Theme
+    await flush();
+    driver!.stdin.write(ENTER); // Theme → Timing
+    await flush();
+    driver!.stdin.write(ENTER); // Timing (Default) → Notifications
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner + bell → Banner only
+    await flush();
+    driver!.stdin.write(ARROW_DOWN); // Banner only → Bell only
+    await flush();
+    driver!.stdin.write(ENTER); // Notifications (Bell only) → Summary
+    await flush();
+    driver!.stdin.write(ENTER); // Summary → begin (real write)
+    await flush();
+    await resultPromise;
+
+    const configFile = path.join(tmpDir, 'chromato', 'config.json');
+    const persisted = JSON.parse(fs.readFileSync(configFile, 'utf8')) as {
+      notifications: string;
+    };
+    expect(persisted.notifications).toBe('bell');
   });
 });

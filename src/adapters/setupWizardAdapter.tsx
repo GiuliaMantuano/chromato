@@ -30,6 +30,11 @@ import {
 import { TAGLINE, DESCRIPTOR, WELCOME_BODY } from '../domain/brand.js';
 import type { WizardResult } from '../configTypes.js';
 import type { ConfigWritePort } from '../domain/ports.js';
+import {
+  DEFAULT_NOTIFICATION_MODE,
+  VALID_NOTIFICATION_MODES,
+  type NotificationMode,
+} from '../domain/notificationMode.js';
 // Shared presentational TUI helpers (ADR-015): imported from the shared tui/ module
 // so the home adapter can reuse the same logo/swatch/footer/label rendering without
 // importing this adapter (dependency-cruiser Rule 4 + tui/ carve-out).
@@ -44,14 +49,31 @@ const RECOMMENDED_TIMING = {
   cycles: 4,
 } as const;
 
-// Locked default for the not-yet-built Notifications step (03-02 makes it real).
-const NOTIFICATIONS_DEFAULT = true;
-
 // The tmux integration hint (03-03): a COPY-PASTE-ONLY status-bar snippet shown on
 // the Notifications step when tmux is detected ($TMUX). The wizard NEVER writes
 // ~/.tmux.conf — it only displays this exact line for the user to paste. Mirrors
 // the approved prototype rNotify tmuxDetected branch (splash-onboarding-prototype.html).
 const TMUX_STATUS_RIGHT_SNIPPET = 'set -g status-right "#(chromato status --format tmux)"';
+
+// Notifications step (US-04 owner-approved copy, step 05-01): the four-mode
+// picker's row titles + one-line descriptions. Single source reused by BOTH
+// the picker rows AND the Summary recap (no restated strings, DDD-10) — the
+// domain's MODE_LABELS stays the shorter form used elsewhere (e.g. the home
+// recap, 05-02); this wizard-local map carries the owner-approved wording
+// ("... only") that the picker/Summary specifically need.
+const NOTIFY_ROW_TITLE: Record<NotificationMode, string> = {
+  'banner+bell': 'Banner + bell',
+  banner: 'Banner only',
+  bell: 'Bell only',
+  off: 'Off',
+};
+
+const NOTIFY_ROW_DESCRIPTION: Record<NotificationMode, string> = {
+  'banner+bell': 'A banner inside the timer plus a soft ding.',
+  banner: 'The in-timer banner, silent.',
+  bell: 'Just the ding — nothing drawn.',
+  off: 'No notifications — just the timer.',
+};
 
 type WizardStep = 'welcome' | 'theme' | 'timing' | 'notify' | 'summary';
 
@@ -268,10 +290,14 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const [customField, setCustomField] = React.useState(0);
   const [custom, setCustom] = React.useState<TimingValues>(seededTiming);
 
-  // Notifications step state (03-02): On/Off toggle (default On). notifyRow:
-  // 0 = the toggle row, 1 = the "Finish & start my first session →" action row.
-  const [notifyOn, setNotifyOn] = React.useState(initial?.notifications ?? NOTIFICATIONS_DEFAULT);
-  const [notifyRow, setNotifyRow] = React.useState(0);
+  // Notifications step state (US-04, step 05-01): a 4-row picker over the
+  // full mode enum, using the SAME up/down + Enter mechanics as the Theme
+  // step (DDD-10). `initial.notifications` arrives already legacy-mapped
+  // (configLoader/parseNotificationMode resolves booleans upstream) so the
+  // seed is a direct NotificationMode — no re-mapping here.
+  const [notifyMode, setNotifyMode] = React.useState<NotificationMode>(
+    initial?.notifications ?? DEFAULT_NOTIFICATION_MODE,
+  );
 
   // The timing values chosen on the Timing step, carried into Notifications so
   // the final WizardResult assembles all six fields when the user finishes.
@@ -293,12 +319,14 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
     }
   };
 
-  const complete = (palette: PaletteName, timing: TimingValues, notifications: boolean): void => {
+  const complete = (palette: PaletteName, timing: TimingValues, mode: NotificationMode): void => {
     if (finished.current) {
       return;
     }
     finished.current = true;
-    onComplete({ palette, ...timing, notifications });
+    // The wizard always WRITES the enum, never the legacy boolean (DDD-1) —
+    // the picker's highlighted mode passes straight through.
+    onComplete({ palette, ...timing, notifications: mode });
     exit();
   };
 
@@ -339,7 +367,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
       if (input.toLowerCase() === 's') {
         setPaletteIndex(Math.max(0, VALID_PALETTE_NAMES.indexOf(DEFAULT_PALETTE_NAME)));
         chosenTiming.current = { ...RECOMMENDED_TIMING };
-        setNotifyOn(NOTIFICATIONS_DEFAULT);
+        setNotifyMode(DEFAULT_NOTIFICATION_MODE);
         setStep('summary');
         return;
       }
@@ -370,7 +398,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
     if (step === 'summary') {
       // Enter "begin": write the full config + resolve the launch intent.
       if (key.return) {
-        complete(VALID_PALETTE_NAMES[paletteIndex] as PaletteName, chosenTiming.current, notifyOn);
+        complete(
+          VALID_PALETTE_NAMES[paletteIndex] as PaletteName,
+          chosenTiming.current,
+          notifyMode,
+        );
         return;
       }
       if (key.escape) {
@@ -380,19 +412,29 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
     }
 
     if (step === 'notify') {
-      // ↑↓ move between the toggle row and the finish row.
-      if (key.upArrow || key.downArrow) {
-        setNotifyRow((row) => (row === 0 ? 1 : 0));
+      // ↑↓ cycle the highlighted mode — same wrap-around mechanics as the
+      // Theme step's palette picker (DDD-10).
+      if (key.upArrow) {
+        setNotifyMode(
+          (mode) =>
+            VALID_NOTIFICATION_MODES[
+              (VALID_NOTIFICATION_MODES.indexOf(mode) - 1 + VALID_NOTIFICATION_MODES.length) %
+                VALID_NOTIFICATION_MODES.length
+            ] as NotificationMode,
+        );
         return;
       }
-      // ←→ toggle notifications On/Off (only meaningful on the toggle row, but
-      // accepted on either row so the key never feels dead).
-      if (key.leftArrow || key.rightArrow) {
-        setNotifyOn((on) => !on);
+      if (key.downArrow) {
+        setNotifyMode(
+          (mode) =>
+            VALID_NOTIFICATION_MODES[
+              (VALID_NOTIFICATION_MODES.indexOf(mode) + 1) % VALID_NOTIFICATION_MODES.length
+            ] as NotificationMode,
+        );
         return;
       }
       if (key.return) {
-        // Advance to the Summary review screen (notifyOn state carries the choice).
+        // Advance to the Summary review screen (notifyMode carries the choice).
         setStep('summary');
         return;
       }
@@ -507,7 +549,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           </Text>
           <Text>
             {colorize(CRUMB_DONE_FG, '  Notify  ')}
-            {notifyOn ? 'On' : 'Off'}
+            {NOTIFY_ROW_TITLE[notifyMode]}
           </Text>
         </Box>
 
@@ -538,28 +580,34 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   }
 
   if (step === 'notify') {
-    // Notifications step (03-02 + 03-03) — prototype rNotify (L230-245). When tmux
-    // is detected the title gains "& integration" and a copy-paste status-bar
-    // snippet is shown (03-03); the wizard never writes ~/.tmux.conf.
-    const toggleSelected = notifyRow === 0;
-    const finishSelected = notifyRow === 1;
+    // Notifications step (US-04, step 05-01) — owner-approved 4-mode picker
+    // (feature-delta.md "Final wizard step copy"). When tmux is detected the
+    // title gains "& integration" and a copy-paste status-bar snippet is
+    // shown; the wizard never writes ~/.tmux.conf.
     const finishColor = getPalette(selectedPalette).phases.WORK.fg;
     return (
       <Box flexDirection="column" padding={1}>
         <Breadcrumbs active={3} />
         <Text bold>{tmuxDetected ? 'Notifications & integration' : 'Notifications'}</Text>
-        <Text dimColor>Last step — a couple of finishing touches.</Text>
+        <Text dimColor>Last step — how should chromato let you know a phase ends?</Text>
 
-        <Box marginTop={1}>
-          <Text {...(toggleSelected ? { bold: true } : {})}>
-            {toggleSelected ? '▸ ' : '  '}
-            Desktop notifications{'   '}
-            <Text {...(notifyOn ? { bold: true } : { dimColor: true })}>On</Text>
-            {' / '}
-            <Text {...(!notifyOn ? { bold: true } : { dimColor: true })}>Off</Text>
-          </Text>
+        <Box flexDirection="column" marginTop={1}>
+          {VALID_NOTIFICATION_MODES.map((mode) => {
+            const isSelected = mode === notifyMode;
+            return (
+              <Box key={mode} flexDirection="column" marginBottom={1}>
+                <Text {...(isSelected ? { bold: true } : {})}>
+                  {isSelected ? '▸ ' : '  '}
+                  {NOTIFY_ROW_TITLE[mode]}
+                  {mode === DEFAULT_NOTIFICATION_MODE ? (
+                    <Text dimColor>{'   (recommended)'}</Text>
+                  ) : null}
+                </Text>
+                <Text dimColor>{`    ${NOTIFY_ROW_DESCRIPTION[mode]}`}</Text>
+              </Box>
+            );
+          })}
         </Box>
-        <Text dimColor>{'    Ping me when a phase ends (work → break, break → work).'}</Text>
 
         {tmuxDetected ? (
           <Box flexDirection="column" marginTop={1}>
@@ -578,8 +626,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         </Box>
 
         <Box marginTop={1}>
-          <Text {...(finishSelected ? { bold: true } : {})}>
-            {finishSelected ? '▸ ' : '  '}
+          <Text>
+            {'  '}
             {colorize(finishColor, 'Finish & start my first session →')}
           </Text>
         </Box>
@@ -587,7 +635,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
         <Footer
           hints={[
             { key: '↑↓', label: 'move' },
-            { key: '←→', label: 'toggle' },
             { key: 'Enter', label: 'finish' },
             { key: 'Esc', label: 'back' },
             { key: 'Q', label: 'quit' },

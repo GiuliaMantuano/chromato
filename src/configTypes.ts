@@ -7,6 +7,7 @@
  */
 
 import type { PaletteName } from './domain/palette.js';
+import type { NotificationMode } from './domain/notificationMode.js';
 
 /**
  * The on-disk schema of $XDG_CONFIG_HOME/chromato/config.json.
@@ -19,7 +20,8 @@ export interface PersistedConfig {
   break?: number; // minutes (1–30)
   longBreak?: number; // minutes (5–60, step 5)
   cycles?: number; // count (1–8)
-  notifications?: boolean;
+  /** Read tolerance for legacy configs ([D6]): old boolean OR the new mode enum. */
+  notifications?: boolean | NotificationMode;
 }
 
 /**
@@ -32,5 +34,6 @@ export interface WizardResult {
   break: number;
   longBreak: number;
   cycles: number;
-  notifications: boolean;
+  /** The wizard always WRITES the enum, never the legacy boolean (DDD-1). */
+  notifications: NotificationMode;
 }

@@ -1,6 +1,6 @@
 # ADR-016: Notification Delivery Mechanism for Branded Notifications
 
-**Status**: Accepted
+**Status**: Accepted. Superseded by ADR-022 (in-terminal-notifications, 2026-07-06).
 **Date**: 2026-06-02
 **Feature**: notification-branding
 **Deciders**: the solution architect, maintainer (confirmed Option C via Propose mode 2026-06-02)

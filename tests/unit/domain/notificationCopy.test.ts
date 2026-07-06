@@ -24,7 +24,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { resolveCopy, type NotificationCopyNumbers } from '../../../src/domain/notificationCopy.js';
+import {
+  resolveCopy,
+  stripNonAscii,
+  type NotificationCopyNumbers,
+} from '../../../src/domain/notificationCopy.js';
 
 // Resolved numbers fixture — these are the PRECONDITION (input state), never the
 // expected output. resolveCopy substitutes them into the D3 templates.
@@ -75,6 +79,20 @@ describe('notificationCopy — warm-voice D3 matrix (US-NB-02)', () => {
   // AC-NB-02.4 — OVERDUE
   it('OVERDUE reads "Break ran over" / "Ready to focus again?"', () => {
     const copy = resolveCopy({ kind: 'OVERDUE' }, numbers());
+    expect(copy.title).toBe('Break ran over');
+    expect(copy.body).toBe('Ready to focus again?');
+  });
+
+  // REGRESSION GUARD (Upstream Issue 3, step 06-05) — PHASE_CHANGE to='OVERDUE'
+  // must resolve to the SAME copy as the standalone OVERDUE moment kind, not
+  // fall through to resolvePhaseChangeCopy's BREAK default ("Pomodoro complete
+  // 🍅 — Time for a 0-minute break."). Parametrized over both break-family
+  // origins (BREAK and LONG_BREAK both time out into OVERDUE).
+  it.each([
+    'BREAK',
+    'LONG_BREAK',
+  ] as const)('PHASE_CHANGE to=OVERDUE from %s reads "Break ran over" / "Ready to focus again?" (matches standalone OVERDUE, not the BREAK default)', (from) => {
+    const copy = resolveCopy({ kind: 'PHASE_CHANGE', from, to: 'OVERDUE' }, numbers());
     expect(copy.title).toBe('Break ran over');
     expect(copy.body).toBe('Ready to focus again?');
   });
@@ -171,5 +189,79 @@ describe('notificationCopy — session-complete (US-NB-04)', () => {
   it('SESSION_COMPLETE reflects a 50-minute session', () => {
     const copy = resolveCopy({ kind: 'SESSION_COMPLETE', focusedMinutes: 50 }, numbers());
     expect(copy.body).toBe('50 min focused. Well done.');
+  });
+});
+
+/**
+ * stripNonAscii — single ASCII-degradation source (DDD-8, step 06-02). Shared
+ * by the copy renderers (this file) AND src/domain/windowTitle.ts (behavior-
+ * preserving refactor of its former LOCAL ASCII_TITLES map, step 03-01's
+ * interim implementation) — one stripping rule, no second implementation.
+ *
+ * TEST PARADIGM: property-viable — fast-check is NOT a project dependency
+ * (established precedent, windowTitle.test.ts / notificationMode.test.ts): a
+ * representative table of ASCII / emoji / combining-mark / mixed inputs
+ * stands in for the fast-check string arbitrary, exercising the same
+ * equivalence classes a generator would explore.
+ *
+ * Test budget: 4 behaviors (ASCII-only output / idempotent / identity on
+ * ASCII-only input / exact D11 grammatical degradation) x 2 = 8 max;
+ * 4 it.each blocks written (parametrized, Mandate 5).
+ */
+function isAsciiOnly(text: string): boolean {
+  return [...text].every((ch) => (ch.codePointAt(0) ?? 0) <= 0x7f);
+}
+
+// Representative equivalence classes standing in for a fast-check string
+// arbitrary: pure ASCII, trailing/leading emoji, mid-string emoji, combining
+// diacritics, CJK, surrogate-pair emoji runs, empty string, whitespace-only.
+const REPRESENTATIVE_INPUTS: ReadonlyArray<{ label: string; input: string }> = [
+  { label: 'pure ASCII sentence', input: 'Back to focus for a 25-minute block.' },
+  { label: 'trailing emoji (D3 copy shape)', input: 'Pomodoro complete 🍅' },
+  { label: 'leading emoji + em dash (window-title shape)', input: '🍅 WORK — chromato' },
+  { label: 'mid-string emoji flanked by spaces', input: 'a 🍅 b' },
+  { label: 'combining diacritic (e + U+0301 acute)', input: 'caf́e' },
+  { label: 'CJK characters', input: '日本語' },
+  { label: 'consecutive surrogate-pair emoji, no spaces', input: '🍅🎉' },
+  { label: 'empty string', input: '' },
+  { label: 'whitespace-only', input: '   ' },
+];
+
+describe('notificationCopy — stripNonAscii (DDD-8 single-sourced ASCII degradation)', () => {
+  // Behavior 1: output contains ONLY ASCII code points, for any input.
+  it.each(REPRESENTATIVE_INPUTS)('$label -> ASCII-only output', ({ input }) => {
+    expect(isAsciiOnly(stripNonAscii(input))).toBe(true);
+  });
+
+  // Behavior 2: idempotent — stripping an already-stripped string is a no-op.
+  it.each(REPRESENTATIVE_INPUTS)('$label -> idempotent (strip(strip(x)) === strip(x))', ({
+    input,
+  }) => {
+    const once = stripNonAscii(input);
+    expect(stripNonAscii(once)).toBe(once);
+  });
+
+  // Behavior 3: identity on ASCII-only input — including irregular whitespace,
+  // which proves the degradation logic never touches text it has no reason to.
+  it.each([
+    'Back to focus for a 25-minute block.',
+    'double  spaces stay double',
+    '  leading and trailing spaces stay  ',
+    'hyphen-already-ascii',
+    '',
+  ])('ASCII-only input %j is returned unchanged', (input) => {
+    expect(stripNonAscii(input)).toBe(input);
+  });
+
+  // Behavior 4: exact D11 grammatical degradation — emoji (+ its adjacent
+  // whitespace) removed, em dash normalized to an ASCII hyphen, single-sourced
+  // with windowTitle.ts's phaseTitle(phase, true) expectations.
+  it.each([
+    { input: 'Pomodoro complete 🍅', expected: 'Pomodoro complete' },
+    { input: '4 pomodoros done 🎉', expected: '4 pomodoros done' },
+    { input: '🍅 WORK — chromato', expected: 'WORK - chromato' },
+    { input: 'a — b', expected: 'a - b' },
+  ])('$input -> $expected (grammatical, no double spaces)', ({ input, expected }) => {
+    expect(stripNonAscii(input)).toBe(expected);
   });
 });

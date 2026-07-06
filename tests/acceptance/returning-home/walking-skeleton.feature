@@ -40,5 +40,5 @@ Feature: Walking skeleton -- a returning user is welcomed home and can start a s
     Then the welcome-back recap is shown
     And the recap shows the theme name "Ocean"
     And the recap shows the timing "25 · 5 × 4"
-    And the recap shows notifications "On"
+    And the recap shows notifications "Banner + bell"
     And the home process exits with code 0
