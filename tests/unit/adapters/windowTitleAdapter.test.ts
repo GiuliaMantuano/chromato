@@ -30,6 +30,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createWindowTitleAdapter,
   WindowTitleAdapter,
+  wireExitSafetyNet,
 } from '../../../src/adapters/windowTitleAdapter.js';
 import { NEUTRAL_TITLE } from '../../../src/domain/windowTitle.js';
 
@@ -55,6 +56,33 @@ class CapturingStdout {
 
 function isAsciiOnly(text: string): boolean {
   return [...text].every((ch) => (ch.codePointAt(0) ?? 0) <= 0x7f);
+}
+
+/** Fake process 'exit' emitter — the injectable seam for wireExitSafetyNet. */
+class FakeExitSource {
+  private readonly listeners: Array<() => void> = [];
+  on(event: 'exit', listener: () => void): this {
+    if (event === 'exit') {
+      this.listeners.push(listener);
+    }
+    return this;
+  }
+  off(event: 'exit', listener: () => void): this {
+    if (event === 'exit') {
+      const index = this.listeners.indexOf(listener);
+      if (index >= 0) {
+        this.listeners.splice(index, 1);
+      }
+    }
+    return this;
+  }
+  emit(event: 'exit'): void {
+    if (event === 'exit') {
+      for (const listener of [...this.listeners]) {
+        listener();
+      }
+    }
+  }
 }
 
 describe('WindowTitleAdapter — session start group (DDD-4)', () => {
@@ -358,5 +386,105 @@ describe('WindowTitleAdapter — off suppression (03-03, AC-06.6)', () => {
   }) => {
     const result = createWindowTitleAdapter(notifications, false);
     expect(result instanceof WindowTitleAdapter).toBe(expectAdapter);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// Step 01-01 — crash-path exit safety net (ADR-022 gap closure, DDD-4/DDD-12).
+// ROOT CAUSE: src/index.ts's composition root only calls
+// windowTitleAdapter?.stop() AFTER `await service.run(config)` RESOLVES. An
+// unhandled exception escaping the tick loop, run()'s setup, or start() itself
+// skips that stop(), leaving a stale phase title and an unbalanced XTWINOPS
+// stack (ADR-022 documented this as an accepted trade-off; this fix closes it).
+// Q / Ctrl+C / SIGTERM already converge on isInterrupted() and stay safe.
+//
+// wireExitSafetyNet(adapter, proc?) is the DI seam (proc mirrors the TitleStdout
+// injectable convention): it will register proc.on('exit', stopOnce) so the
+// crash path still runs the adapter's neutral+restore sequence. This step ships
+// ONLY the no-op stub + this regression test; the real behaviour lands in 01-02.
+//
+// TEST PARADIGM: exact byte sequences EXEMPT (spike-verified exact-byte contract,
+// same convention as the exit-path twins above). fast-check absent — enumerated
+// as example-based tests, zero new deps.
+//
+// Test budget: 1 behaviour (crash-path exit still emits stop()'s bytes) x 2 = 2
+// max; 1 written (the wired crash path). The off-mode null-adapter guarantee is
+// already covered by the AC-06.6 twin above ("createWindowTitleAdapter(...)
+// returns an adapter only when notifications are on"), so it is NOT re-tested
+// here (a null-adapter reimplementation of the composition root's own guard
+// inside the test body would assert nothing new — D4).
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('WindowTitleAdapter — crash-path exit safety net (01-01, ADR-022 gap)', () => {
+  // POST-FIX end state (not "stop was skipped"): with the net wired, a crash
+  // that fires 'exit' before the composition root reaches its own stop() still
+  // produces the EXACT neutral-title + XTWINOPS-restore bytes stop() emits.
+  it("firing 'exit' after start() and a simulated crash still emits the exact neutral+restore sequence stop() would produce", () => {
+    const tty = new CapturingStdout(true);
+    const adapter = new WindowTitleAdapter(false, tty);
+    const proc = new FakeExitSource();
+    wireExitSafetyNet(adapter, proc);
+    adapter.start();
+    tty.writes.length = 0; // observe only the crash-exit bytes
+    // Simulate a crash BEFORE the composition root's own stop() runs: the tick
+    // loop throws, so stop() is never called directly — only 'exit' fires.
+    proc.emit('exit');
+    expect(tty.writes.join('')).toBe(osc(NEUTRAL_TITLE) + RESTORE);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// Step 01-02 (D3) — exit safety-net dedup: stop() runs EXACTLY ONCE. The other
+// headline claim of the fix (commit 845ad46): "no double neutral+restore on the
+// normal path". The `stopped` dedup flag inside stopOnce plus finish()'s
+// proc.off together guarantee stop()'s neutral+restore bytes are emitted exactly
+// once — never zero, never twice — across {normal finish(), crash 'exit'}
+// regardless of firing order. This dedup guarantee is order-independent of the
+// D1 wire-before-start fix; it is previously-untested behaviour.
+//
+// Test budget: 1 behaviour (exactly-once emission) x 2 = 2 max; 1 written
+// (parametrized over both firing orders, Mandate 5).
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('WindowTitleAdapter — exit safety-net dedup, exactly-once (01-02, D3)', () => {
+  const ORDERINGS: ReadonlyArray<{
+    name: string;
+    run: (finish: () => void, proc: FakeExitSource) => void;
+  }> = [
+    {
+      // Normal path: finish() runs first (run() resolved), then a stray 'exit'
+      // fires afterward — finish() already unregistered the listener via
+      // proc.off, so the stray 'exit' is a no-op.
+      name: 'normal finish() first, then a stray crash exit fires afterward',
+      run: (finish, proc) => {
+        finish();
+        proc.emit('exit');
+      },
+    },
+    {
+      // Crash path: 'exit' fires first, then a defensive finish() also runs —
+      // the `stopped` dedup flag blocks the second stop().
+      name: 'crash exit first, then a defensive finish() runs afterward',
+      run: (finish, proc) => {
+        proc.emit('exit');
+        finish();
+      },
+    },
+  ];
+  it.each(ORDERINGS)('emits the neutral+restore sequence exactly once, never twice ($name)', ({
+    run,
+  }) => {
+    const tty = new CapturingStdout(true);
+    const adapter = new WindowTitleAdapter(false, tty);
+    const proc = new FakeExitSource();
+    const finish = wireExitSafetyNet(adapter, proc);
+    adapter.start();
+    tty.writes.length = 0; // observe only the exit/finish stop() bytes
+    run(finish, proc);
+    const bytes = tty.bytes();
+    // Exactly once: the full sequence appears, and never a second time (never
+    // zero — the sequence is present; never twice — restore occurs once only).
+    expect(bytes).toBe(osc(NEUTRAL_TITLE) + RESTORE);
+    expect(bytes.split(RESTORE).length - 1).toBe(1);
   });
 });

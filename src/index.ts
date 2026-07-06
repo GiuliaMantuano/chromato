@@ -139,6 +139,7 @@ async function buildNotificationPort(
 ): Promise<{
   port: import('./domain/ports.js').NotificationPort;
   windowTitleAdapter: import('./adapters/windowTitleAdapter.js').WindowTitleAdapter | null;
+  wireExitSafetyNet: typeof import('./adapters/windowTitleAdapter.js').wireExitSafetyNet | null;
 }> {
   const { CompositeNotificationAdapter } = await import(
     './adapters/compositeNotificationAdapter.js'
@@ -146,10 +147,16 @@ async function buildNotificationPort(
   const { modeIncludesBanner, modeIncludesBell } = await import('./domain/notificationMode.js');
 
   if (mode === 'off') {
-    return { port: new CompositeNotificationAdapter([]), windowTitleAdapter: null };
+    return {
+      port: new CompositeNotificationAdapter([]),
+      windowTitleAdapter: null,
+      wireExitSafetyNet: null,
+    };
   }
 
-  const { createWindowTitleAdapter } = await import('./adapters/windowTitleAdapter.js');
+  const { createWindowTitleAdapter, wireExitSafetyNet } = await import(
+    './adapters/windowTitleAdapter.js'
+  );
   const windowTitleAdapter = createWindowTitleAdapter(true, useAscii);
 
   const children: import('./domain/ports.js').NotificationPort[] = [];
@@ -162,7 +169,11 @@ async function buildNotificationPort(
   }
   children.push(windowTitleAdapter);
 
-  return { port: new CompositeNotificationAdapter(children), windowTitleAdapter };
+  return {
+    port: new CompositeNotificationAdapter(children),
+    windowTitleAdapter,
+    wireExitSafetyNet,
+  };
 }
 
 /**
@@ -239,11 +250,11 @@ async function launchSession(
     // SAME mode-driven composite factory the TUI path uses (buildNotificationPort),
     // with MinimalAdapter itself standing in as the "visualNotifier" — its own
     // persistent-line printer takes the banner slot.
-    const { port: notificationAdapter, windowTitleAdapter } = await buildNotificationPort(
-      notifications,
-      renderAdapter,
-      config.useAscii,
-    );
+    const {
+      port: notificationAdapter,
+      windowTitleAdapter,
+      wireExitSafetyNet,
+    } = await buildNotificationPort(notifications, renderAdapter, config.useAscii);
     const service = new SessionService(
       renderAdapter,
       persistenceAdapter,
@@ -251,12 +262,17 @@ async function launchSession(
       persistenceAdapter,
     );
 
+    // ORDER MATTERS (D1): wire the crash-path exit net BEFORE start(). If start()
+    // itself throws, the 'exit' listener must already be armed for the crash path
+    // to restore the title — wiring after start() would leave that trigger uncovered.
+    const finish =
+      windowTitleAdapter && wireExitSafetyNet ? wireExitSafetyNet(windowTitleAdapter) : null;
     windowTitleAdapter?.start();
     process.on('SIGTERM', () => {
       service.interrupt();
     });
     await service.run(config);
-    windowTitleAdapter?.stop();
+    finish?.();
     return;
   }
 
@@ -284,11 +300,11 @@ async function launchSession(
   // buildNotificationPort — banner+bell/banner/bell/off, per ConfigResult's
   // resolved mode ([D6]/[D10]). NO pipe special-casing here — the [D8] gate
   // lives inside each adapter.
-  const { port: tuiNotificationPort, windowTitleAdapter } = await buildNotificationPort(
-    notifications,
-    tuiAdapter,
-    config.useAscii,
-  );
+  const {
+    port: tuiNotificationPort,
+    windowTitleAdapter,
+    wireExitSafetyNet,
+  } = await buildNotificationPort(notifications, tuiAdapter, config.useAscii);
 
   const persistenceAdapter = new PersistenceAdapter();
   const service = new SessionService(
@@ -305,23 +321,38 @@ async function launchSession(
 
   // DDD-4 lifecycle invariant: wire, start(), then run(). IDLE→WORK emits no
   // PHASE_CHANGED, so this lifecycle call IS the session-start title (save the
-  // user's title with XTWINOPS 22, then set the WORK title). The SINGLE
-  // stop() after run() resolves (03-03) covers every exit path — Q keypress
-  // (routed to SessionControlPort.quit() via attachControl above), Ctrl+C
-  // (SessionService.run()'s own SIGINT handler), SIGTERM (below), and natural
-  // completion — because all of them converge on session.interrupt() setting
-  // isInterrupted(), which is the ONLY thing run()'s tick loop checks before
-  // resolving. No per-signal special-casing here (DDD-12): stop()'s
-  // neutral-then-restore ordering is unconditional, so whichever path
-  // resolves run() first still leaves the terminal titled "chromato", never
-  // a stale phase title (AC-06.2/AC-06.3/AC-06.8).
+  // user's title with XTWINOPS 22, then set the WORK title). Exit-path coverage
+  // is now split across TWO complementary mechanisms:
+  //   1. The interrupt-convergent paths — Q keypress (routed to
+  //      SessionControlPort.quit() via attachControl above), Ctrl+C
+  //      (SessionService.run()'s own SIGINT handler), SIGTERM (below), and
+  //      natural exhaustion of the tick loop — all converge on
+  //      session.interrupt() setting isInterrupted(), which is the ONLY thing
+  //      run()'s tick loop checks before resolving. These are covered by the
+  //      finish() call after run() resolves (03-03).
+  //   2. Unhandled-exception / crash paths — an exception escaping the tick
+  //      loop, run()'s setup, or start() itself never reaches finish(). These
+  //      are now covered by wireExitSafetyNet's process.on('exit', ...)
+  //      last-resort net (steps 01-01/01-02), closing the gap ADR-022 had
+  //      previously accepted as unaddressed. The start()-throws trigger is
+  //      covered ONLY because the net is wired BEFORE start() below (D1).
+  // finish() and the 'exit' net share a dedup flag, so the terminal is restored
+  // exactly once — no double neutral+restore on the normal path (DDD-12): the
+  // neutral-then-restore ordering is unconditional, so whichever mechanism runs
+  // first still leaves the terminal titled "chromato", never a stale phase
+  // title (AC-06.2/AC-06.3/AC-06.8).
+  // ORDER MATTERS (D1): wire the net BEFORE start(). If start() itself throws,
+  // the 'exit' listener must already be registered for the crash path to restore
+  // the title — registering after start() would leave that one trigger uncovered.
+  const finish =
+    windowTitleAdapter && wireExitSafetyNet ? wireExitSafetyNet(windowTitleAdapter) : null;
   windowTitleAdapter?.start();
 
   process.on('SIGTERM', () => {
     service.interrupt();
   });
   await service.run(config);
-  windowTitleAdapter?.stop();
+  finish?.();
 }
 
 const program = new Command();

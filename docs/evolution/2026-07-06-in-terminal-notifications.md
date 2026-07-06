@@ -186,6 +186,48 @@ go-ahead — not given at finalize time. DELIVER (implementation + verification)
 DEVOPS deployment execution (push, PR, merge, production rollout, outcome measurement against
 H1/H2) awaits that explicit go.
 
+## Addendum (2026-07-06): `fix-window-title-exit-path` closes the crash-path trade-off
+
+A follow-on CROSS_WAVE bugfix, branch `fix-window-title-exit-path` (927e545 RED, 845ad46 GREEN,
+b3d10a4 revision-after-review), closes the trade-off accepted above under Consequences:
+"crash paths (uncaught exception) don't restore the title — accepted, identical to the existing
+alt-screen limitation." No discuss/design/distill artifacts were created for this fix — it is a
+small, scoped bugfix (RCA -> roadmap -> RED -> GREEN -> review -> revision -> mutation testing),
+not a fresh feature delivery.
+
+**Trigger**: a 2026-07-06 security review (MED-3) flagged that `windowTitleAdapter.stop()` was not
+guaranteed to run on an unhandled exception/crash path — only after `service.run()` resolved
+normally. **Root cause (nw-troubleshooter RCA)**: the real gap was narrower than the security
+review assumed — the Q / Ctrl+C / SIGTERM exit paths were already safe; only truly-unhandled
+exceptions (tick loop, `run()` setup, `start()` itself) were uncovered.
+
+**Fix**: `wireExitSafetyNet(adapter, proc = process)` added to `src/adapters/windowTitleAdapter.ts`
+— a dedup-guarded `process.on('exit', stopOnce)` last-resort net — wired into both
+`launchSession()` branches in `src/index.ts`. Delivered in 2 roadmap steps per
+`docs/feature/fix-window-title-exit-path/deliver/roadmap.json` and `execution-log.json`.
+
+**Adversarial review caught a real blocker**: the first implementation wired the safety net
+*after* `windowTitleAdapter.start()`, so a throwing `start()` itself would never register the
+listener. One revision pass (`b3d10a4`) reordered the wiring to arm the net before `start()`,
+added the missing dedup-guarantee test coverage, and removed a redundant testing-theater test —
+a clean example of adversarial review catching what looked done.
+
+**Mutation testing**: 87.88% on `windowTitleAdapter.ts` (>=80% gate, PASS; the 4 survivors are
+analyzed as equivalent or acceptance-suite-covered in
+`docs/feature/fix-window-title-exit-path/deliver/mutation/mutation-report.md`). `src/index.ts`'s
+2-line reorder is not unit-mutation-testable — no test imports `index.ts`, an established
+codebase constraint (it is already excluded from coverage in `vitest.config.ts`) — so it was
+instead verified by the review plus the full 130/130 acceptance suite.
+
+**Status**: 3 commits ahead of `main` on `fix-window-title-exit-path` (927e545, 845ad46, b3d10a4).
+Committed locally only — not pushed, no PR opened, per the project's standing publish-gate rule
+(same posture as the parent feature above).
+
+**Note for a future merge**: when this branch merges, the "crash paths don't restore the title"
+trade-off line in ADR-022's Consequences section (quoted above) should be revised or struck —
+not done as part of this bugfix since the ADR documents the shipped `main` state, not an
+unmerged branch.
+
 ## Migrated / promoted artifacts
 
 - `docs/product/architecture/adr-022-in-terminal-notifications.md` (DESIGN-wave draft, local-only

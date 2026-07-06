@@ -44,6 +44,16 @@ export interface TitleStdout {
   write(chunk: string): boolean;
 }
 
+/**
+ * The minimal process surface the exit safety net needs: register/unregister
+ * an 'exit' listener. Injectable seam mirroring TitleStdout — production passes
+ * the real `process`, the @tty-sim twins pass a fake emitter.
+ */
+export interface ExitSignalSource {
+  on(event: 'exit', listener: () => void): unknown;
+  off(event: 'exit', listener: () => void): unknown;
+}
+
 export class WindowTitleAdapter implements NotificationPort {
   /** Consumed by notifySessionComplete() to arbitrate the same-drain collision (03-05). */
   private phaseChangedThisDrain = false;
@@ -136,4 +146,48 @@ export function createWindowTitleAdapter(
   useAscii: boolean,
 ): WindowTitleAdapter | null {
   return notifications ? new WindowTitleAdapter(useAscii) : null;
+}
+
+/**
+ * Crash-path exit safety net (ADR-022 gap closure, steps 01-01/01-02). The
+ * composition root's single windowTitleAdapter?.stop() after service.run()
+ * only fires when run() RESOLVES; an unhandled exception escaping the tick
+ * loop, run()'s setup, or start() itself skips it, leaving a stale phase title
+ * and an unbalanced XTWINOPS stack. This registers a process 'exit' listener
+ * that calls adapter.stop() exactly once, returning a finish() callback to
+ * unwire it on the normal exit path. The `proc` seam is injectable (mirrors the
+ * TitleStdout convention) so the @tty-sim twins can drive a fake emitter.
+ *
+ * stopOnce is dedup-guarded so the terminal is restored exactly once no matter
+ * how many of {crash 'exit', normal finish()} fire: the first caller wins, the
+ * rest are no-ops (no double neutral+restore on the normal path). finish() runs
+ * stopOnce (covering the case where run() resolved normally and no crash fired)
+ * then unregisters the listener so a subsequent 'exit' stays a no-op.
+ *
+ * PRECONDITION (call order): callers MUST invoke wireExitSafetyNet BEFORE
+ * adapter.start(). Registering the 'exit' listener first is precisely what
+ * covers the "start() itself throws" trigger — if start() throws, the net is
+ * already armed and the crash path still runs stop(). A caller that wires AFTER
+ * start() silently leaves that one trigger uncovered. Calling stop() (neutral
+ * title + XTWINOPS 23 restore) even when start() never completed is safe by
+ * DDD-12: an unmatched XTWINOPS restore is a no-op on terminals that support it
+ * and harmless on those that don't.
+ */
+export function wireExitSafetyNet(
+  adapter: WindowTitleAdapter,
+  proc: ExitSignalSource = process,
+): () => void {
+  let stopped = false;
+  const stopOnce = (): void => {
+    if (stopped) {
+      return;
+    }
+    stopped = true;
+    adapter.stop();
+  };
+  proc.on('exit', stopOnce);
+  return () => {
+    stopOnce();
+    proc.off('exit', stopOnce);
+  };
 }
