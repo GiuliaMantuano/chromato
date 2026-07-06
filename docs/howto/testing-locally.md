@@ -8,7 +8,7 @@ This guide walks you through manual testing of the chromato Pomodoro timer. Each
 
 Before you start, make sure these are installed:
 
-- **Node.js** — v22.12.0 or newer (`.nvmrc` pins the exact version CI uses, v24.13.0)
+- **Node.js** — v22.12.0 or newer (`.nvmrc` pins the project's floor version, v22.12.0; CI floats to the latest 22.x)
 - **pnpm** — the project's package manager. If you don't have it yet: `npm install -g pnpm`
 - **Git** — for cloning the repo
 
@@ -388,7 +388,7 @@ node node_modules/@cucumber/cucumber/bin/cucumber.js --config cucumber.config.mj
 |---------|-------|-----|
 | `error: option '--work' must be a positive integer` | `--work` only accepts whole minutes (1, 2, 3…) | Use `CHROMATO_WORK_SECONDS=6` instead for short tests |
 | `zsh: no such file or directory: node_modules/.bin/tsx` | Not in project folder | Run `cd` into the `chromato` folder first |
-| `command not found: nvm` | nvm not in current shell session | Run `export PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH"` |
+| `command not found: nvm` | nvm not in current shell session | Run `export PATH="$HOME/.nvm/versions/node/v22.12.0/bin:$PATH"` |
 | Progress bar shows `=---` instead of `█░` | ASCII fallback (TERM or locale setting) | Run with `--ascii` to confirm fallback is working, or ignore |
 | Screen blank after `Ctrl+C` | Ink clears terminal on exit | Normal — your prompt will return |
 | Timer not counting down | You may be seeing a cached render | Press `Ctrl+C` and start again |
