@@ -38,11 +38,18 @@ function stripAnsi(str: string): string {
 }
 
 function enforceWidth(colored: string, plain: string, maxWidth: number): string {
-  if (plain.length <= maxWidth) {
-    return colored;
+  if (plain.length > maxWidth) {
+    // Truncate the plain string to fit and rebuild without color.
+    return plain.slice(0, maxWidth);
   }
-  // Truncate the plain string to fit and rebuild without color.
-  return plain.slice(0, maxWidth);
+  if (colored.length > maxWidth) {
+    // Visible text fits, but ANSI escape overhead pushes the raw colored
+    // string past maxWidth. Never slice a colored string directly -- that
+    // risks cutting mid-escape-sequence and corrupting subsequent terminal
+    // output. Fall back to the untruncated plain text instead.
+    return plain;
+  }
+  return colored;
 }
 
 export class StatusAdapter {

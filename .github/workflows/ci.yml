@@ -91,7 +91,7 @@ jobs:
         run: pnpm build
 
       - name: Unit tests with coverage
-        run: pnpm vitest run --coverage --reporter=verbose tests/unit/
+        run: pnpm vitest run --coverage --reporter=verbose
 
       - name: Coverage quality gate
         run: |
