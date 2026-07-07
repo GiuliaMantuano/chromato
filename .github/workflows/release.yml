@@ -65,46 +65,9 @@ jobs:
           name: sbom
           path: sbom.cyclonedx.json
 
-  publish-npm:
-    name: Publish to npm
-    needs: [full-ci, sbom]
-    runs-on: ubuntu-22.04
-    environment:
-      name: npm-publish
-      url: https://www.npmjs.com/package/chromato
-
-    permissions:
-      contents: read
-      id-token: write  # required for npm provenance
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js (with npm registry)
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build production bundle
-        run: pnpm build
-
-      - name: Publish to npm with provenance
-        run: pnpm publish --provenance --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
-
   github-release:
     name: Create GitHub Release
-    needs: publish-npm
+    needs: [full-ci, sbom]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -145,7 +108,7 @@ jobs:
   # Uncomment when ready for post-MVP binary distribution
   # sea-build:
   #   name: Build SEA Binary
-  #   needs: publish-npm
+  #   needs: github-release
   #   strategy:
   #     matrix:
   #       include:

@@ -3,9 +3,9 @@ name: CI
 on:
   # Allow release.yml to invoke this workflow as a reusable workflow
   # (`full-ci: uses: ./.github/workflows/ci.yml`). Without a `workflow_call`
-  # trigger the `uses:` call fails at dispatch and takes the whole publish
-  # pipeline (sbom / publish-npm / github-release) down with it. GITHUB_TOKEN
-  # is auto-provided to called workflows, so no secrets need to be inherited.
+  # trigger the `uses:` call fails at dispatch and takes the whole release
+  # pipeline (sbom / github-release) down with it. GITHUB_TOKEN is
+  # auto-provided to called workflows, so no secrets need to be inherited.
   workflow_call:
   # Run on PRs targeting main, plus PRs targeting any fix/* branch so that
   # stacked PRs (e.g. PR #35 stacked on PR #34) get their own CI signal
