@@ -13,10 +13,10 @@
 #
 # Driving port: `chromato start`, `chromato status --format tmux`
 #
-# VS Code terminal coverage note: The CI OS matrix (ubuntu-22.04, ubuntu-24.04,
-# macos-12, macos-14) validates 256-color and Unicode block rendering --
-# the defining capabilities of VS Code terminal support. xterm.js behaves
-# identically to any xterm-256color terminal on the same OS.
+# VS Code terminal coverage note: CI (GitHub Actions ubuntu-22.04; macOS
+# dropped entirely, ADR-023) validates 256-color and Unicode block
+# rendering -- the defining capabilities of VS Code terminal support.
+# xterm.js behaves identically to any xterm-256color terminal on the same OS.
 #
 # Error/edge ratio: 4/7 = 57% -- target met
 

@@ -25,8 +25,8 @@ env:
 jobs:
   # Detect whether the change touches anything beyond documentation. Doc-only
   # changes (docs/** and *.md) still run the cheap Commit Stage (which includes
-  # the doc-consistency unit tests), but skip the expensive cross-OS Acceptance
-  # matrix and Performance Benchmarks to save Actions minutes. Fails safe: any
+  # the doc-consistency unit tests), but skip the Acceptance Tests and
+  # Performance Benchmarks jobs to save Actions minutes. Fails safe: any
   # non-doc file present in the diff sets code=true and runs the full pipeline.
   changes:
     name: Detect change scope
@@ -173,10 +173,16 @@ jobs:
       TERM: xterm-256color
       LANG: en_US.UTF-8
 
+    # Linux-only: macOS runners are never free (10x minutes multiplier on any
+    # repo, public or private) and this project has no OS-divergent code path
+    # left (the one macOS-specific mechanism, osascript notifications, was
+    # removed entirely per ADR-016/ADR-022; the only real remaining
+    # cross-platform risk is better-sqlite3's native-addon install, which
+    # running the full suite doesn't cover any better than a smoke check
+    # would). See ADR-023.
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-14]
+        os: [ubuntu-22.04]
 
     steps:
       - name: Checkout
