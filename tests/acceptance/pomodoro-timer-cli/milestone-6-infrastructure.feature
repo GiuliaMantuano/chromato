@@ -11,7 +11,8 @@
 # (not from source), mirroring what end users receive from npm install -g.
 #
 # Environments validated:
-#   - ci (GitHub Actions ubuntu-22.04, macos-12) -- acceptance stage
+#   - ci (GitHub Actions ubuntu-22.04) -- acceptance stage (macOS dropped
+#     from CI entirely, ADR-023: no OS-divergent code path left to validate)
 #   - local (developer workstation pre-push gate)
 #
 # Driving port: chromato CLI (the installed binary / dist/index.js)
