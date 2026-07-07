@@ -26,9 +26,8 @@ Starts a Pomodoro session with automatic phase transitions through WORK → BREA
 Default mode renders a full interactive TUI with animated progress bar:
 
 ```
-chromato · POMODORO 1 of 4
-████████████████████░░░░  18:34 WORK
-Today: 2
+WORK  POMODORO 1 of 4  Today: 2 sessions
+██████░░░░░░░░░░░░░░░░░░ 26%  18:34
 ```
 
 Display updates every second. Progress bar uses Unicode block characters with phase-matched color gradient (green/cyan for WORK, blue/indigo for BREAK, purple for LONG_BREAK, red pulsing for OVERDUE).
@@ -56,12 +55,12 @@ Footer hints by phase:
 With `--minimal` flag, outputs plain text to stdout (no TUI, no ANSI):
 
 ```
-WORK 24:59 P1/4
-WORK 24:58 P1/4
-WORK 24:57 P1/4
+WORK 24:59 [--------------------] 0% POMODORO 1 of 4
+WORK 24:58 [--------------------] 0% POMODORO 1 of 4
+WORK 24:57 [--------------------] 0% POMODORO 1 of 4
 ```
 
-Each line contains: `<PHASE> <MM:SS> P<n>/<total>`
+Each line contains: `<PHASE> <MM:SS> <BAR> <PCT>% POMODORO <n> of <total>`
 
 Updated every second. Safe to pipe to files or other programs. No color codes even if `NO_COLOR` is unset.
 
@@ -126,30 +125,30 @@ Reads the active session state and outputs a formatted status string. Designed f
 Human-readable single-line output:
 
 ```
-WORK — 18:34 remaining (POMODORO 1/4)
+WORK 18:34
 ```
 
-Suitable for scripts that parse session information. Always includes phase label, remaining time, and current Pomodoro position.
+Format: `<PHASE> <MM:SS>` — phase label and remaining time, space-separated. Suitable for scripts that parse session information.
 
 #### tmux
 
-tmux-compatible color-markup output:
+Compact output, colored with real ANSI escape codes matching the phase (not tmux `#[]` directives — no extra styling needed in your tmux config):
 
 ```
-#[fg=cyan]● 18:34#[default]
+18:34 WORK
 ```
 
-Includes tmux color directives. Safe to use in `status-right` and `status-left`. Respects `--width` (default ≤20 characters).
+Format: `<MM:SS> <PHASE>`, where the phase label is abbreviated to 4 characters (`LONG_BREAK` renders as `LNG`). Falls back to plain (uncolored) text when `NO_COLOR` is set, or when the colored string would exceed `--width` but the plain text fits. Safe to use in `status-right` and `status-left`. Respects `--width` (default ≤20 characters).
 
 #### prompt
 
 Ultra-compact format:
 
 ```
-⏱ 18:34
+(P1 18:34)
 ```
 
-Suitable for shell prompts (`PS1`, `RPROMPT`, `fish_right_prompt`). ≤15 characters. Includes elapsed time or remaining time depending on phase.
+Format: `(P<n> <MM:SS>)`, or `(! <MM:SS>)` when the phase is `OVERDUE`. Suitable for shell prompts (`PS1`, `RPROMPT`, `fish_right_prompt`). ≤15 characters.
 
 ### IDLE State
 

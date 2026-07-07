@@ -29,9 +29,9 @@ describe('CHANGELOG.md exists with v1.0.0 entry covering all delivered features'
     expect(content).toContain('Color-coded phases');
   });
 
-  it('lists Desktop notifications feature', () => {
+  it('lists in-terminal notification system feature', () => {
     const content = readFileSync(changelogPath, 'utf-8');
-    expect(content).toContain('Desktop notifications');
+    expect(content).toContain('in-terminal notification system');
   });
 
   it('lists Second overdue notification feature', () => {

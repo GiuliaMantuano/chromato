@@ -5,9 +5,8 @@
 An animated Pomodoro timer for terminal developers. Colour-gradient progress bar, phase transitions you won't miss, and seamless tmux/shell integration.
 
 ```
-chromato · POMODORO 1 of 4
-████████████████░░░░░░░░  18:34 WORK
-Today: 2
+WORK  POMODORO 1 of 4  Today: 2 sessions
+██████░░░░░░░░░░░░░░░░░░ 26%  18:34
 ```
 
 ## Install
@@ -45,7 +44,7 @@ That's it. You're timing.
 - **Animated progress bar** — Renders within 100ms, updates every second, adapts to terminal width
 - **Color-coded phases** — WORK, BREAK, and LONG BREAK each render in a distinct colour drawn from your palette (OVERDUE is always a warning red), and the phase name is always shown as text alongside the colour
 - **In-session controls** — `s` skips a break/overdue to the next focus block, `q` quits cleanly
-- **Desktop notifications** — native, dependency-free; warm unit-aware copy + a session-complete summary; terminal bell fallback
+- **In-terminal notifications** — an in-frame banner, terminal bell, and window-title update on phase transitions (pick from 4 modes); warm unit-aware copy + a session-complete summary; no OS notifications, no new runtime dependencies
 - **Configurable durations** — Work (25m default), short break (5m), long break (15m), cycle count (4 pomodoros)
 - **Minimal mode** — `--minimal` for plain-text output; no TUI, no color, no bloat
 - **NO_COLOR compliant** — respects `NO_COLOR` environment variable
@@ -113,7 +112,7 @@ For environments with limited terminal support, use `--minimal`:
 
 ```bash
 $ chromato start --minimal
-WORK: 24:35 (Pomodoro 1 of 4)
+WORK 24:35 [--------------------] 2% POMODORO 1 of 4
 ```
 
 No ANSI codes, no TUI rendering — just plain text to stdout.
@@ -124,16 +123,16 @@ No ANSI codes, no TUI rendering — just plain text to stdout.
 
 ```bash
 $ chromato status --format plain
-WORK — 18:34 remaining (POMODORO 1/4)
+WORK 18:34
 
 $ chromato status --format tmux
-#[fg=cyan]● 18:34#[default]
+18:34 WORK
 
 $ chromato status --format prompt
-⏱ 18:34
+(P1 18:34)
 ```
 
-Combine with `--width <n>` to truncate for narrow spaces.
+The `tmux` format is colored with real ANSI escape codes matching the phase (not tmux `#[]` directives) — no extra styling needed in your tmux config. Combine with `--width <n>` to truncate for narrow spaces.
 
 ## NO_COLOR
 
