@@ -43,11 +43,6 @@ chromato is an open-source CLI/TUI Pomodoro timer for terminal-native developers
 
 | Document | Location |
 |----------|----------|
-| Architecture design (C4 diagrams) | `docs/feature/pomodoro-timer-cli/design/architecture-design.md` |
-| Component boundaries | `docs/feature/pomodoro-timer-cli/design/component-boundaries.md` |
-| Data models | `docs/feature/pomodoro-timer-cli/design/data-models.md` |
-| Technology stack | `docs/feature/pomodoro-timer-cli/design/technology-stack.md` |
-| DESIGN wave decisions | `docs/feature/pomodoro-timer-cli/design/wave-decisions.md` |
 | ADR-001: Language (TypeScript) | `docs/adrs/ADR-001-language-choice.md` |
 | ADR-002: TUI library (Ink 4.x) | `docs/adrs/ADR-002-tui-library.md` |
 | ADR-003: Persistence (better-sqlite3 + json) | `docs/adrs/ADR-003-persistence.md` |
@@ -139,17 +134,6 @@ These are behavioral invariants the crafter must preserve. They are tested in th
 - `NO_COLOR` environment variable suppresses all ANSI sequences in all output modes (AC-P3)
 - `chromato stop` and Ctrl+C produce exit code 0 with no zombie processes (AC-P6)
 - Phase labels (WORK, BREAK, OVERDUE) are always visible as text alongside color coding (NFR-05.1 accessibility)
-
----
-
-## Requirements and Acceptance Criteria
-
-| Document | Location |
-|----------|----------|
-| Requirements | `docs/feature/pomodoro-timer-cli/discuss/requirements.md` |
-| Acceptance criteria | `docs/feature/pomodoro-timer-cli/discuss/acceptance-criteria.md` |
-| User stories | `docs/feature/pomodoro-timer-cli/discuss/user-stories.md` |
-| Story map | `docs/feature/pomodoro-timer-cli/discuss/story-map.md` |
 
 ---
 
