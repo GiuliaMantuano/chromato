@@ -4,7 +4,10 @@
  * Tests enter through SessionService with in-memory stub ports.
  * Domain internals (Session, PhaseStateMachine, TimerSnapshot) exercised indirectly.
  *
- * Test Budget: 10 distinct behaviors x 2 = 20 max unit tests
+ *   B11: run() removes its SIGINT listener once interrupted, leaking none
+ *        across repeated calls (2026-07-07 CI-hang investigation)
+ *
+ * Test Budget: 11 distinct behaviors x 2 = 22 max unit tests
  *   B1: first tick renders WORK phase and writes WORK state to statePort
  *   B2: progressFraction is 0.5 after half the work duration ticks
  *   B3: PHASE_CHANGED event triggers notificationPort.notifyPhaseChange
@@ -19,7 +22,7 @@
  * No imports from src/adapters/. No mocks inside the hexagon.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SessionService } from '../../../src/application/sessionService.js';
 import type {
   RenderPort,
@@ -285,5 +288,43 @@ describe('SessionService (driving port)', () => {
     service.tickOnce(config, 30); // overdueElapsedSeconds = 120 -> no additional call
 
     expect(notificationPort.overdueCallCount).toBe(callsAfterSecond);
+  });
+
+  // B11: run() registers a real process-level SIGINT listener and must remove
+  // it once interrupted -- left unremoved, this accumulates across every
+  // call to run() for the life of the process (2026-07-07 CI-hang
+  // investigation). Uses fake timers and a directly-invoked captured
+  // callback -- no real signal is ever emitted and no real 1s wait occurs,
+  // so this test cannot itself exercise the class of fragility it guards
+  // against. Asserts a before/after DELTA (not an absolute count) so it
+  // stays meaningful regardless of what else is registered in this worker.
+  it('run() removes its SIGINT listener after being interrupted, leaking none across calls', async () => {
+    vi.useFakeTimers();
+    const onSpy = vi.spyOn(process, 'on');
+    const baseline = process.listenerCount('SIGINT');
+    try {
+      const { renderPort, statePort, notificationPort, historyPort } = makePorts();
+      const service = new SessionService(renderPort, statePort, notificationPort, historyPort);
+      const config = makeConfig();
+
+      const runPromise = service.run(config);
+
+      // Retrieve the exact callback run() registered -- call it directly as a
+      // plain function, never through process.emit/process.kill, so no real
+      // signal-delivery path is exercised.
+      const sigintCall = onSpy.mock.calls.find(([event]) => event === 'SIGINT');
+      const handler = sigintCall?.[1] as (() => void) | undefined;
+      expect(handler).toBeDefined();
+      handler!();
+
+      // Let the tick loop's setTimeout fire deterministically (no real wait).
+      await vi.advanceTimersByTimeAsync(1000);
+      await runPromise;
+
+      expect(process.listenerCount('SIGINT')).toBe(baseline);
+    } finally {
+      onSpy.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });

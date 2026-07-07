@@ -268,10 +268,18 @@ async function launchSession(
     const finish =
       windowTitleAdapter && wireExitSafetyNet ? wireExitSafetyNet(windowTitleAdapter) : null;
     windowTitleAdapter?.start();
-    process.on('SIGTERM', () => {
+    // Captured (not an inline arrow) so it can be removed after run()
+    // resolves -- left unremoved, this leaks a listener on the real global
+    // `process` object (2026-07-07 CI-hang investigation).
+    const onSigterm = (): void => {
       service.interrupt();
-    });
-    await service.run(config);
+    };
+    process.on('SIGTERM', onSigterm);
+    try {
+      await service.run(config);
+    } finally {
+      process.removeListener('SIGTERM', onSigterm);
+    }
     finish?.();
     return;
   }
@@ -348,10 +356,18 @@ async function launchSession(
     windowTitleAdapter && wireExitSafetyNet ? wireExitSafetyNet(windowTitleAdapter) : null;
   windowTitleAdapter?.start();
 
-  process.on('SIGTERM', () => {
+  // Captured (not an inline arrow) so it can be removed after run() resolves
+  // -- left unremoved, this leaks a listener on the real global `process`
+  // object (2026-07-07 CI-hang investigation).
+  const onSigterm = (): void => {
     service.interrupt();
-  });
-  await service.run(config);
+  };
+  process.on('SIGTERM', onSigterm);
+  try {
+    await service.run(config);
+  } finally {
+    process.removeListener('SIGTERM', onSigterm);
+  }
   finish?.();
 }
 
