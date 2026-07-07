@@ -85,14 +85,25 @@ jobs:
 
       - name: Generate changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            git log ${PREV_TAG}..HEAD \
-              --pretty=format:"- %s (%h)" \
-              --grep="^feat\|^fix\|^perf\|^BREAKING" \
-              > RELEASE_NOTES.md
-          else
-            echo "Initial release" > RELEASE_NOTES.md
+          # Extract this release's section straight from CHANGELOG.md (Keep a
+          # Changelog format: "## [X.Y.Z] - date" headers) rather than
+          # regenerating notes from raw commit messages -- CHANGELOG.md is the
+          # curated, human-written record; git log is not.
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ "\\[" ver "\\]") { found=1; next }
+              next
+            }
+            found { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+
+          # Fall back to a minimal placeholder if the version has no matching
+          # CHANGELOG.md section (shouldn't happen if CHANGELOG.md is kept
+          # up to date, but never leave an empty release body).
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Release ${GITHUB_REF_NAME}. See CHANGELOG.md for details." > RELEASE_NOTES.md
           fi
 
       - name: Create GitHub Release
