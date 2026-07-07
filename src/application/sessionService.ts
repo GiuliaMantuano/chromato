@@ -170,9 +170,13 @@ export class SessionService implements SessionControlPort, SessionReadPort {
     this.completedThisSession = 0;
     const session = this.session;
 
-    process.on('SIGINT', () => {
+    // Captured (not an inline arrow) so it can be removed on teardown below --
+    // left unremoved, this accumulates a listener on the real global `process`
+    // object every time run() is called (2026-07-07 CI-hang investigation).
+    const onSigint = (): void => {
       session.interrupt();
-    });
+    };
+    process.on('SIGINT', onSigint);
 
     // Render first frame immediately (IDLE -> WORK transition on first tick)
     session.tick(0);
@@ -190,6 +194,7 @@ export class SessionService implements SessionControlPort, SessionReadPort {
           this.recordOverdueEpisodeOnExit();
           this.renderPort.stop();
           this.statePort?.writeIdle();
+          process.removeListener('SIGINT', onSigint);
           resolve();
           return;
         }

@@ -620,12 +620,24 @@ describe('US-02 — quit the running timer with q', () => {
   // Ctrl+C (DN-1). Pressing Ctrl+C emits SIGINT; it must NOT go through the
   // control port (no double-interrupt). Mirrors tuiAdapter R1 regression test.
   it('Ctrl+C still emits SIGINT and does NOT route through the control port (non-regression)', async () => {
-    // `false as never`: @types/node types some process.emit overloads as
-    // returning `this` (Process), so vitest infers the mock return type as
-    // Process rather than boolean. The return value is irrelevant here (we only
-    // assert emit was called); `as never` satisfies the mis-inferred overload
-    // without a blanket any/@ts-expect-error.
-    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false as never);
+    // Intercept ONLY 'SIGINT' (preventing it from actually propagating to
+    // Node's signal handlers, which would kill the vitest worker) and let
+    // every other event call through to the real process.emit. A blanket
+    // mockReturnValue(false) replaces the implementation for ALL events for
+    // the life of the mock -- including Node/vitest-internal IPC traffic
+    // riding the same process EventEmitter in a forked worker, which the two
+    // `await flush()` calls below give a real event-loop tick to arrive on.
+    // See the CI-hang RCA (2026-07-07): this over-broad mock silently
+    // swallowing that traffic was the identified mechanism, not signal-exit's
+    // self-kill watchdog as first suspected.
+    const originalEmit = process.emit.bind(process);
+    const emitSpy = vi.spyOn(process, 'emit').mockImplementation(((
+      event: string | symbol,
+      ...args: unknown[]
+    ) => {
+      if (event === 'SIGINT') return false;
+      return originalEmit(event as never, ...(args as never[]));
+    }) as typeof process.emit);
     const control = new FakeControl();
     try {
       const { stdin } = render(
@@ -640,6 +652,13 @@ describe('US-02 — quit the running timer with q', () => {
       expect(emitSpy).toHaveBeenCalledWith('SIGINT');
       // ...and the control port quit() was NOT invoked (DN-1: useInput ignores Ctrl+C).
       expect(control.quitCalls).toBe(0);
+
+      // Prove the mock is scoped to SIGINT only -- an unrelated event must
+      // still reach a real listener, unlike the old blanket mock.
+      const otherListener = vi.fn();
+      process.once('chromato-test-other-event' as never, otherListener);
+      process.emit('chromato-test-other-event' as never);
+      expect(otherListener).toHaveBeenCalledTimes(1);
     } finally {
       emitSpy.mockRestore();
     }

@@ -464,14 +464,23 @@ describe('Regression R1: useInput fires SIGINT on Ctrl+C (Ink 4.x key interface)
   // Current code (tuiAdapter.tsx line ~93): if (key.ctrl && key.name === 'c') — FAILS because
   // key.name is always undefined; the condition never evaluates to true.
   it('R1: process.emit("SIGINT") is called when useInput receives input="c" with key.ctrl=true', () => {
-    // mockReturnValue(false) prevents the SIGINT from actually propagating to Node.js
-    // signal handlers (which would kill the vitest worker), while still recording the call.
-    // `false as never`: @types/node types some process.emit overloads as
-    // returning `this` (Process), so vitest infers the mock return type as
-    // Process rather than boolean. The return value is irrelevant here (we only
-    // assert emit was called); `as never` satisfies the mis-inferred overload
-    // without a blanket any/@ts-expect-error.
-    const emitSpy = vi.spyOn(process, 'emit').mockReturnValue(false as never);
+    // Intercept ONLY 'SIGINT' (preventing it from actually propagating to
+    // Node's signal handlers, which would kill the vitest worker) and let
+    // every other event call through to the real process.emit. A blanket
+    // mockReturnValue(false) replaces the implementation for ALL events for
+    // the life of the mock -- including Node/vitest-internal IPC traffic
+    // riding the same process EventEmitter in a forked worker -- which can
+    // silently swallow a message the test runner itself is waiting on. See
+    // the CI-hang RCA (2026-07-07): this over-broad mock was the identified
+    // mechanism, not signal-exit's self-kill watchdog as first suspected.
+    const originalEmit = process.emit.bind(process);
+    const emitSpy = vi.spyOn(process, 'emit').mockImplementation(((
+      event: string | symbol,
+      ...args: unknown[]
+    ) => {
+      if (event === 'SIGINT') return false;
+      return originalEmit(event as never, ...(args as never[]));
+    }) as typeof process.emit);
 
     // ink-testing-library exposes stdin.write() to simulate raw input.
     // Ctrl+C in a real terminal sends byte 0x03 (ETX). In Ink 4.x raw mode
@@ -485,6 +494,13 @@ describe('Regression R1: useInput fires SIGINT on Ctrl+C (Ink 4.x key interface)
 
     try {
       expect(emitSpy).toHaveBeenCalledWith('SIGINT');
+
+      // Prove the mock is scoped to SIGINT only -- an unrelated event must
+      // still reach a real listener, unlike the old blanket mock.
+      const otherListener = vi.fn();
+      process.once('chromato-test-other-event' as never, otherListener);
+      process.emit('chromato-test-other-event' as never);
+      expect(otherListener).toHaveBeenCalledTimes(1);
     } finally {
       emitSpy.mockRestore();
     }
