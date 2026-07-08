@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
+    "link:local": "pnpm build && pnpm link --global",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "pretest": "node build.mjs",

@@ -15,34 +15,39 @@
 
    **If your version is older**: Download Node.js 22 LTS from [nodejs.org](https://nodejs.org/) or use [nvm](https://github.com/nvm-sh/nvm) to install it.
 
-3. Verify your npm version:
+3. Verify your pnpm version (chromato uses pnpm, not npm, for dependency management):
    ```bash
-   npm --version
+   pnpm --version
    ```
 
-   **✅ Success**: npm is installed and displays a version number.
+   **✅ Success**: pnpm is installed and displays a version number. If missing, enable it via `corepack enable`.
 
 ## Install chromato globally
 
 **Goal**: Install chromato so you can run `chromato` from any terminal.
 
-1. Install the package:
+chromato isn't published on the npm registry yet, so it's installed from a local clone rather than `npm install -g`.
+
+1. Clone the repository and install dependencies:
    ```bash
-   npm install -g chromato
+   git clone https://github.com/GiuliaMantuano/chromato
+   cd chromato
+   pnpm install
    ```
 
-2. Verify the installation:
+2. Build and link the CLI globally:
+   ```bash
+   pnpm link:local
+   ```
+
+3. Verify the installation:
    ```bash
    chromato --version
    ```
 
    **✅ Success**: Output displays the version number (e.g., `1.0.0`)
 
-   **Command not found?** Your npm global bin directory is not in your shell PATH. Add it to `~/.bashrc`, `~/.zshrc`, or equivalent:
-   ```bash
-   export PATH="$(npm config get prefix)/bin:$PATH"
-   ```
-   Then reload your shell: `source ~/.bashrc` or `source ~/.zshrc`.
+   **Command not found?** Your pnpm global bin directory is not in your shell PATH. Run `pnpm setup` to have pnpm configure it automatically, then reload your shell: `source ~/.bashrc` or `source ~/.zshrc`.
 
 ## Configure with the setup wizard
 

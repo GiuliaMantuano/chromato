@@ -11,11 +11,18 @@ WORK  POMODORO 1 of 4  Today: 2 sessions
 
 ## Install
 
-Requires Node.js 22 or higher.
+Requires Node.js 22 or higher and pnpm (`corepack enable` if you don't have it). chromato isn't published on npm yet, so install it from a local clone:
 
 ```bash
-npm install -g chromato
+git clone https://github.com/GiuliaMantuano/chromato
+cd chromato
+pnpm install
+pnpm link:local
 ```
+
+This builds the project and links `chromato` onto your PATH.
+
+**Command not found?** pnpm needs a global bin directory on your PATH. Run `pnpm setup`, then reload your shell (`source ~/.zshrc` or `~/.bashrc`) and try again.
 
 ## Quickstart
 
